@@ -1,0 +1,51 @@
+import "server-only";
+import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+
+const DEFAULT_PATH = "./data/cutsheets.db";
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __cutsheetDb: Database.Database | undefined;
+}
+
+function openDb(): Database.Database {
+  const path = process.env.DATABASE_PATH ?? DEFAULT_PATH;
+  mkdirSync(dirname(path), { recursive: true });
+  const db = new Database(path);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  migrate(db);
+  return db;
+}
+
+function migrate(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cutsheets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('drawing', 'image')),
+      filename TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      blob BLOB NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_attachments_cutsheet ON attachments(cutsheet_id);
+  `);
+}
+
+// Cache the connection across HMR reloads in dev. In prod, Next.js serverless
+// would reopen per request — but we deploy as a long-running Node process, so
+// one connection per server lifetime is correct.
+export const db: Database.Database = globalThis.__cutsheetDb ?? openDb();
+if (process.env.NODE_ENV !== "production") globalThis.__cutsheetDb = db;
