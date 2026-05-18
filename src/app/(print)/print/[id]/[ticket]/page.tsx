@@ -26,7 +26,9 @@ export default async function PrintPage({
   if (!Number.isInteger(numeric)) notFound();
 
   const row = db
-    .prepare<[number], CutsheetRow>("SELECT id, data, updated_at FROM cutsheets WHERE id = ?")
+    .prepare<[number], CutsheetRow>(
+      "SELECT id, data, updated_at FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
     .get(numeric);
   if (!row) notFound();
 

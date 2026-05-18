@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useTransition } from "react";
+import { toast } from "sonner";
 import { FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,20 +20,19 @@ type Props = {
 // non-renderable formats (Word, Excel, etc.) the way the user expects.
 export function DocumentsCard({ cutsheetId, documents }: Props) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const upload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setError(null);
     for (const file of Array.from(files)) {
       const fd = new FormData();
       fd.append("file", file);
       startTransition(async () => {
         try {
           await uploadDocument(cutsheetId, fd);
+          toast.success(`${file.name} uploaded.`);
         } catch (err) {
-          setError(err instanceof Error ? err.message : String(err));
+          toast.error(err instanceof Error ? err.message : String(err));
         }
       });
     }
@@ -44,8 +44,9 @@ export function DocumentsCard({ cutsheetId, documents }: Props) {
     startTransition(async () => {
       try {
         await deleteAttachment(cutsheetId, id);
+        toast.success(`${filename} removed.`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        toast.error(err instanceof Error ? err.message : String(err));
       }
     });
   };
@@ -70,12 +71,6 @@ export function DocumentsCard({ cutsheetId, documents }: Props) {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && (
-          <p className="mb-3 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
         {documents.length === 0 ? (
           <p className="text-sm text-muted-foreground">No documents attached yet.</p>
         ) : (

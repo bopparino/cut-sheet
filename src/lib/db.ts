@@ -28,7 +28,8 @@ function migrate(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       data TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS attachments (
@@ -77,6 +78,19 @@ function migrate(db: Database.Database): void {
       `);
     }
     db.pragma("user_version = 1");
+  }
+
+  if (version < 2) {
+    // Soft-delete: cutsheets get a deleted_at column. Existing rows are
+    // alive (NULL). Hidden admin panel at /admin/trash can restore or
+    // permanently purge anything that landed in the bin.
+    const cols = db.prepare("PRAGMA table_info(cutsheets)").all() as Array<{
+      name: string;
+    }>;
+    if (!cols.some((c) => c.name === "deleted_at")) {
+      db.exec("ALTER TABLE cutsheets ADD COLUMN deleted_at TEXT");
+    }
+    db.pragma("user_version = 2");
   }
 }
 

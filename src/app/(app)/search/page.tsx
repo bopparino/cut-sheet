@@ -65,9 +65,12 @@ export default async function SearchPage({
     params.deliveryTo = filters.deliveryTo;
   }
 
+  // deleted_at IS NULL is always part of WHERE — soft-deleted cutsheets only
+  // surface in /admin/trash.
+  const allWheres = ["deleted_at IS NULL", ...wheres];
   const sql = `
     SELECT id, data, created_at, updated_at FROM cutsheets
-    ${wheres.length ? `WHERE ${wheres.join(" AND ")}` : ""}
+    WHERE ${allWheres.join(" AND ")}
     ORDER BY updated_at DESC
     LIMIT 50
   `;
@@ -226,7 +229,8 @@ function findDuplicateLotIds(): Set<number> {
         json_extract(data, '$.header.lot') AS lot,
         json_extract(data, '$.header.deliveryDate') AS deliveryDate
       FROM cutsheets
-      WHERE json_extract(data, '$.header.lot') IS NOT NULL
+      WHERE deleted_at IS NULL
+        AND json_extract(data, '$.header.lot') IS NOT NULL
         AND json_extract(data, '$.header.lot') != ''
         AND json_extract(data, '$.header.deliveryDate') IS NOT NULL
         AND json_extract(data, '$.header.deliveryDate') != ''`,

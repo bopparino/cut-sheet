@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deleteAttachment, uploadAttachment } from "@/lib/actions";
@@ -20,20 +21,19 @@ type Props = {
 // after mount.
 export function PhotosCard({ cutsheetId, photos }: Props) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const upload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setError(null);
     for (const file of Array.from(files)) {
       const fd = new FormData();
       fd.append("file", file);
       startTransition(async () => {
         try {
           await uploadAttachment(cutsheetId, fd);
+          toast.success(`${file.name} uploaded.`);
         } catch (err) {
-          setError(err instanceof Error ? err.message : String(err));
+          toast.error(err instanceof Error ? err.message : String(err));
         }
       });
     }
@@ -45,8 +45,9 @@ export function PhotosCard({ cutsheetId, photos }: Props) {
     startTransition(async () => {
       try {
         await deleteAttachment(cutsheetId, id);
+        toast.success("Photo removed.");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        toast.error(err instanceof Error ? err.message : String(err));
       }
     });
   };
@@ -71,12 +72,6 @@ export function PhotosCard({ cutsheetId, photos }: Props) {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && (
-          <p className="mb-3 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
         {photos.length === 0 ? (
           <p className="text-sm text-muted-foreground">No photos attached yet.</p>
         ) : (

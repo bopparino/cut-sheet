@@ -13,6 +13,7 @@ import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
 import { PhotosCard } from "@/components/cutsheet/PhotosCard";
 import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
 import { DrawingCard } from "@/components/cutsheet/DrawingCard";
+import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
 import { db } from "@/lib/db";
 import {
   BIRD_CAGE_SIZES,
@@ -48,7 +49,7 @@ import {
   STRT_BOOTS_SIZES,
   TTO_SIZES,
 } from "@/lib/schema";
-import { deleteCutsheet, updateCutsheet } from "@/lib/actions";
+import { updateCutsheet } from "@/lib/actions";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
@@ -150,7 +151,9 @@ export default async function EditCutsheetPage({
   if (!Number.isInteger(numeric)) notFound();
 
   const row = db
-    .prepare<[number], CutsheetRow>("SELECT id, data, updated_at FROM cutsheets WHERE id = ?")
+    .prepare<[number], CutsheetRow>(
+      "SELECT id, data, updated_at FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
     .get(numeric);
   if (!row) notFound();
 
@@ -159,7 +162,6 @@ export default async function EditCutsheetPage({
 
   const d = parsed.data;
   const update = updateCutsheet.bind(null, numeric);
-  const remove = deleteCutsheet.bind(null, numeric);
 
   const photos = db
     .prepare<[number], { id: number; filename: string }>(
@@ -207,9 +209,7 @@ export default async function EditCutsheetPage({
           <PdfLink id={row.id} ticket="custom">Custom PDF</PdfLink>
           <PdfLink id={row.id} ticket="truck">Truck PDF</PdfLink>
           <Button type="submit" form={FORM_ID} size="sm">Save</Button>
-          <form action={remove}>
-            <Button type="submit" variant="destructive" size="sm">Delete</Button>
-          </form>
+          <DeleteCutsheetButton cutsheetId={numeric} />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveDrawing } from "@/lib/actions";
@@ -27,7 +28,6 @@ export function DrawingCard({ cutsheetId, drawing }: Props) {
 
   const [tool, setTool] = useState<Tool>("pen");
   const [isPending, startTransition] = useTransition();
-  const [status, setStatus] = useState<string | null>(null);
 
   // Mount-time: paint a white background and, if a drawing already exists for
   // this cutsheet, fetch it and stamp it onto the canvas so the user can
@@ -105,7 +105,6 @@ export function DrawingCard({ cutsheetId, drawing }: Props) {
     if (!ctx) return;
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    setStatus("Canvas cleared. Click Save to update the stored drawing.");
   };
 
   const save = () => {
@@ -113,18 +112,17 @@ export function DrawingCard({ cutsheetId, drawing }: Props) {
     if (!canvas) return;
     canvas.toBlob((blob) => {
       if (!blob) {
-        setStatus("Couldn't capture canvas.");
+        toast.error("Couldn't capture canvas.");
         return;
       }
       const fd = new FormData();
       fd.append("file", blob, "drawing.png");
-      setStatus("Saving…");
       startTransition(async () => {
         try {
           await saveDrawing(cutsheetId, fd);
-          setStatus("Saved.");
+          toast.success("Drawing saved.");
         } catch (err) {
-          setStatus(err instanceof Error ? err.message : String(err));
+          toast.error(err instanceof Error ? err.message : String(err));
         }
       });
     }, "image/png");
@@ -135,7 +133,7 @@ export function DrawingCard({ cutsheetId, drawing }: Props) {
     if (!canvas) return;
     canvas.toBlob((blob) => {
       if (!blob) {
-        setStatus("Couldn't capture canvas for download.");
+        toast.error("Couldn't capture canvas for download.");
         return;
       }
       const url = URL.createObjectURL(blob);
@@ -186,7 +184,7 @@ export function DrawingCard({ cutsheetId, drawing }: Props) {
           onPointerLeave={onPointerEnd}
         />
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{status ?? "Click Save to persist · Download PNG for a local copy."}</span>
+          <span>Click Save to persist · Download PNG for a local copy.</span>
           <span>{CANVAS_W} × {CANVAS_H} px</span>
         </div>
       </CardContent>

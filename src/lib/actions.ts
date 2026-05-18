@@ -144,7 +144,9 @@ export async function createCutsheet(formData: FormData) {
 
 export async function updateCutsheet(id: number, formData: FormData) {
   const row = db
-    .prepare<[number], { data: string }>("SELECT data FROM cutsheets WHERE id = ?")
+    .prepare<[number], { data: string }>(
+      "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
     .get(id);
   if (!row) throw new Error(`Cutsheet ${id} not found`);
 
@@ -221,10 +223,30 @@ export async function updateCutsheet(id: number, formData: FormData) {
   revalidatePath("/search");
 }
 
+// Soft-delete: cutsheet stays in the DB with deleted_at set, so /admin/trash
+// can resurrect it. Looks irreversible to the user; isn't.
 export async function deleteCutsheet(id: number) {
-  db.prepare("DELETE FROM cutsheets WHERE id = ?").run(id);
+  db.prepare(
+    "UPDATE cutsheets SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL",
+  ).run(id);
   revalidatePath("/search");
+  revalidatePath("/admin/trash");
   redirect("/search");
+}
+
+export async function restoreCutsheet(id: number) {
+  db.prepare(
+    "UPDATE cutsheets SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL",
+  ).run(id);
+  revalidatePath("/search");
+  revalidatePath("/admin/trash");
+}
+
+// Hard delete from the trash. Attachments cascade via the FK constraint.
+export async function permanentlyDeleteCutsheet(id: number) {
+  db.prepare("DELETE FROM cutsheets WHERE id = ?").run(id);
+  revalidatePath("/admin/trash");
+  revalidatePath("/search");
 }
 
 // ----- Attachments ------------------------------------------------------------
