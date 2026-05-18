@@ -51,6 +51,50 @@ function readNumberMap<T extends string>(
   return result;
 }
 
+// Dynamic-row readers walk `${prefix}.0`, `${prefix}.1`, ... until no more
+// rows exist in the FormData. Empty rows are pruned so a row the user added
+// but never filled doesn't bloat the saved cutsheet.
+function readStringRows(formData: FormData, prefix: string): string[] {
+  const out: string[] = [];
+  for (let i = 0; formData.has(`${prefix}.${i}`); i++) {
+    const v = String(formData.get(`${prefix}.${i}`) ?? "").trim();
+    if (v) out.push(v);
+  }
+  return out;
+}
+
+function readWHRows(
+  formData: FormData,
+  prefix: string,
+): { qty: number; w: string; h: string }[] {
+  const out: { qty: number; w: string; h: string }[] = [];
+  for (let i = 0; formData.has(`${prefix}.${i}.qty`); i++) {
+    const qty = Math.max(0, Math.floor(Number(formData.get(`${prefix}.${i}.qty`)) || 0));
+    const w = String(formData.get(`${prefix}.${i}.w`) ?? "").trim();
+    const h = String(formData.get(`${prefix}.${i}.h`) ?? "").trim();
+    if (qty === 0 && !w && !h) continue;
+    out.push({ qty, w, h });
+  }
+  return out;
+}
+
+function readCustomDuctRows(
+  formData: FormData,
+  prefix: string,
+): { qty: number; w: string; h: string; l: string; sl: "Y" | "N" }[] {
+  const out: { qty: number; w: string; h: string; l: string; sl: "Y" | "N" }[] = [];
+  for (let i = 0; formData.has(`${prefix}.${i}.qty`); i++) {
+    const qty = Math.max(0, Math.floor(Number(formData.get(`${prefix}.${i}.qty`)) || 0));
+    const w = String(formData.get(`${prefix}.${i}.w`) ?? "").trim();
+    const h = String(formData.get(`${prefix}.${i}.h`) ?? "").trim();
+    const l = String(formData.get(`${prefix}.${i}.l`) ?? "").trim();
+    const sl = (String(formData.get(`${prefix}.${i}.sl`) ?? "N") === "Y" ? "Y" : "N") as "Y" | "N";
+    if (qty === 0 && !w && !h && !l) continue;
+    out.push({ qty, w, h, l, sl });
+  }
+  return out;
+}
+
 export async function createCutsheet(formData: FormData) {
   const next: Cutsheet = { ...emptyCutsheet(), header: readHeaderFromFormData(formData) };
   const parsed = CutsheetSchema.parse(next);
@@ -74,6 +118,12 @@ export async function updateCutsheet(id: number, formData: FormData) {
     stock: {
       ...current.stock,
       duct60: readNumberMap(formData, "duct60", DUCT60_SIZES),
+    },
+    custom: {
+      ...current.custom,
+      endCaps: readWHRows(formData, "endCaps"),
+      customDuct: readCustomDuctRows(formData, "customDuct"),
+      miscellaneous: readStringRows(formData, "miscellaneous"),
     },
   };
   const parsed = CutsheetSchema.parse(next);

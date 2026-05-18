@@ -8,7 +8,6 @@ type Props = {
 
 const REGIONS = ["", "MD", "VA", "WV"] as const;
 const EQ_TO = ["", "Job", "Whs", "Hold"] as const;
-const PLENUM = ["none", "small", "large"] as const;
 
 // Server component: renders header fields with defaultValue from `initial`.
 // The parent <form action> Server Action picks them up via FormData.
@@ -32,7 +31,6 @@ export function HeaderFields({ initial }: Props) {
 
       <SelectField label="Region" name="region" defaultValue={h?.region ?? ""} options={REGIONS} placeholder="—" />
       <SelectField label="Eq To" name="eqTo" defaultValue={h?.eqTo ?? ""} options={EQ_TO} placeholder="—" />
-      <SelectField label="Plenum Package" name="plenumPackage" defaultValue={h?.plenumPackage ?? "none"} options={PLENUM} />
     </div>
   );
 }

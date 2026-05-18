@@ -3,7 +3,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeaderFields } from "@/components/cutsheet/HeaderFields";
+import { PlenumPackageCard } from "@/components/cutsheet/PlenumPackageCard";
 import { Duct60Section } from "@/components/cutsheet/Duct60Section";
+import { WHRowsCard } from "@/components/cutsheet/WHRowsCard";
+import { CustomDuctRowsCard } from "@/components/cutsheet/CustomDuctRowsCard";
+import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
 import { deleteCutsheet, updateCutsheet } from "@/lib/actions";
@@ -60,12 +64,21 @@ export default async function EditCutsheetPage({
           </CardContent>
         </Card>
 
+        <PlenumPackageCard value={parsed.data.header.plenumPackage} />
         <Duct60Section values={parsed.data.stock.duct60} />
+        <WHRowsCard title="End Caps" prefix="endCaps" initial={parsed.data.custom.endCaps} />
+        <CustomDuctRowsCard prefix="customDuct" initial={parsed.data.custom.customDuct} />
+        <MiscRowsCard
+          title="Miscellaneous"
+          prefix="miscellaneous"
+          initial={parsed.data.custom.miscellaneous}
+        />
       </form>
 
       <p className="text-sm text-muted-foreground">
-        More qty sections (Custom Duct, OV Pipe, RND Pipe, etc.) land in the next iteration —
-        each is a 1-line addition once a section component exists for its row shape.
+        Remaining qty sections (OV Pipe, RND Pipe, Round Collars, Fans, etc.) and the rest of
+        the dynamic-row sections (Volume Dampers, Canvas Conn, Wall/Floor Regs, etc.) clone
+        from these four patterns — bulk-add lands in the next iteration.
       </p>
     </div>
   );
