@@ -94,8 +94,28 @@ function migrate(db: Database.Database): void {
   }
 }
 
-// Cache the connection across HMR reloads in dev. In prod, Next.js serverless
-// would reopen per request — but we deploy as a long-running Node process, so
-// one connection per server lifetime is correct.
-export const db: Database.Database = globalThis.__cutsheetDb ?? openDb();
-if (process.env.NODE_ENV !== "production") globalThis.__cutsheetDb = db;
+// Lazy: open on first access. `next build` imports every route module to
+// collect page data — if we opened at module-load, multiple build workers
+// would race to acquire the WAL-mode lock and one would explode with
+// SQLITE_BUSY. Deferring keeps the build pure; the connection only opens
+// when a request handler actually touches the DB.
+//
+// Cached on globalThis so HMR reloads in dev reuse the connection. In prod
+// it's a long-running Node process anyway, so one connection per lifetime.
+export function getDb(): Database.Database {
+  if (globalThis.__cutsheetDb) return globalThis.__cutsheetDb;
+  const opened = openDb();
+  globalThis.__cutsheetDb = opened;
+  return opened;
+}
+
+// Backward-compat: `db.prepare(...)` keeps working at every existing call
+// site. The Proxy defers `getDb()` until the first property access, so just
+// `import { db }` is free.
+export const db: Database.Database = new Proxy({} as Database.Database, {
+  get(_target, prop) {
+    const real = getDb();
+    const value = Reflect.get(real, prop) as unknown;
+    return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(real) : value;
+  },
+}) as Database.Database;
