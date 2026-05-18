@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
   CutsheetSchema,
+  DUCT60_SIZES,
   emptyCutsheet,
   type Cutsheet,
   type CutsheetHeader,
 } from "@/lib/schema";
 
 // FormData arrives with everything as string|File. Pull just the header
-// fields out — qty/array sections will get their own extractors later.
+// fields out — qty/array sections have their own extractors below.
 function readHeaderFromFormData(formData: FormData): CutsheetHeader {
   const str = (k: string) => String(formData.get(k) ?? "");
   return {
@@ -34,6 +35,22 @@ function readHeaderFromFormData(formData: FormData): CutsheetHeader {
   };
 }
 
+// Generic reader for any qty-map section. Input names follow `${prefix}.${size}`.
+// Empty / non-numeric values become 0 — that matches the schema default and
+// keeps the FormData payload from tripping zod validation on a blank input.
+function readNumberMap<T extends string>(
+  formData: FormData,
+  prefix: string,
+  sizes: readonly T[],
+): Record<T, number> {
+  const result = {} as Record<T, number>;
+  for (const size of sizes) {
+    const raw = formData.get(`${prefix}.${size}`);
+    result[size] = raw == null ? 0 : Math.max(0, Math.floor(Number(raw) || 0));
+  }
+  return result;
+}
+
 export async function createCutsheet(formData: FormData) {
   const next: Cutsheet = { ...emptyCutsheet(), header: readHeaderFromFormData(formData) };
   const parsed = CutsheetSchema.parse(next);
@@ -51,7 +68,14 @@ export async function updateCutsheet(id: number, formData: FormData) {
   if (!row) throw new Error(`Cutsheet ${id} not found`);
 
   const current = CutsheetSchema.parse(JSON.parse(row.data));
-  const next: Cutsheet = { ...current, header: readHeaderFromFormData(formData) };
+  const next: Cutsheet = {
+    ...current,
+    header: readHeaderFromFormData(formData),
+    stock: {
+      ...current.stock,
+      duct60: readNumberMap(formData, "duct60", DUCT60_SIZES),
+    },
+  };
   const parsed = CutsheetSchema.parse(next);
   db.prepare(
     "UPDATE cutsheets SET data = ?, updated_at = datetime('now') WHERE id = ?",
