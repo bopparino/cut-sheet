@@ -10,8 +10,12 @@ declare global {
 // ~1s; the bulk of PDF latency comes from launching, not rendering.
 async function getBrowser(): Promise<Browser> {
   if (globalThis.__cutsheetBrowser?.connected) return globalThis.__cutsheetBrowser;
+  // In Docker we install system Chromium and point PUPPETEER_EXECUTABLE_PATH
+  // at it (so we don't have to also ship Puppeteer's bundled Chromium). In
+  // local dev the var is unset and Puppeteer falls back to its bundled copy.
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   globalThis.__cutsheetBrowser = browser;
