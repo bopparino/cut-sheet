@@ -14,6 +14,7 @@ import { PhotosCard } from "@/components/cutsheet/PhotosCard";
 import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
 import { DrawingCard } from "@/components/cutsheet/DrawingCard";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
+import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { db } from "@/lib/db";
 import {
   BIRD_CAGE_SIZES,
@@ -213,7 +214,7 @@ export default async function EditCutsheetPage({
         </div>
       </div>
 
-      <form id={FORM_ID} action={update} className="space-y-10">
+      <CutsheetForm formId={FORM_ID} action={update} className="space-y-10">
         <SectionGroup title="Project">
           <Card>
             <CardHeader>
@@ -309,7 +310,7 @@ export default async function EditCutsheetPage({
           <PhotosCard cutsheetId={numeric} photos={photos} />
           <DocumentsCard cutsheetId={numeric} documents={documents} />
         </SectionGroup>
-      </form>
+      </CutsheetForm>
     </div>
   );
 }
