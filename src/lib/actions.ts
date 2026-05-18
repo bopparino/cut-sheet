@@ -230,6 +230,7 @@ export async function deleteCutsheet(id: number) {
 // ----- Attachments ------------------------------------------------------------
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const ALLOWED_IMAGE_MIMES = new Set([
   "image/png",
   "image/jpeg",
@@ -254,6 +255,36 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
     `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
      VALUES (?, ?, ?, ?, ?, ?)`,
   ).run(cutsheetId, "image", file.name, file.type, file.size, buffer);
+  revalidatePath(`/form/${cutsheetId}`);
+}
+
+// Documents are anything that isn't an image — PDF / Word / Excel / etc.
+// We don't enforce a strict MIME allowlist because browsers report Office
+// docs inconsistently; instead we reject only image MIMEs (those belong in
+// PhotosCard) and bound by size.
+export async function uploadDocument(cutsheetId: number, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("No document provided");
+  if (ALLOWED_IMAGE_MIMES.has(file.type)) {
+    throw new Error("Use the Photos section for image uploads");
+  }
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    throw new Error(
+      `Document too large — ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB limit`,
+    );
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  db.prepare(
+    `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
+     VALUES (?, 'document', ?, ?, ?, ?)`,
+  ).run(
+    cutsheetId,
+    file.name || "document",
+    file.type || "application/octet-stream",
+    file.size,
+    buffer,
+  );
   revalidatePath(`/form/${cutsheetId}`);
 }
 

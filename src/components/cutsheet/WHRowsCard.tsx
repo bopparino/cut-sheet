@@ -14,6 +14,10 @@ type Props = {
   baseline?: number;
 };
 
+// Compact tile layout: each row is one [qty | w | h] triple, and the triples
+// tile horizontally (1 col → 2 → 3 → 4 at increasing breakpoints). Placeholders
+// inside the inputs replace the static Qty/W/H header row, since the fields
+// are narrow enough that the placeholder is the clearer affordance.
 export function WHRowsCard({ title, prefix, initial, baseline = 5 }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
@@ -25,39 +29,41 @@ export function WHRowsCard({ title, prefix, initial, baseline = 5 }: Props) {
           + Add row
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="grid grid-cols-[60px_1fr_1fr] gap-2 text-xs font-medium text-muted-foreground">
-          <span>Qty</span>
-          <span>W</span>
-          <span>H</span>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: count }).map((_, i) => {
+            const row = initial[i] ?? { qty: 0, w: "", h: "" };
+            return (
+              <div key={i} className="grid grid-cols-[44px_1fr_1fr] gap-1.5">
+                <Input
+                  name={`${prefix}.${i}.qty`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  defaultValue={row.qty === 0 ? "" : row.qty}
+                  placeholder="#"
+                  aria-label={`${title} row ${i + 1} qty`}
+                  className="h-8 px-1.5 text-right"
+                />
+                <Input
+                  name={`${prefix}.${i}.w`}
+                  defaultValue={row.w}
+                  placeholder="W"
+                  aria-label={`${title} row ${i + 1} width`}
+                  className="h-8 px-2"
+                />
+                <Input
+                  name={`${prefix}.${i}.h`}
+                  defaultValue={row.h}
+                  placeholder="H"
+                  aria-label={`${title} row ${i + 1} height`}
+                  className="h-8 px-2"
+                />
+              </div>
+            );
+          })}
         </div>
-        {Array.from({ length: count }).map((_, i) => {
-          const row = initial[i] ?? { qty: 0, w: "", h: "" };
-          return (
-            <div key={i} className="grid grid-cols-[60px_1fr_1fr] gap-2">
-              <Input
-                name={`${prefix}.${i}.qty`}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                defaultValue={row.qty === 0 ? "" : row.qty}
-                placeholder="0"
-                className="h-8 text-right"
-              />
-              <Input
-                name={`${prefix}.${i}.w`}
-                defaultValue={row.w}
-                className="h-8"
-              />
-              <Input
-                name={`${prefix}.${i}.h`}
-                defaultValue={row.h}
-                className="h-8"
-              />
-            </div>
-          );
-        })}
       </CardContent>
     </Card>
   );

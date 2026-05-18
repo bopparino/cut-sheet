@@ -11,6 +11,7 @@ import { WHRowsCard } from "@/components/cutsheet/WHRowsCard";
 import { CustomDuctRowsCard } from "@/components/cutsheet/CustomDuctRowsCard";
 import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
 import { PhotosCard } from "@/components/cutsheet/PhotosCard";
+import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
 import { DrawingCard } from "@/components/cutsheet/DrawingCard";
 import { db } from "@/lib/db";
 import {
@@ -176,6 +177,14 @@ export default async function EditCutsheetPage({
     )
     .get(numeric);
 
+  const documents = db
+    .prepare<[number], { id: number; filename: string; size: number; mime: string }>(
+      `SELECT id, filename, size, mime FROM attachments
+       WHERE cutsheet_id = ? AND kind = 'document'
+       ORDER BY created_at ASC, id ASC`,
+    )
+    .all(numeric);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -298,6 +307,7 @@ export default async function EditCutsheetPage({
         <SectionGroup title="Documentation">
           <DrawingCard cutsheetId={numeric} drawing={drawing} />
           <PhotosCard cutsheetId={numeric} photos={photos} />
+          <DocumentsCard cutsheetId={numeric} documents={documents} />
         </SectionGroup>
       </form>
     </div>

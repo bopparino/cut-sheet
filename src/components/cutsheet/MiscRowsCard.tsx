@@ -15,6 +15,10 @@ type Props = {
   baseline?: number;
 };
 
+// Compact grid layout: rows tile horizontally (2 cols at sm, 3 at md, 4 at lg)
+// instead of stacking one-per-row full-width. Saves a lot of vertical space
+// for sections like Wall Regs / Grills / Miscellaneous that have many short
+// entries.
 export function MiscRowsCard({ title, prefix, initial, baseline = 10 }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
@@ -26,15 +30,19 @@ export function MiscRowsCard({ title, prefix, initial, baseline = 10 }: Props) {
           + Add row
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {Array.from({ length: count }).map((_, i) => (
-          <Input
-            key={i}
-            name={`${prefix}.${i}`}
-            defaultValue={initial[i] ?? ""}
-            className="h-8"
-          />
-        ))}
+      <CardContent>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: count }).map((_, i) => (
+            <Input
+              key={i}
+              name={`${prefix}.${i}`}
+              defaultValue={initial[i] ?? ""}
+              placeholder={`Item ${i + 1}`}
+              aria-label={`${title} row ${i + 1}`}
+              className="h-8"
+            />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
