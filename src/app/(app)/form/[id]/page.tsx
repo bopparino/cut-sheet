@@ -11,6 +11,7 @@ import { WHRowsCard } from "@/components/cutsheet/WHRowsCard";
 import { CustomDuctRowsCard } from "@/components/cutsheet/CustomDuctRowsCard";
 import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
 import { PhotosCard } from "@/components/cutsheet/PhotosCard";
+import { DrawingCard } from "@/components/cutsheet/DrawingCard";
 import { db } from "@/lib/db";
 import {
   BIRD_CAGE_SIZES,
@@ -167,6 +168,14 @@ export default async function EditCutsheetPage({
     )
     .all(numeric);
 
+  const drawing = db
+    .prepare<[number], { id: number }>(
+      `SELECT id FROM attachments
+       WHERE cutsheet_id = ? AND kind = 'drawing'
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(numeric);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -287,6 +296,7 @@ export default async function EditCutsheetPage({
         </SectionGroup>
 
         <SectionGroup title="Documentation">
+          <DrawingCard cutsheetId={numeric} drawing={drawing} />
           <PhotosCard cutsheetId={numeric} photos={photos} />
         </SectionGroup>
       </form>

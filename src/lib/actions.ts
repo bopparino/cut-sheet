@@ -264,3 +264,30 @@ export async function deleteAttachment(cutsheetId: number, attachmentId: number)
   );
   revalidatePath(`/form/${cutsheetId}`);
 }
+
+// Singleton replace: there is at most one drawing per cutsheet, so saving
+// always deletes any prior drawing for that cutsheet inside the same
+// transaction before inserting the new one.
+export async function saveDrawing(cutsheetId: number, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("No drawing provided");
+  if (!ALLOWED_IMAGE_MIMES.has(file.type)) {
+    throw new Error(`Unsupported drawing format: ${file.type || "unknown"}`);
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error("Drawing too large");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const tx = db.transaction(() => {
+    db.prepare(
+      "DELETE FROM attachments WHERE cutsheet_id = ? AND kind = 'drawing'",
+    ).run(cutsheetId);
+    db.prepare(
+      `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
+       VALUES (?, 'drawing', ?, ?, ?, ?)`,
+    ).run(cutsheetId, file.name || "drawing.png", file.type, file.size, buffer);
+  });
+  tx();
+  revalidatePath(`/form/${cutsheetId}`);
+}
