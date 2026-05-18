@@ -108,32 +108,55 @@ const PlenumContentsSchema = z.object({
   large: z.object({ "24x22x18": qty, "24x22x24": qty, "24x22CC": qty }),
 });
 
-const OV_PIPE_F_SIZES = ["5F", "6F", "7F"] as const;
+export const OVAL_ELL_SIZES = ["5", "6", "7", "8", "5F", "6F", "7F"] as const;
 const OvalEllsSchema = z.object(
-  Object.fromEntries(
-    [...OV_PIPE_SIZES, ...OV_PIPE_F_SIZES].map((s) => [s, qty]),
-  ) as Record<string, typeof qty>,
+  Object.fromEntries(OVAL_ELL_SIZES.map((s) => [s, qty])) as Record<
+    (typeof OVAL_ELL_SIZES)[number],
+    typeof qty
+  >,
 );
 
-const OvalToRndSizes = ["5x5", "6x6", "7x7", "8x8"] as const;
-const OvalSHeadsSizes = ["8x6x4", "8x6x5", "10x6x6", "12x6x7", "14x6x8"] as const;
-const EllBootsSizes = [
+export const OVAL_TO_RND_SIZES = ["5x5", "6x6", "7x7", "8x8"] as const;
+export const OVAL_S_HEADS_SIZES = ["8x6x4", "8x6x5", "10x6x6", "12x6x7", "14x6x8"] as const;
+export const ELL_BOOTS_SIZES = [
   "10x3.25x6", "12x3.25x7", "14x3.25x8", "10x4x4", "10x4x5", "10x4x6",
   "10x6x6", "12x4x7", "12x6x7", "14x4x8",
 ] as const;
-const EndBootsSizes = [
-  "10x3.25x6", "12x3.25x7", "14x3.25x8", "10x4x4", "10x4x5", "10x4x6",
-  "10x6x6", "12x4x7", "12x6x7", "14x4x8",
-] as const;
-const StrtBootsSizes = [
-  "10x3.25x6", "12x3.25x7", "14x3.25x8", "10x4x4", "10x4x5", "10x4x6",
-  "10x6x6", "12x4x7", "12x6x7", "14x4x8",
-] as const;
+export const END_BOOTS_SIZES = ELL_BOOTS_SIZES;
+export const STRT_BOOTS_SIZES = ELL_BOOTS_SIZES;
 
-const RND_ELL_SIZES = ["4", "5", "6", "7", "8", "10", "12", "14", "16"] as const;
-const FlexSizes = ["4", "5", "6", "7", "8", "10", "12", "14", "16"] as const;
-const SaddleTapSizes = ["4", "5", "6", "7", "8", "10", "12"] as const;
-const StraightBootBoxesSizes = ["8x6x4", "8x6x5", "10x6x6", "12x6x7", "12x8x8"] as const;
+export const RND_ELL_SIZES = ["4", "5", "6", "7", "8", "10", "12", "14", "16"] as const;
+export const FLEX_SIZES = ["4", "5", "6", "7", "8", "10", "12", "14", "16"] as const;
+export const SADDLE_TAP_SIZES = ["4", "5", "6", "7", "8", "10", "12"] as const;
+export const STRAIGHT_BOOT_BOXES_SIZES = ["8x6x4", "8x6x5", "10x6x6", "12x6x7", "12x8x8"] as const;
+export const TTO_SIZES = ["4", "5", "6", "7"] as const;
+export const BIRD_CAGE_SIZES = ["4", "6"] as const;
+export const FRESH_AIR_DAMPER_SIZES = ["8126", "8145", "P-180", "HY8150", "B150E75NT", "VTYIK1"] as const;
+export const GAL_REDR_SIZES = ["4x3", "5x4", "6x5", "7x6", "8x7", "6x4", "8x6", "10x8", "12x10", "14x12"] as const;
+
+// Named-key maps (object keys, not size strings). Exported so the page and
+// the FormData reader can both iterate them in a consistent order.
+export const FILTER_RACKS_KEYS = ["16x25", "20x25", "lBox"] as const;
+export const DRAIN_PANS_KEYS = ["31x31", "31x36", "31x60"] as const;
+export const RETURN_PLENUM_KEYS = ["14x24SL", "18x24SL", "furnaceFeet"] as const;
+export const SD_MISC_KEYS = ["drive24", "slips26", "mastic", "brushes"] as const;
+export const SD_MISC_EXTRAS_KEYS = ["angles", "bubbleWrap", "foilIns"] as const;
+export const SIMPSON_STP_KEYS = ["stp18", "stp24"] as const;
+export const MID_ATLANTIC_KEYS = [
+  "buildersEdgeMetal4", "buildersEdgeMetal6", "buildersEdgeScreen4", "buildersEdgeScreen6",
+] as const;
+export const METAL_SCREEN_KEYS = [
+  "metal6", "metal8", "metal10", "metal10x3_25", "screen6", "screen8", "screen10", "screen10x3_25",
+] as const;
+export const DRYER_BOX_KEYS = ["metal6", "plastic6"] as const;
+export const BLUE_FLASHING_KEYS = ["p400", "p600", "p800", "p1000"] as const;
+export const FANS_KEYS = [
+  "AE80_4", "744", "SLM70", "SIG80_110", "PTE511", "PTEL511",
+  "gNeckSilv4", "gNeckBlk4", "gNeck116_6", "roofCap634_6",
+  "roofJ6", "roofJ8", "roofJ10",
+] as const;
+export const B_VENT_KEYS = ["pc5", "pc3", "pc2", "pc1", "deg60", "deg90", "tee", "ccf"] as const;
+export const FLEX_B_VENT_KEYS = ["4x36", "4x60"] as const;
 
 const mapOf = <T extends readonly string[]>(sizes: T) =>
   z.object(Object.fromEntries(sizes.map((s) => [s, qty])) as Record<T[number], typeof qty>);
@@ -144,11 +167,11 @@ const FormOnlySchema = z.object({
   returnPlenum: ReturnPlenumSchema,
   plenumContents: PlenumContentsSchema,
   ovalEll: OvalEllsSchema,
-  ovalToRnd: mapOf(OvalToRndSizes),
-  ovalSHeads: mapOf(OvalSHeadsSizes),
-  ellBoots: mapOf(EllBootsSizes),
-  endBoots: mapOf(EndBootsSizes),
-  strtBoots: mapOf(StrtBootsSizes),
+  ovalToRnd: mapOf(OVAL_TO_RND_SIZES),
+  ovalSHeads: mapOf(OVAL_S_HEADS_SIZES),
+  ellBoots: mapOf(ELL_BOOTS_SIZES),
+  endBoots: mapOf(END_BOOTS_SIZES),
+  strtBoots: mapOf(STRT_BOOTS_SIZES),
   tto: z.object({ "4": qty, "5": qty, "6": qty, "7": qty }),
   midAtlanticWallCaps: z.object({
     buildersEdgeMetal4: qty,
@@ -182,18 +205,18 @@ const FormOnlySchema = z.object({
     gNeckSilv4: qty, gNeckBlk4: qty, gNeck116_6: qty, roofCap634_6: qty,
     roofJ6: qty, roofJ8: qty, roofJ10: qty,
   }),
-  straightBootBoxes: mapOf(StraightBootBoxesSizes),
+  straightBootBoxes: mapOf(STRAIGHT_BOOT_BOXES_SIZES),
   simpsonStp: z.object({ stp18: qty, stp24: qty }),
   sdMiscExtras: z.object({
     angles: qty,
     bubbleWrap: qty,
     foilIns: qty,
   }),
-  uninsulatedFlex: mapOf(FlexSizes),
-  insulatedFlexR4: mapOf(FlexSizes),
-  insulatedFlexR8: mapOf(FlexSizes),
-  saddleTap: mapOf(SaddleTapSizes),
-  airTights: mapOf(FlexSizes),
+  uninsulatedFlex: mapOf(FLEX_SIZES),
+  insulatedFlexR4: mapOf(FLEX_SIZES),
+  insulatedFlexR8: mapOf(FLEX_SIZES),
+  saddleTap: mapOf(SADDLE_TAP_SIZES),
+  airTights: mapOf(FLEX_SIZES),
   bVent: z.object({
     pc5: qty, pc3: qty, pc2: qty, pc1: qty,
     deg60: qty, deg90: qty, tee: qty, ccf: qty,

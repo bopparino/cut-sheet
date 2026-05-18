@@ -1,3 +1,4 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -27,6 +28,24 @@ export function QtyGrid<T extends string>({
         />
       ))}
     </div>
+  );
+}
+
+// Card + Header + QtyGrid. Used by every qty-map section so the page itself
+// stays a flat list of <QtyGridCard /> rather than repeating Card scaffolding.
+export function QtyGridCard<T extends string>({
+  title,
+  ...props
+}: { title: string } & QtyGridProps<T>) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <QtyGrid {...props} />
+      </CardContent>
+    </Card>
   );
 }
 
