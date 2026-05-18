@@ -15,6 +15,7 @@ type CutsheetRow = {
 type LotRow = { id: number; lot: string | null; deliveryDate: string | null };
 
 type SearchParams = {
+  name?: string;
   builder?: string;
   lot?: string;
   deliveryFrom?: string;
@@ -32,6 +33,7 @@ export default async function SearchPage({
 }) {
   const sp = await searchParams;
   const filters = {
+    name: (sp.name ?? "").trim(),
     builder: (sp.builder ?? "").trim(),
     lot: (sp.lot ?? "").trim(),
     deliveryFrom: (sp.deliveryFrom ?? "").trim(),
@@ -42,6 +44,10 @@ export default async function SearchPage({
   // AND clause + one named param; missing filters drop out entirely.
   const wheres: string[] = [];
   const params: Record<string, string> = {};
+  if (filters.name) {
+    wheres.push("LOWER(json_extract(data, '$.name')) LIKE @name");
+    params.name = `%${filters.name.toLowerCase()}%`;
+  }
   if (filters.builder) {
     wheres.push("LOWER(json_extract(data, '$.header.builder')) LIKE @builder");
     params.builder = `%${filters.builder.toLowerCase()}%`;
@@ -73,7 +79,11 @@ export default async function SearchPage({
   const dupLotIds = findDuplicateLotIds();
 
   const hasFilters =
-    filters.builder || filters.lot || filters.deliveryFrom || filters.deliveryTo;
+    filters.name ||
+    filters.builder ||
+    filters.lot ||
+    filters.deliveryFrom ||
+    filters.deliveryTo;
 
   return (
     <div className="space-y-6">
@@ -86,7 +96,8 @@ export default async function SearchPage({
 
       <Card>
         <CardContent>
-          <form method="get" action="/search" className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <form method="get" action="/search" className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+            <FilterField label="Name" name="name" defaultValue={filters.name} />
             <FilterField label="Builder" name="builder" defaultValue={filters.builder} />
             <FilterField label="Lot" name="lot" defaultValue={filters.lot} />
             <FilterField
@@ -101,7 +112,7 @@ export default async function SearchPage({
               type="date"
               defaultValue={filters.deliveryTo}
             />
-            <div className="flex items-center gap-2 sm:col-span-4">
+            <div className="flex items-center gap-2 sm:col-span-5">
               <Button type="submit" size="sm">Filter</Button>
               {hasFilters && (
                 <Button type="button" variant="outline" size="sm" asChild>
