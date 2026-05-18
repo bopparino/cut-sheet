@@ -6,8 +6,14 @@ import { createCutsheet } from "@/lib/actions";
 export default function NewCutsheetPage() {
   return (
     <form action={createCutsheet} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">New Cutsheet</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          type="text"
+          name="name"
+          aria-label="Cutsheet name"
+          placeholder="Untitled cutsheet"
+          className="-mx-1 w-full max-w-xl rounded bg-transparent px-1 text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:bg-accent/50"
+        />
         <Button type="submit">Create</Button>
       </div>
       <Card>

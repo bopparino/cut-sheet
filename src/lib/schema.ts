@@ -255,6 +255,8 @@ export type Attachment = z.infer<typeof AttachmentSchema>;
 
 // ---------- Top-level ----------
 export const CutsheetSchema = z.object({
+  // User-supplied display name. Empty → fall back to "Cutsheet #id" in the UI.
+  name: text,
   header: HeaderSchema,
   stock: StockSchema,
   custom: CustomSchema,

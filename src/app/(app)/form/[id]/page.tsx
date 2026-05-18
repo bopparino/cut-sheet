@@ -161,9 +161,19 @@ export default async function EditCutsheetPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cutsheet #{row.id}</h1>
-          <p className="text-xs text-muted-foreground">Updated {row.updated_at}</p>
+        <div className="min-w-0 flex-1">
+          <input
+            type="text"
+            name="name"
+            form={FORM_ID}
+            defaultValue={d.name}
+            aria-label="Cutsheet name"
+            placeholder={`Cutsheet #${row.id}`}
+            className="-mx-1 w-full max-w-xl rounded bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:bg-accent/50 px-1"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            #{row.id} · Updated {row.updated_at}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <PdfLink id={row.id} ticket="stock">Stock PDF</PdfLink>

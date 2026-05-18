@@ -129,7 +129,11 @@ function readCustomDuctRows(
 // ----- Actions ----------------------------------------------------------------
 
 export async function createCutsheet(formData: FormData) {
-  const next: Cutsheet = { ...emptyCutsheet(), header: readHeaderFromFormData(formData) };
+  const next: Cutsheet = {
+    ...emptyCutsheet(),
+    name: String(formData.get("name") ?? "").trim(),
+    header: readHeaderFromFormData(formData),
+  };
   const parsed = CutsheetSchema.parse(next);
   const result = db
     .prepare("INSERT INTO cutsheets (data) VALUES (?)")
@@ -147,6 +151,7 @@ export async function updateCutsheet(id: number, formData: FormData) {
   const current = CutsheetSchema.parse(JSON.parse(row.data));
   const next: Cutsheet = {
     ...current,
+    name: String(formData.get("name") ?? "").trim(),
     header: readHeaderFromFormData(formData),
     stock: {
       duct60: readNumberMap(formData, "duct60", DUCT60_SIZES),

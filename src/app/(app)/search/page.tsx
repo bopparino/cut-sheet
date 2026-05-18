@@ -134,6 +134,7 @@ export default async function SearchPage({
           <ul className="divide-y">
             {rows.map((row) => {
               const data = JSON.parse(row.data) as {
+                name?: string;
                 header?: {
                   lot?: string;
                   builder?: string;
@@ -143,7 +144,9 @@ export default async function SearchPage({
               };
               const h = data.header ?? {};
               const title =
-                [h.builder, h.project].filter(Boolean).join(" · ") || `Cutsheet #${row.id}`;
+                (data.name ?? "").trim() ||
+                [h.builder, h.project].filter(Boolean).join(" · ") ||
+                `Cutsheet #${row.id}`;
               const meta = [h.lot ? `Lot ${h.lot}` : null, h.deliveryDate || null]
                 .filter(Boolean)
                 .join(" · ");

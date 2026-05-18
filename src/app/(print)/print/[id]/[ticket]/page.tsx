@@ -35,6 +35,7 @@ export default async function PrintPage({
 
   const rows = buildTicketSections(parsed.data, ticket);
   const h = parsed.data.header;
+  const name = parsed.data.name.trim();
   const printedAt = new Date().toISOString().slice(0, 16).replace("T", " ");
 
   // Project info goes in a 2-column dt/dd grid. Each pair only renders if the
@@ -61,7 +62,14 @@ export default async function PrintPage({
           {TICKET_TITLES[ticket]}
         </h1>
         <div className="text-right text-xs">
-          <div className="font-semibold">Cutsheet #{row.id}</div>
+          {name ? (
+            <>
+              <div className="font-semibold">{name}</div>
+              <div className="text-neutral-500">Cutsheet #{row.id}</div>
+            </>
+          ) : (
+            <div className="font-semibold">Cutsheet #{row.id}</div>
+          )}
           <div className="text-neutral-500">Updated {row.updated_at}</div>
         </div>
       </header>
