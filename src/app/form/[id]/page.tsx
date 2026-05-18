@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeaderFields } from "@/components/cutsheet/HeaderFields";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
-import { deleteCutsheet, updateCutsheet } from "@/server/actions";
+import { deleteCutsheet, updateCutsheet } from "@/lib/actions";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 

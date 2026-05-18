@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeaderFields } from "@/components/cutsheet/HeaderFields";
-import { createCutsheet } from "@/server/actions";
+import { createCutsheet } from "@/lib/actions";
 
 export default function NewCutsheetPage() {
   return (
