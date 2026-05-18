@@ -10,6 +10,7 @@ import { QtyGridCard } from "@/components/cutsheet/QtyGrid";
 import { WHRowsCard } from "@/components/cutsheet/WHRowsCard";
 import { CustomDuctRowsCard } from "@/components/cutsheet/CustomDuctRowsCard";
 import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
+import { PhotosCard } from "@/components/cutsheet/PhotosCard";
 import { db } from "@/lib/db";
 import {
   BIRD_CAGE_SIZES,
@@ -158,6 +159,14 @@ export default async function EditCutsheetPage({
   const update = updateCutsheet.bind(null, numeric);
   const remove = deleteCutsheet.bind(null, numeric);
 
+  const photos = db
+    .prepare<[number], { id: number; filename: string }>(
+      `SELECT id, filename FROM attachments
+       WHERE cutsheet_id = ? AND kind = 'image'
+       ORDER BY created_at ASC, id ASC`,
+    )
+    .all(numeric);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -275,6 +284,10 @@ export default async function EditCutsheetPage({
           <MiscRowsCard title="Grills" prefix="grills" initial={d.formOnly.grills} baseline={5} />
           <MiscRowsCard title="Filter Grills" prefix="filterGrills" initial={d.formOnly.filterGrills} baseline={5} />
           <MiscRowsCard title="Floor Regs" prefix="floorRegs" initial={d.formOnly.floorRegs} baseline={5} />
+        </SectionGroup>
+
+        <SectionGroup title="Documentation">
+          <PhotosCard cutsheetId={numeric} photos={photos} />
         </SectionGroup>
       </form>
     </div>
