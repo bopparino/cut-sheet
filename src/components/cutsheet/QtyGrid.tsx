@@ -18,7 +18,7 @@ export function QtyGrid<T extends string>({
   formatLabel,
 }: QtyGridProps<T>) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {sizes.map((size) => (
         <LabeledQty
           key={size}
@@ -58,11 +58,16 @@ function LabeledQty({
   label: string;
   defaultValue: number;
 }) {
+  // No flex-1 on the label — keeping it at natural width pulls the input
+  // snug to its own label so each pair reads as a unit. The grid above
+  // provides generous gap-x to make the inter-cell gap clearly larger than
+  // the intra-cell gap, eliminating the "which label goes with which input"
+  // ambiguity from the wider grid layout.
   return (
     <div className="flex items-center gap-2">
       <Label
         htmlFor={name}
-        className="flex-1 truncate text-xs font-normal text-muted-foreground"
+        className="truncate text-xs font-normal text-muted-foreground"
         title={label}
       >
         {label}
