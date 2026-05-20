@@ -180,6 +180,23 @@ export default async function EditCutsheetPage({
     )
     .all(numeric);
 
+  // House detection: count other cutsheets sharing this prop+lot. When > 1
+  // the PDF links route to the combined house print instead of single zone.
+  const houseSiblingCount =
+    d.header.propNumber && d.header.lot
+      ? (
+          db
+            .prepare<[string, string], { n: number }>(
+              `SELECT COUNT(*) AS n FROM cutsheets
+               WHERE deleted_at IS NULL
+                 AND json_extract(data, '$.header.propNumber') = ?
+                 AND json_extract(data, '$.header.lot') = ?`,
+            )
+            .get(d.header.propNumber, d.header.lot)?.n ?? 0
+        )
+      : 0;
+  const isHouse = houseSiblingCount > 1;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -198,9 +215,18 @@ export default async function EditCutsheetPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <PdfLink id={row.id} ticket="stock">Stock PDF</PdfLink>
-          <PdfLink id={row.id} ticket="custom">Custom PDF</PdfLink>
-          <PdfLink id={row.id} ticket="truck">Truck PDF</PdfLink>
+          {(["stock", "custom", "truck"] as const).map((t) => {
+            const label =
+              { stock: "Stock PDF", custom: "Custom PDF", truck: "Truck PDF" }[t];
+            const href = isHouse
+              ? `/api/pdf/house/${encodeURIComponent(d.header.propNumber)}/${encodeURIComponent(d.header.lot)}/${t}`
+              : `/api/pdf/${row.id}/${t}`;
+            return (
+              <PdfLink key={t} href={href}>
+                {isHouse ? `${label} (${houseSiblingCount} zones)` : label}
+              </PdfLink>
+            );
+          })}
           <Button type="submit" form={FORM_ID} size="sm">Save</Button>
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
@@ -371,17 +397,15 @@ function SingletonField({
 }
 
 function PdfLink({
-  id,
-  ticket,
+  href,
   children,
 }: {
-  id: number;
-  ticket: string;
+  href: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
-      href={`/api/pdf/${id}/${ticket}`}
+      href={href}
       target="_blank"
       className="text-sm text-muted-foreground underline-offset-4 hover:underline"
     >
