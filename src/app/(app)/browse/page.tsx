@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { Folder, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { BrowseViewToggle } from "@/components/folders/BrowseViewToggle";
 import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
+import {
+  BrowseGrid,
+  type CutsheetItem,
+  type FolderItem,
+} from "@/components/folders/BrowseGrid";
 import { db } from "@/lib/db";
+import { listAllFolders, withPaths } from "@/lib/folders";
 
 type CutsheetRow = {
   id: number;
@@ -32,7 +38,7 @@ export default async function BrowsePage({
     )
     .all();
 
-  const folders = db
+  const folderRows = db
     .prepare<[], FolderRow>(
       `SELECT f.id, f.name,
               (SELECT COUNT(*) FROM cutsheets c
@@ -43,7 +49,7 @@ export default async function BrowsePage({
     )
     .all();
 
-  const unfiled = db
+  const unfiledRows = db
     .prepare<[], CutsheetRow>(
       `SELECT id, data, folder_id, updated_at FROM cutsheets
        WHERE deleted_at IS NULL AND folder_id IS NULL
@@ -51,6 +57,17 @@ export default async function BrowsePage({
        LIMIT 50`,
     )
     .all();
+
+  const folders: FolderItem[] = folderRows.map((f) => ({
+    id: f.id,
+    name: f.name,
+    cutsheetCount: f.cutsheet_count,
+  }));
+  const cutsheets: CutsheetItem[] = unfiledRows.map((r) => toCutsheetItem(r));
+
+  const folderOptions = withPaths(listAllFolders())
+    .map((f) => ({ id: f.id, path: f.path }))
+    .sort((a, b) => a.path.localeCompare(b.path));
 
   return (
     <div className="space-y-10">
@@ -69,11 +86,17 @@ export default async function BrowsePage({
         ) : view === "grid" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {recent.map((row) => (
-              <CutsheetTile key={row.id} row={row} />
+              <RecentTile key={row.id} row={row} />
             ))}
           </div>
         ) : (
-          <CutsheetList rows={recent} />
+          <Card className="p-0">
+            <ul className="divide-y">
+              {recent.map((row) => (
+                <RecentListRow key={row.id} row={row} />
+              ))}
+            </ul>
+          </Card>
         )}
       </section>
 
@@ -86,32 +109,19 @@ export default async function BrowsePage({
           </div>
         </div>
 
-        {folders.length === 0 && unfiled.length === 0 ? (
+        {folders.length === 0 && cutsheets.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
               Nothing here yet. Create a folder above or start a new cutsheet.
             </CardContent>
           </Card>
-        ) : view === "grid" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {folders.map((f) => (
-              <FolderTile key={f.id} folder={f} />
-            ))}
-            {unfiled.map((row) => (
-              <CutsheetTile key={row.id} row={row} />
-            ))}
-          </div>
         ) : (
-          <Card className="p-0">
-            <ul className="divide-y">
-              {folders.map((f) => (
-                <FolderListRow key={f.id} folder={f} />
-              ))}
-              {unfiled.map((row) => (
-                <CutsheetListRow key={row.id} row={row} />
-              ))}
-            </ul>
-          </Card>
+          <BrowseGrid
+            folders={folders}
+            cutsheets={cutsheets}
+            view={view}
+            folderOptions={folderOptions}
+          />
         )}
       </section>
     </div>
@@ -126,8 +136,8 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function cutsheetTitle(data: string, id: number): { title: string; meta: string | null } {
-  const parsed = JSON.parse(data) as {
+function toCutsheetItem(row: CutsheetRow): CutsheetItem {
+  const parsed = JSON.parse(row.data) as {
     name?: string;
     header?: { lot?: string; builder?: string; project?: string; deliveryDate?: string };
   };
@@ -135,26 +145,38 @@ function cutsheetTitle(data: string, id: number): { title: string; meta: string 
   const title =
     (parsed.name ?? "").trim() ||
     [h.builder, h.project].filter(Boolean).join(" · ") ||
-    `Cutsheet #${id}`;
+    `Cutsheet #${row.id}`;
   const meta = [h.lot ? `Lot ${h.lot}` : null, h.deliveryDate || null]
     .filter(Boolean)
     .join(" · ");
-  return { title, meta: meta || null };
+  return {
+    id: row.id,
+    title,
+    meta: meta || null,
+    updatedAt: row.updated_at,
+  };
 }
 
-function CutsheetTile({ row }: { row: CutsheetRow }) {
-  const { title, meta } = cutsheetTitle(row.data, row.id);
+// Recent section is read-only (no selection). Keeping these inline since
+// BrowseGrid is built around the selectable model.
+function RecentTile({ row }: { row: CutsheetRow }) {
+  const item = toCutsheetItem(row);
   return (
-    <Link href={`/form/${row.id}`} className="block transition-transform active:scale-[0.98]">
+    <Link
+      href={`/form/${item.id}`}
+      className="block transition-transform active:scale-[0.98]"
+    >
       <Card className="h-full transition-colors hover:bg-accent">
         <CardContent className="flex h-full flex-col gap-1 py-4">
           <FileText className="mb-1 h-4 w-4 text-muted-foreground" />
-          <div className="line-clamp-2 text-sm font-medium leading-snug">{title}</div>
-          {meta && (
-            <div className="line-clamp-1 text-xs text-muted-foreground">{meta}</div>
+          <div className="line-clamp-2 text-sm font-medium leading-snug">
+            {item.title}
+          </div>
+          {item.meta && (
+            <div className="line-clamp-1 text-xs text-muted-foreground">{item.meta}</div>
           )}
           <div className="mt-auto text-[10px] text-muted-foreground">
-            Updated {row.updated_at}
+            Updated {item.updatedAt}
           </div>
         </CardContent>
       </Card>
@@ -162,70 +184,24 @@ function CutsheetTile({ row }: { row: CutsheetRow }) {
   );
 }
 
-function FolderTile({ folder }: { folder: FolderRow }) {
-  return (
-    <Link href={`/browse/${folder.id}`} className="block transition-transform active:scale-[0.98]">
-      <Card className="h-full transition-colors hover:bg-accent">
-        <CardContent className="flex h-full flex-col gap-1 py-4">
-          <Folder className="mb-1 h-4 w-4 text-muted-foreground" />
-          <div className="line-clamp-2 text-sm font-medium leading-snug">{folder.name}</div>
-          <div className="mt-auto text-[10px] text-muted-foreground">
-            {folder.cutsheet_count} {folder.cutsheet_count === 1 ? "cutsheet" : "cutsheets"}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function CutsheetList({ rows }: { rows: CutsheetRow[] }) {
-  return (
-    <Card className="p-0">
-      <ul className="divide-y">
-        {rows.map((row) => (
-          <CutsheetListRow key={row.id} row={row} />
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function CutsheetListRow({ row }: { row: CutsheetRow }) {
-  const { title, meta } = cutsheetTitle(row.data, row.id);
+function RecentListRow({ row }: { row: CutsheetRow }) {
+  const item = toCutsheetItem(row);
   return (
     <li>
       <Link
-        href={`/form/${row.id}`}
+        href={`/form/${item.id}`}
         className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent"
       >
         <div className="flex items-center gap-3">
           <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div>
-            <div className="font-medium">{title}</div>
-            {meta && <div className="text-xs text-muted-foreground">{meta}</div>}
+            <div className="font-medium">{item.title}</div>
+            {item.meta && (
+              <div className="text-xs text-muted-foreground">{item.meta}</div>
+            )}
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">Updated {row.updated_at}</div>
-      </Link>
-    </li>
-  );
-}
-
-function FolderListRow({ folder }: { folder: FolderRow }) {
-  return (
-    <li>
-      <Link
-        href={`/browse/${folder.id}`}
-        className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent"
-      >
-        <div className="flex items-center gap-3">
-          <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="font-medium">{folder.name}</div>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {folder.cutsheet_count}{" "}
-          {folder.cutsheet_count === 1 ? "cutsheet" : "cutsheets"}
-        </div>
+        <div className="text-xs text-muted-foreground">Updated {item.updatedAt}</div>
       </Link>
     </li>
   );

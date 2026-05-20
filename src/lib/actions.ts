@@ -400,6 +400,105 @@ export async function renameFolder(id: number, formData: FormData) {
   revalidatePath(`/browse/${id}`);
 }
 
+// Bulk move: shift any number of folders and/or cutsheets to a target
+// folder (parent_id for folders, folder_id for cutsheets). FormData uses
+// repeated `folder_id` / `cutsheet_id` keys plus a single `parent_id` for
+// the destination.
+export async function bulkMove(formData: FormData) {
+  const targetRaw = String(formData.get("parent_id") ?? "");
+  const targetId =
+    targetRaw === "" || targetRaw === "null" ? null : Number(targetRaw);
+  if (targetId != null && !Number.isInteger(targetId)) {
+    throw new Error("Invalid target folder");
+  }
+
+  const folderIds = formData
+    .getAll("folder_id")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+  const cutsheetIds = formData
+    .getAll("cutsheet_id")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+
+  if (folderIds.length === 0 && cutsheetIds.length === 0) return;
+
+  // Cycle guard: every selected folder must not be moved into itself or one
+  // of its own descendants. Check before any write so we either move all or
+  // none.
+  if (targetId != null && folderIds.length > 0) {
+    const allFolders = db
+      .prepare<[], { id: number; name: string; parent_id: number | null }>(
+        "SELECT id, name, parent_id FROM folders",
+      )
+      .all();
+    const { isDescendantOrSelf } = await import("@/lib/folders");
+    for (const sourceId of folderIds) {
+      if (isDescendantOrSelf(allFolders, targetId, sourceId)) {
+        throw new Error("Can't move a folder into itself or its own subtree");
+      }
+    }
+  }
+
+  const tx = db.transaction(() => {
+    if (folderIds.length > 0) {
+      const placeholders = folderIds.map(() => "?").join(",");
+      db.prepare(
+        `UPDATE folders SET parent_id = ? WHERE id IN (${placeholders})`,
+      ).run(targetId, ...folderIds);
+    }
+    if (cutsheetIds.length > 0) {
+      const placeholders = cutsheetIds.map(() => "?").join(",");
+      db.prepare(
+        `UPDATE cutsheets
+         SET folder_id = ?, updated_at = datetime('now')
+         WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+      ).run(targetId, ...cutsheetIds);
+    }
+  });
+  tx();
+
+  revalidatePath("/browse");
+  if (targetId != null) revalidatePath(`/browse/${targetId}`);
+}
+
+// Bulk delete: soft-delete every selected cutsheet (they land in /admin/trash)
+// and hard-delete every selected folder (subfolders cascade, cutsheets at any
+// depth revert to unfiled via the existing FKs). One transaction so the user
+// either sees the whole batch removed or nothing.
+export async function bulkDelete(formData: FormData) {
+  const folderIds = formData
+    .getAll("folder_id")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+  const cutsheetIds = formData
+    .getAll("cutsheet_id")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+
+  if (folderIds.length === 0 && cutsheetIds.length === 0) return;
+
+  const tx = db.transaction(() => {
+    if (cutsheetIds.length > 0) {
+      const placeholders = cutsheetIds.map(() => "?").join(",");
+      db.prepare(
+        `UPDATE cutsheets SET deleted_at = datetime('now')
+         WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+      ).run(...cutsheetIds);
+    }
+    if (folderIds.length > 0) {
+      const placeholders = folderIds.map(() => "?").join(",");
+      db.prepare(`DELETE FROM folders WHERE id IN (${placeholders})`).run(
+        ...folderIds,
+      );
+    }
+  });
+  tx();
+
+  revalidatePath("/browse");
+  revalidatePath("/admin/trash");
+}
+
 // FK ON DELETE SET NULL on cutsheets.folder_id detaches the contained
 // cutsheets — they revert to "unfiled" rather than being deleted.
 export async function deleteFolder(id: number) {

@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Folder, FileText } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BrowseViewToggle } from "@/components/folders/BrowseViewToggle";
 import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
 import { DeleteFolderButton } from "@/components/folders/DeleteFolderButton";
+import {
+  BrowseGrid,
+  type CutsheetItem,
+  type FolderItem,
+} from "@/components/folders/BrowseGrid";
 import { db } from "@/lib/db";
 import { ancestorChain, isDescendantOrSelf, listAllFolders, withPaths } from "@/lib/folders";
 import { moveFolder, renameFolder } from "@/lib/actions";
@@ -41,12 +46,11 @@ export default async function FolderPage({
   const allFolders = listAllFolders();
   const breadcrumb = ancestorChain(allFolders, folder.id);
   const allWithPaths = withPaths(allFolders);
-  // Move target options: every folder except this one and its descendants.
-  const moveOptions = allWithPaths
+  const moveTargetForThisFolder = allWithPaths
     .filter((f) => !isDescendantOrSelf(allFolders, f.id, folder.id))
     .sort((a, b) => a.path.localeCompare(b.path));
 
-  const subfolders = db
+  const subfolderRows = db
     .prepare<[number], SubfolderRow>(
       `SELECT f.id, f.name,
               (SELECT COUNT(*) FROM cutsheets c
@@ -57,13 +61,24 @@ export default async function FolderPage({
     )
     .all(numeric);
 
-  const cutsheets = db
+  const cutsheetRows = db
     .prepare<[number], CutsheetRow>(
       `SELECT id, data, updated_at FROM cutsheets
        WHERE deleted_at IS NULL AND folder_id = ?
        ORDER BY updated_at DESC`,
     )
     .all(numeric);
+
+  const folders: FolderItem[] = subfolderRows.map((f) => ({
+    id: f.id,
+    name: f.name,
+    cutsheetCount: f.cutsheet_count,
+  }));
+  const cutsheets: CutsheetItem[] = cutsheetRows.map((r) => toCutsheetItem(r));
+
+  const folderOptions = allWithPaths
+    .map((f) => ({ id: f.id, path: f.path }))
+    .sort((a, b) => a.path.localeCompare(b.path));
 
   const rename = renameFolder.bind(null, folder.id);
   const move = moveFolder.bind(null, folder.id);
@@ -94,7 +109,7 @@ export default async function FolderPage({
                 className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <option value="">Top level</option>
-                {moveOptions.map((f) => (
+                {moveTargetForThisFolder.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.path}
                   </option>
@@ -118,33 +133,21 @@ export default async function FolderPage({
         <CreateFolderForm parentId={folder.id} />
       </div>
 
-      {subfolders.length === 0 && cutsheets.length === 0 ? (
+      {folders.length === 0 && cutsheets.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             This folder is empty. Add a subfolder above, or move a cutsheet into
             it from the cutsheet toolbar.
           </CardContent>
         </Card>
-      ) : view === "grid" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {subfolders.map((f) => (
-            <FolderTile key={f.id} folder={f} />
-          ))}
-          {cutsheets.map((row) => (
-            <CutsheetTile key={row.id} row={row} />
-          ))}
-        </div>
       ) : (
-        <Card className="p-0">
-          <ul className="divide-y">
-            {subfolders.map((f) => (
-              <FolderListRow key={f.id} folder={f} />
-            ))}
-            {cutsheets.map((row) => (
-              <CutsheetListRow key={row.id} row={row} />
-            ))}
-          </ul>
-        </Card>
+        <BrowseGrid
+          folders={folders}
+          cutsheets={cutsheets}
+          view={view}
+          folderOptions={folderOptions}
+          currentFolderId={folder.id}
+        />
       )}
     </div>
   );
@@ -175,8 +178,8 @@ function Breadcrumbs({ chain }: { chain: Folder[] }) {
   );
 }
 
-function cutsheetTitle(data: string, id: number): { title: string; meta: string | null } {
-  const parsed = JSON.parse(data) as {
+function toCutsheetItem(row: CutsheetRow): CutsheetItem {
+  const parsed = JSON.parse(row.data) as {
     name?: string;
     header?: { lot?: string; builder?: string; project?: string; deliveryDate?: string };
   };
@@ -184,93 +187,14 @@ function cutsheetTitle(data: string, id: number): { title: string; meta: string 
   const title =
     (parsed.name ?? "").trim() ||
     [h.builder, h.project].filter(Boolean).join(" · ") ||
-    `Cutsheet #${id}`;
+    `Cutsheet #${row.id}`;
   const meta = [h.lot ? `Lot ${h.lot}` : null, h.deliveryDate || null]
     .filter(Boolean)
     .join(" · ");
-  return { title, meta: meta || null };
-}
-
-function CutsheetTile({ row }: { row: CutsheetRow }) {
-  const { title, meta } = cutsheetTitle(row.data, row.id);
-  return (
-    <Link
-      href={`/form/${row.id}`}
-      className="block transition-transform active:scale-[0.98]"
-    >
-      <Card className="h-full transition-colors hover:bg-accent">
-        <CardContent className="flex h-full flex-col gap-1 py-4">
-          <FileText className="mb-1 h-4 w-4 text-muted-foreground" />
-          <div className="line-clamp-2 text-sm font-medium leading-snug">{title}</div>
-          {meta && (
-            <div className="line-clamp-1 text-xs text-muted-foreground">{meta}</div>
-          )}
-          <div className="mt-auto text-[10px] text-muted-foreground">
-            Updated {row.updated_at}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function FolderTile({ folder }: { folder: SubfolderRow }) {
-  return (
-    <Link
-      href={`/browse/${folder.id}`}
-      className="block transition-transform active:scale-[0.98]"
-    >
-      <Card className="h-full transition-colors hover:bg-accent">
-        <CardContent className="flex h-full flex-col gap-1 py-4">
-          <Folder className="mb-1 h-4 w-4 text-muted-foreground" />
-          <div className="line-clamp-2 text-sm font-medium leading-snug">{folder.name}</div>
-          <div className="mt-auto text-[10px] text-muted-foreground">
-            {folder.cutsheet_count}{" "}
-            {folder.cutsheet_count === 1 ? "cutsheet" : "cutsheets"}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function CutsheetListRow({ row }: { row: CutsheetRow }) {
-  const { title, meta } = cutsheetTitle(row.data, row.id);
-  return (
-    <li>
-      <Link
-        href={`/form/${row.id}`}
-        className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent"
-      >
-        <div className="flex items-center gap-3">
-          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{title}</div>
-            {meta && <div className="text-xs text-muted-foreground">{meta}</div>}
-          </div>
-        </div>
-        <div className="text-xs text-muted-foreground">Updated {row.updated_at}</div>
-      </Link>
-    </li>
-  );
-}
-
-function FolderListRow({ folder }: { folder: SubfolderRow }) {
-  return (
-    <li>
-      <Link
-        href={`/browse/${folder.id}`}
-        className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent"
-      >
-        <div className="flex items-center gap-3">
-          <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="font-medium">{folder.name}</div>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {folder.cutsheet_count}{" "}
-          {folder.cutsheet_count === 1 ? "cutsheet" : "cutsheets"}
-        </div>
-      </Link>
-    </li>
-  );
+  return {
+    id: row.id,
+    title,
+    meta: meta || null,
+    updatedAt: row.updated_at,
+  };
 }
