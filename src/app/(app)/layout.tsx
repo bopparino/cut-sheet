@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
         <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
-        <Toaster richColors closeButton />
+        <Toaster richColors closeButton position="top-center" />
       </body>
     </html>
   );

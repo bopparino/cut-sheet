@@ -122,7 +122,7 @@ function cutsheetTitle(data: string, id: number): { title: string; meta: string 
 function CutsheetTile({ row }: { row: CutsheetRow }) {
   const { title, meta } = cutsheetTitle(row.data, row.id);
   return (
-    <Link href={`/form/${row.id}`} className="block">
+    <Link href={`/form/${row.id}`} className="block transition-transform active:scale-[0.98]">
       <Card className="h-full transition-colors hover:bg-accent">
         <CardContent className="flex h-full flex-col gap-1 py-4">
           <FileText className="mb-1 h-4 w-4 text-muted-foreground" />
