@@ -38,6 +38,7 @@ export default async function BrowsePage({
               (SELECT COUNT(*) FROM cutsheets c
                  WHERE c.folder_id = f.id AND c.deleted_at IS NULL) AS cutsheet_count
        FROM folders f
+       WHERE f.parent_id IS NULL
        ORDER BY f.name COLLATE NOCASE ASC`,
     )
     .all();

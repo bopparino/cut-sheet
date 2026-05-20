@@ -51,9 +51,10 @@ import {
   TTO_SIZES,
 } from "@/lib/schema";
 import { updateCutsheet } from "@/lib/actions";
+import { withPaths } from "@/lib/folders";
 
 type CutsheetRow = { id: number; data: string; updated_at: string; folder_id: number | null };
-type FolderOption = { id: number; name: string };
+type FolderOption = { id: number; path: string };
 
 const FORM_ID = "cutsheet-form";
 
@@ -159,9 +160,14 @@ export default async function EditCutsheetPage({
     .get(numeric);
   if (!row) notFound();
 
-  const folders = db
-    .prepare<[], FolderOption>("SELECT id, name FROM folders ORDER BY name COLLATE NOCASE ASC")
+  const folderRows = db
+    .prepare<[], { id: number; name: string; parent_id: number | null }>(
+      "SELECT id, name, parent_id FROM folders ORDER BY name COLLATE NOCASE ASC",
+    )
     .all();
+  const folders: FolderOption[] = withPaths(folderRows)
+    .map((f) => ({ id: f.id, path: f.path }))
+    .sort((a, b) => a.path.localeCompare(b.path));
 
   const parsed = CutsheetSchema.safeParse(JSON.parse(row.data));
   if (!parsed.success) notFound();
@@ -444,7 +450,7 @@ function FolderSelect({
         <option value="">Unfiled</option>
         {folders.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.name}
+            {f.path}
           </option>
         ))}
       </select>

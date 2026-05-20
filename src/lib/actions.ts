@@ -349,8 +349,47 @@ export async function deleteAttachment(cutsheetId: number, attachmentId: number)
 export async function createFolder(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Folder name is required");
-  db.prepare("INSERT INTO folders (name) VALUES (?)").run(name);
+  const parentRaw = String(formData.get("parent_id") ?? "");
+  const parentId =
+    parentRaw === "" || parentRaw === "null" ? null : Number(parentRaw);
+  if (parentId != null && !Number.isInteger(parentId)) {
+    throw new Error("Invalid parent folder");
+  }
+  db.prepare("INSERT INTO folders (name, parent_id) VALUES (?, ?)").run(
+    name,
+    parentId,
+  );
   revalidatePath("/browse");
+  if (parentId != null) revalidatePath(`/browse/${parentId}`);
+}
+
+// Move a folder to a new parent. Cycle prevention: target must not be the
+// folder itself or any descendant of it, otherwise we'd create a loop the
+// ON DELETE CASCADE couldn't safely walk.
+export async function moveFolder(id: number, formData: FormData) {
+  const targetRaw = String(formData.get("parent_id") ?? "");
+  const targetId =
+    targetRaw === "" || targetRaw === "null" ? null : Number(targetRaw);
+  if (targetId != null && !Number.isInteger(targetId)) {
+    throw new Error("Invalid target folder");
+  }
+
+  if (targetId != null) {
+    const all = db
+      .prepare<[], { id: number; name: string; parent_id: number | null }>(
+        "SELECT id, name, parent_id FROM folders",
+      )
+      .all();
+    const { isDescendantOrSelf } = await import("@/lib/folders");
+    if (isDescendantOrSelf(all, targetId, id)) {
+      throw new Error("Can't move a folder into itself or its own subtree");
+    }
+  }
+
+  db.prepare("UPDATE folders SET parent_id = ? WHERE id = ?").run(targetId, id);
+  revalidatePath("/browse");
+  revalidatePath(`/browse/${id}`);
+  if (targetId != null) revalidatePath(`/browse/${targetId}`);
 }
 
 export async function renameFolder(id: number, formData: FormData) {

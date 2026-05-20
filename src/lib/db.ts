@@ -27,8 +27,11 @@ function migrate(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS folders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      parent_id INTEGER REFERENCES folders(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 
     CREATE TABLE IF NOT EXISTS cutsheets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,6 +122,24 @@ function migrate(db: Database.Database): void {
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_cutsheets_folder ON cutsheets(folder_id)");
     db.pragma("user_version = 3");
+  }
+
+  if (version < 4) {
+    // Subfolders: folders gain a nullable parent_id pointing at folders.id.
+    // ON DELETE CASCADE — deleting a folder takes its subfolders with it.
+    // Cutsheets within any of those folders still revert to unfiled via the
+    // existing cutsheets.folder_id ON DELETE SET NULL, so no cutsheet is
+    // ever destroyed by folder deletion at any depth.
+    const cols = db.prepare("PRAGMA table_info(folders)").all() as Array<{
+      name: string;
+    }>;
+    if (!cols.some((c) => c.name === "parent_id")) {
+      db.exec(
+        "ALTER TABLE folders ADD COLUMN parent_id INTEGER REFERENCES folders(id) ON DELETE CASCADE",
+      );
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id)");
+    db.pragma("user_version = 4");
   }
 }
 

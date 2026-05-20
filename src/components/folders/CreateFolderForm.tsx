@@ -9,7 +9,9 @@ import { createFolder } from "@/lib/actions";
 
 // Toggles between a + New folder button and an inline name input. Keeps the
 // browse-page chrome minimal until the user actually wants to create one.
-export function CreateFolderForm() {
+// `parentId` is hidden form data so the same component creates root folders
+// on /browse and subfolders on /browse/[id].
+export function CreateFolderForm({ parentId }: { parentId?: number }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +58,7 @@ export function CreateFolderForm() {
       }}
       className="flex items-center gap-2"
     >
+      {parentId != null && <input type="hidden" name="parent_id" value={parentId} />}
       <Input
         ref={inputRef}
         name="name"
