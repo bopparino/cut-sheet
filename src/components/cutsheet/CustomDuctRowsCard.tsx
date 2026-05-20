@@ -15,9 +15,12 @@ type Props = {
   className?: string;
 };
 
-// Compact tile layout: each row is one [qty | w | h | l | S/L] tuple. Five
-// controls per cell means we only fit 1 or 2 cells per visual row, but that's
-// still half the vertical footprint of one-row-per-stacked-line.
+// Each row group is one custom-duct spec: qty × W × H × L, with a S/L flag
+// (Y/N) tacked on. The `×` separators tie the four dimension inputs into
+// one readable spec; the S/L select sits at the end separated by a small
+// gap since it's a property of the row, not a dimension. Subtle bg block
+// groups each row visually so the bento layout's wide cards don't blur
+// multiple rows together.
 export function CustomDuctRowsCard({
   title = "Custom Duct",
   prefix,
@@ -42,7 +45,7 @@ export function CustomDuctRowsCard({
             return (
               <div
                 key={i}
-                className="grid grid-cols-[44px_1fr_1fr_1fr_48px] gap-1.5"
+                className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1.5"
               >
                 <Input
                   name={`${prefix}.${i}.qty`}
@@ -53,34 +56,40 @@ export function CustomDuctRowsCard({
                   defaultValue={row.qty === 0 ? "" : row.qty}
                   placeholder="#"
                   aria-label={`${title} row ${i + 1} qty`}
-                  className="h-8 px-1.5 text-right"
+                  className="h-7 w-12 px-1.5 text-right tabular-nums"
                 />
+                <Times />
                 <Input
                   name={`${prefix}.${i}.w`}
                   defaultValue={row.w}
                   placeholder="W"
                   aria-label={`${title} row ${i + 1} width`}
-                  className="h-8 px-2"
+                  className="h-7 min-w-0 flex-1 px-2"
                 />
+                <Times />
                 <Input
                   name={`${prefix}.${i}.h`}
                   defaultValue={row.h}
                   placeholder="H"
                   aria-label={`${title} row ${i + 1} height`}
-                  className="h-8 px-2"
+                  className="h-7 min-w-0 flex-1 px-2"
                 />
+                <Times />
                 <Input
                   name={`${prefix}.${i}.l`}
                   defaultValue={row.l}
                   placeholder="L"
                   aria-label={`${title} row ${i + 1} length`}
-                  className="h-8 px-2"
+                  className="h-7 min-w-0 flex-1 px-2"
                 />
+                <span aria-hidden className="ml-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  S/L
+                </span>
                 <select
                   name={`${prefix}.${i}.sl`}
                   defaultValue={row.sl}
                   aria-label={`${title} row ${i + 1} S/L`}
-                  className="h-8 rounded-md border border-input bg-transparent px-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="h-7 rounded-md border border-input bg-background px-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   <option value="N">N</option>
                   <option value="Y">Y</option>
@@ -91,5 +100,13 @@ export function CustomDuctRowsCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function Times() {
+  return (
+    <span aria-hidden className="shrink-0 text-xs font-medium text-muted-foreground/70">
+      ×
+    </span>
   );
 }

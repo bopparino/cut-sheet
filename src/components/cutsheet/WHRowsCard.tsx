@@ -15,10 +15,11 @@ type Props = {
   className?: string;
 };
 
-// Compact tile layout: each row is one [qty | w | h] triple, and the triples
-// tile horizontally (1 col → 2 → 3 → 4 at increasing breakpoints). Placeholders
-// inside the inputs replace the static Qty/W/H header row, since the fields
-// are narrow enough that the placeholder is the clearer affordance.
+// Each row group is a contained spec — subtle muted background block plus
+// `×` separators between the inputs. Reads as "qty by width by height"
+// instead of three loose input boxes sitting next to each other. Bento can
+// still tile multiple groups per visual row; the bg blocks make it obvious
+// where one row's spec ends and the next begins.
 export function WHRowsCard({ title, prefix, initial, baseline = 5, className }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
@@ -35,7 +36,10 @@ export function WHRowsCard({ title, prefix, initial, baseline = 5, className }: 
           {Array.from({ length: count }).map((_, i) => {
             const row = initial[i] ?? { qty: 0, w: "", h: "" };
             return (
-              <div key={i} className="grid grid-cols-[44px_1fr_1fr] gap-1.5">
+              <div
+                key={i}
+                className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1.5"
+              >
                 <Input
                   name={`${prefix}.${i}.qty`}
                   type="number"
@@ -45,21 +49,23 @@ export function WHRowsCard({ title, prefix, initial, baseline = 5, className }: 
                   defaultValue={row.qty === 0 ? "" : row.qty}
                   placeholder="#"
                   aria-label={`${title} row ${i + 1} qty`}
-                  className="h-8 px-1.5 text-right"
+                  className="h-7 w-12 px-1.5 text-right tabular-nums"
                 />
+                <Times />
                 <Input
                   name={`${prefix}.${i}.w`}
                   defaultValue={row.w}
                   placeholder="W"
                   aria-label={`${title} row ${i + 1} width`}
-                  className="h-8 px-2"
+                  className="h-7 min-w-0 flex-1 px-2"
                 />
+                <Times />
                 <Input
                   name={`${prefix}.${i}.h`}
                   defaultValue={row.h}
                   placeholder="H"
                   aria-label={`${title} row ${i + 1} height`}
-                  className="h-8 px-2"
+                  className="h-7 min-w-0 flex-1 px-2"
                 />
               </div>
             );
@@ -67,5 +73,13 @@ export function WHRowsCard({ title, prefix, initial, baseline = 5, className }: 
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function Times() {
+  return (
+    <span aria-hidden className="shrink-0 text-xs font-medium text-muted-foreground/70">
+      ×
+    </span>
   );
 }
