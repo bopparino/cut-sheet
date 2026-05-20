@@ -172,6 +172,9 @@ export async function updateCutsheet(id: number, formData: FormData) {
   if (!row) throw new Error(`Cutsheet ${id} not found`);
 
   const current = CutsheetSchema.parse(JSON.parse(row.data));
+  const folderRaw = String(formData.get("folder_id") ?? "");
+  const folderId =
+    folderRaw === "" || folderRaw === "null" ? null : Number(folderRaw);
   const next: Cutsheet = {
     ...current,
     name: String(formData.get("name") ?? "").trim(),
@@ -238,10 +241,12 @@ export async function updateCutsheet(id: number, formData: FormData) {
   };
   const parsed = CutsheetSchema.parse(next);
   db.prepare(
-    "UPDATE cutsheets SET data = ?, updated_at = datetime('now') WHERE id = ?",
-  ).run(JSON.stringify(parsed), id);
+    "UPDATE cutsheets SET data = ?, folder_id = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(JSON.stringify(parsed), folderId, id);
   revalidatePath(`/form/${id}`);
   revalidatePath("/search");
+  revalidatePath("/browse");
+  if (folderId != null) revalidatePath(`/browse/${folderId}`);
 }
 
 // Soft-delete: cutsheet stays in the DB with deleted_at set, so /admin/trash
@@ -339,3 +344,27 @@ export async function deleteAttachment(cutsheetId: number, attachmentId: number)
   revalidatePath(`/form/${cutsheetId}`);
 }
 
+// ----- Folders ----------------------------------------------------------------
+
+export async function createFolder(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Folder name is required");
+  db.prepare("INSERT INTO folders (name) VALUES (?)").run(name);
+  revalidatePath("/browse");
+}
+
+export async function renameFolder(id: number, formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Folder name is required");
+  db.prepare("UPDATE folders SET name = ? WHERE id = ?").run(name, id);
+  revalidatePath("/browse");
+  revalidatePath(`/browse/${id}`);
+}
+
+// FK ON DELETE SET NULL on cutsheets.folder_id detaches the contained
+// cutsheets — they revert to "unfiled" rather than being deleted.
+export async function deleteFolder(id: number) {
+  db.prepare("DELETE FROM folders WHERE id = ?").run(id);
+  revalidatePath("/browse");
+  redirect("/browse");
+}

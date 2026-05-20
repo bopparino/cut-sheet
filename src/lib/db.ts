@@ -24,13 +24,22 @@ function migrate(db: Database.Database): void {
   // Bootstrap (idempotent). New DBs land at the latest constraint set in one
   // shot; old DBs no-op here and the versioned migrations below catch them up.
   db.exec(`
+    CREATE TABLE IF NOT EXISTS folders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS cutsheets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       data TEXT NOT NULL,
+      folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       deleted_at TEXT
     );
+
+    CREATE INDEX IF NOT EXISTS idx_cutsheets_folder ON cutsheets(folder_id);
 
     CREATE TABLE IF NOT EXISTS attachments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +100,25 @@ function migrate(db: Database.Database): void {
       db.exec("ALTER TABLE cutsheets ADD COLUMN deleted_at TEXT");
     }
     db.pragma("user_version = 2");
+  }
+
+  if (version < 3) {
+    // Folders: cutsheets gain a nullable folder_id pointing at the folders
+    // table. The bootstrap above already creates folders and the index for
+    // fresh DBs; this guard adds the column to existing DBs in place.
+    // ON DELETE SET NULL — deleting a folder unfiles its cutsheets, not
+    // deletes them. That matches user expectation ("folder organization is
+    // separate from cutsheet existence").
+    const cols = db.prepare("PRAGMA table_info(cutsheets)").all() as Array<{
+      name: string;
+    }>;
+    if (!cols.some((c) => c.name === "folder_id")) {
+      db.exec(
+        "ALTER TABLE cutsheets ADD COLUMN folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL",
+      );
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_cutsheets_folder ON cutsheets(folder_id)");
+    db.pragma("user_version = 3");
   }
 }
 

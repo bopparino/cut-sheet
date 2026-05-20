@@ -52,7 +52,8 @@ import {
 } from "@/lib/schema";
 import { updateCutsheet } from "@/lib/actions";
 
-type CutsheetRow = { id: number; data: string; updated_at: string };
+type CutsheetRow = { id: number; data: string; updated_at: string; folder_id: number | null };
+type FolderOption = { id: number; name: string };
 
 const FORM_ID = "cutsheet-form";
 
@@ -153,10 +154,14 @@ export default async function EditCutsheetPage({
 
   const row = db
     .prepare<[number], CutsheetRow>(
-      "SELECT id, data, updated_at FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+      "SELECT id, data, updated_at, folder_id FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
     )
     .get(numeric);
   if (!row) notFound();
+
+  const folders = db
+    .prepare<[], FolderOption>("SELECT id, name FROM folders ORDER BY name COLLATE NOCASE ASC")
+    .all();
 
   const parsed = CutsheetSchema.safeParse(JSON.parse(row.data));
   if (!parsed.success) notFound();
@@ -227,6 +232,7 @@ export default async function EditCutsheetPage({
               </PdfLink>
             );
           })}
+          <FolderSelect form={FORM_ID} folders={folders} value={row.folder_id} />
           <Button type="submit" form={FORM_ID} size="sm">Save</Button>
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
@@ -411,5 +417,37 @@ function PdfLink({
     >
       {children}
     </Link>
+  );
+}
+
+// Native select linked to the main cutsheet form via the `form` attribute, so
+// changing the folder and clicking Save persists it via updateCutsheet which
+// reads `folder_id` out of FormData. Empty value means "unfiled".
+function FolderSelect({
+  form,
+  folders,
+  value,
+}: {
+  form: string;
+  folders: FolderOption[];
+  value: number | null;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      Folder
+      <select
+        name="folder_id"
+        form={form}
+        defaultValue={value == null ? "" : String(value)}
+        className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <option value="">Unfiled</option>
+        {folders.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

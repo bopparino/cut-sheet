@@ -14,10 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         <header className="border-b">
           <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-            <Link href="/search" className="text-lg font-semibold tracking-tight">
+            <Link href="/browse" className="text-lg font-semibold tracking-tight">
               Cut Sheet Form
             </Link>
             <div className="flex items-center gap-4 text-sm">
+              <Link href="/browse" className="text-muted-foreground hover:text-foreground">
+                Browse
+              </Link>
               <Link href="/search" className="text-muted-foreground hover:text-foreground">
                 Search
               </Link>
