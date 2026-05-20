@@ -11,6 +11,11 @@ type QtyGridProps<T extends string> = {
   formatLabel?: (size: T) => string;
 };
 
+// Container queries instead of viewport queries: the grid responds to its
+// containing Card's width, not the browser's. A QtyGrid inside a half-width
+// bento cell shows 3 cols; the same QtyGrid in a `lg:col-span-2` wide card
+// shows 4-5. Old viewport-only approach cramped narrow bento cells with too
+// many columns and produced label truncation.
 export function QtyGrid<T extends string>({
   prefix,
   sizes,
@@ -18,7 +23,7 @@ export function QtyGrid<T extends string>({
   formatLabel,
 }: QtyGridProps<T>) {
   return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-5 gap-y-2 @sm:grid-cols-3 @xl:grid-cols-4 @4xl:grid-cols-5">
       {sizes.map((size) => (
         <LabeledQty
           key={size}
@@ -33,12 +38,15 @@ export function QtyGrid<T extends string>({
 
 // Card + Header + QtyGrid. Used by every qty-map section so the page itself
 // stays a flat list of <QtyGridCard /> rather than repeating Card scaffolding.
+// `className` is the bento-grid opt-in for col-span hints on wider cards;
+// `@container` enables container-query responsiveness for the inner grid.
 export function QtyGridCard<T extends string>({
   title,
+  className,
   ...props
-}: { title: string } & QtyGridProps<T>) {
+}: { title: string; className?: string } & QtyGridProps<T>) {
   return (
-    <Card>
+    <Card className={`@container ${className ?? ""}`}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -58,11 +66,10 @@ function LabeledQty({
   label: string;
   defaultValue: number;
 }) {
-  // No flex-1 on the label — keeping it at natural width pulls the input
-  // snug to its own label so each pair reads as a unit. The grid above
-  // provides generous gap-x to make the inter-cell gap clearly larger than
-  // the intra-cell gap, eliminating the "which label goes with which input"
-  // ambiguity from the wider grid layout.
+  // Label is natural-width (no flex-1), so it sits snug against its input;
+  // empty space within the cell falls on the right of the input. Combined
+  // with gap-x-5 between cells, each label-input pair reads unambiguously
+  // as one unit.
   return (
     <div className="flex items-center gap-2">
       <Label

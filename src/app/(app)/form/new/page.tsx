@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeaderFields } from "@/components/cutsheet/HeaderFields";
+import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { createCutsheet } from "@/lib/actions";
 
 export default function NewCutsheetPage() {
   return (
-    <form action={createCutsheet} className="space-y-6">
+    <CutsheetForm action={createCutsheet} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
           type="text"
@@ -28,6 +29,6 @@ export default function NewCutsheetPage() {
         Fill in any header fields you have now — the rest of the sections become editable after
         the cutsheet is created.
       </p>
-    </form>
+    </CutsheetForm>
   );
 }

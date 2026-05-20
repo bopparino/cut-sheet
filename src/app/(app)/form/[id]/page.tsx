@@ -12,8 +12,8 @@ import { CustomDuctRowsCard } from "@/components/cutsheet/CustomDuctRowsCard";
 import { MiscRowsCard } from "@/components/cutsheet/MiscRowsCard";
 import { PhotosCard } from "@/components/cutsheet/PhotosCard";
 import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
-import { DrawingCard } from "@/components/cutsheet/DrawingCard";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
+import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { db } from "@/lib/db";
 import {
@@ -172,14 +172,6 @@ export default async function EditCutsheetPage({
     )
     .all(numeric);
 
-  const drawing = db
-    .prepare<[number], { id: number }>(
-      `SELECT id FROM attachments
-       WHERE cutsheet_id = ? AND kind = 'drawing'
-       ORDER BY id DESC LIMIT 1`,
-    )
-    .get(numeric);
-
   const documents = db
     .prepare<[number], { id: number; filename: string; size: number; mime: string }>(
       `SELECT id, filename, size, mime FROM attachments
@@ -210,13 +202,14 @@ export default async function EditCutsheetPage({
           <PdfLink id={row.id} ticket="custom">Custom PDF</PdfLink>
           <PdfLink id={row.id} ticket="truck">Truck PDF</PdfLink>
           <Button type="submit" form={FORM_ID} size="sm">Save</Button>
+          <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
         </div>
       </div>
 
       <CutsheetForm formId={FORM_ID} action={update} className="space-y-10">
         <SectionGroup title="Project">
-          <Card>
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Header</CardTitle>
             </CardHeader>
@@ -224,11 +217,11 @@ export default async function EditCutsheetPage({
               <HeaderFields initial={d.header} />
             </CardContent>
           </Card>
-          <PlenumPackageCard value={d.header.plenumPackage} />
+          <PlenumPackageCard value={d.header.plenumPackage} className="lg:col-span-2" />
         </SectionGroup>
 
         <SectionGroup title="Stock Duct (prints on Stock PDF)">
-          <QtyGridCard title='60" Duct' prefix="duct60" sizes={DUCT60_SIZES} values={d.stock.duct60} formatLabel={duct60Label} />
+          <QtyGridCard className="lg:col-span-2" title='60" Duct' prefix="duct60" sizes={DUCT60_SIZES} values={d.stock.duct60} formatLabel={duct60Label} />
           <QtyGridCard title="S D / Misc" prefix="sdMisc" sizes={SD_MISC_KEYS} values={d.stock.sdMisc} formatLabel={(k) => SD_MISC_LABELS[k]} />
         </SectionGroup>
 
@@ -236,7 +229,7 @@ export default async function EditCutsheetPage({
           <WHRowsCard title="End Caps" prefix="endCaps" initial={d.custom.endCaps} />
           <WHRowsCard title="Volume Dampers" prefix="volumeDampers" initial={d.custom.volumeDampers} />
           <WHRowsCard title="Canvas Conn" prefix="canvasConn" initial={d.custom.canvasConn} />
-          <CustomDuctRowsCard prefix="customDuct" initial={d.custom.customDuct} />
+          <CustomDuctRowsCard className="lg:col-span-2" prefix="customDuct" initial={d.custom.customDuct} />
           <MiscRowsCard title="Miscellaneous" prefix="miscellaneous" initial={d.custom.miscellaneous} />
           <QtyGridCard title="RND Collars" prefix="rndCollars" sizes={RND_SIZES} values={d.custom.rndCollars} formatLabel={quote} />
           <QtyGridCard title="Round Volume Dampers" prefix="roundVolumeDampers" sizes={RND_SIZES} values={d.custom.roundVolumeDampers} formatLabel={quote} />
@@ -288,7 +281,7 @@ export default async function EditCutsheetPage({
         </SectionGroup>
 
         <SectionGroup title="Fans / G-Necks / Roof">
-          <QtyGridCard title="Fans / G-Necks / Roof" prefix="fans" sizes={FANS_KEYS} values={d.formOnly.fans} formatLabel={(k) => FANS_LABELS[k]} />
+          <QtyGridCard className="lg:col-span-2" title="Fans / G-Necks / Roof" prefix="fans" sizes={FANS_KEYS} values={d.formOnly.fans} formatLabel={(k) => FANS_LABELS[k]} />
         </SectionGroup>
 
         <SectionGroup title="Misc / Extras">
@@ -306,7 +299,6 @@ export default async function EditCutsheetPage({
         </SectionGroup>
 
         <SectionGroup title="Documentation">
-          <DrawingCard cutsheetId={numeric} drawing={drawing} />
           <PhotosCard cutsheetId={numeric} photos={photos} />
           <DocumentsCard cutsheetId={numeric} documents={documents} />
         </SectionGroup>
@@ -315,13 +307,16 @@ export default async function EditCutsheetPage({
   );
 }
 
+// Bento layout: cards tile two-per-row on lg+ and stack on small screens.
+// Cards with too much internal content (Header, 60" Duct, Custom Duct rows,
+// Fans, etc.) opt into a full-width row via className="lg:col-span-2".
 function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h2>
-      <div className="space-y-4">{children}</div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{children}</div>
     </section>
   );
 }

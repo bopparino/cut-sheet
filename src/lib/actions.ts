@@ -142,6 +142,27 @@ export async function createCutsheet(formData: FormData) {
   redirect(`/form/${Number(result.lastInsertRowid)}`);
 }
 
+// Cookie-cutter houses: clone an existing cutsheet's data into a new row.
+// Photos / documents stay on the original — the user is duplicating the
+// numeric data, not the attached evidence.
+export async function cloneCutsheet(id: number) {
+  const row = db
+    .prepare<[number], { data: string }>(
+      "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
+    .get(id);
+  if (!row) throw new Error(`Cutsheet ${id} not found`);
+
+  const parsed = CutsheetSchema.parse(JSON.parse(row.data));
+  if (parsed.name) parsed.name = `${parsed.name} (Copy)`;
+
+  const result = db
+    .prepare("INSERT INTO cutsheets (data) VALUES (?)")
+    .run(JSON.stringify(parsed));
+  revalidatePath("/search");
+  redirect(`/form/${Number(result.lastInsertRowid)}`);
+}
+
 export async function updateCutsheet(id: number, formData: FormData) {
   const row = db
     .prepare<[number], { data: string }>(
@@ -318,29 +339,3 @@ export async function deleteAttachment(cutsheetId: number, attachmentId: number)
   revalidatePath(`/form/${cutsheetId}`);
 }
 
-// Singleton replace: there is at most one drawing per cutsheet, so saving
-// always deletes any prior drawing for that cutsheet inside the same
-// transaction before inserting the new one.
-export async function saveDrawing(cutsheetId: number, formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("No drawing provided");
-  if (!ALLOWED_IMAGE_MIMES.has(file.type)) {
-    throw new Error(`Unsupported drawing format: ${file.type || "unknown"}`);
-  }
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error("Drawing too large");
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const tx = db.transaction(() => {
-    db.prepare(
-      "DELETE FROM attachments WHERE cutsheet_id = ? AND kind = 'drawing'",
-    ).run(cutsheetId);
-    db.prepare(
-      `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
-       VALUES (?, 'drawing', ?, ?, ?, ?)`,
-    ).run(cutsheetId, file.name || "drawing.png", file.type, file.size, buffer);
-  });
-  tx();
-  revalidatePath(`/form/${cutsheetId}`);
-}

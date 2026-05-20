@@ -12,17 +12,18 @@ type Props = {
   prefix: string;
   initial: WHRow[];
   baseline?: number;
+  className?: string;
 };
 
 // Compact tile layout: each row is one [qty | w | h] triple, and the triples
 // tile horizontally (1 col → 2 → 3 → 4 at increasing breakpoints). Placeholders
 // inside the inputs replace the static Qty/W/H header row, since the fields
 // are narrow enough that the placeholder is the clearer affordance.
-export function WHRowsCard({ title, prefix, initial, baseline = 5 }: Props) {
+export function WHRowsCard({ title, prefix, initial, baseline = 5, className }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{title}</CardTitle>
         <Button type="button" variant="ghost" size="sm" onClick={() => setCount((c) => c + 1)}>

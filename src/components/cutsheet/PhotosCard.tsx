@@ -11,6 +11,7 @@ type Photo = { id: number; filename: string };
 type Props = {
   cutsheetId: number;
   photos: Photo[];
+  className?: string;
 };
 
 // Photo input lives inside the main cutsheet <form> but has no `name`, so it
@@ -19,7 +20,7 @@ type Props = {
 // each calls revalidatePath, which re-renders the page server-side. Edits in
 // other uncontrolled inputs survive because React keeps defaultValue stable
 // after mount.
-export function PhotosCard({ cutsheetId, photos }: Props) {
+export function PhotosCard({ cutsheetId, photos, className }: Props) {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +54,7 @@ export function PhotosCard({ cutsheetId, photos }: Props) {
   };
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Photos</CardTitle>
         <Button asChild size="sm" disabled={isPending}>

@@ -12,6 +12,7 @@ type Props = {
   prefix: string;
   initial: CDRow[];
   baseline?: number;
+  className?: string;
 };
 
 // Compact tile layout: each row is one [qty | w | h | l | S/L] tuple. Five
@@ -22,11 +23,12 @@ export function CustomDuctRowsCard({
   prefix,
   initial,
   baseline = 10,
+  className,
 }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{title}</CardTitle>
         <Button type="button" variant="ghost" size="sm" onClick={() => setCount((c) => c + 1)}>

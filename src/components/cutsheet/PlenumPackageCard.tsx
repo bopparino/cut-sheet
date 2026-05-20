@@ -19,9 +19,15 @@ const OPTIONS: { value: Plenum; label: string; contents: string }[] = [
 
 // Native radios in a fieldset — accessible, no extra deps, posts cleanly via
 // FormData as a single `plenumPackage` value.
-export function PlenumPackageCard({ value }: { value: Plenum }) {
+export function PlenumPackageCard({
+  value,
+  className,
+}: {
+  value: Plenum;
+  className?: string;
+}) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle>Plenum Package</CardTitle>
       </CardHeader>

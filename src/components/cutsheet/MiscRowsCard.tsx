@@ -13,17 +13,18 @@ type Props = {
   // Empty rows below this baseline render even when the saved data is shorter,
   // so the user gets visible blanks to tab through.
   baseline?: number;
+  className?: string;
 };
 
 // Compact grid layout: rows tile horizontally (2 cols at sm, 3 at md, 4 at lg)
 // instead of stacking one-per-row full-width. Saves a lot of vertical space
 // for sections like Wall Regs / Grills / Miscellaneous that have many short
 // entries.
-export function MiscRowsCard({ title, prefix, initial, baseline = 10 }: Props) {
+export function MiscRowsCard({ title, prefix, initial, baseline = 10, className }: Props) {
   const [count, setCount] = useState(Math.max(baseline, initial.length));
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{title}</CardTitle>
         <Button type="button" variant="ghost" size="sm" onClick={() => setCount((c) => c + 1)}>

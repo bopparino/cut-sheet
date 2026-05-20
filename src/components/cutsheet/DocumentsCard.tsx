@@ -12,13 +12,14 @@ type Document = { id: number; filename: string; size: number; mime: string };
 type Props = {
   cutsheetId: number;
   documents: Document[];
+  className?: string;
 };
 
 // Mirror of PhotosCard but rendered as a filename list — docs don't have
 // natural thumbnails. The /api/attachment route serves them inline with their
 // stored mime, so clicking the name opens PDFs in-tab and downloads
 // non-renderable formats (Word, Excel, etc.) the way the user expects.
-export function DocumentsCard({ cutsheetId, documents }: Props) {
+export function DocumentsCard({ cutsheetId, documents, className }: Props) {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +53,7 @@ export function DocumentsCard({ cutsheetId, documents }: Props) {
   };
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Documents</CardTitle>
         <Button asChild size="sm" disabled={isPending}>
