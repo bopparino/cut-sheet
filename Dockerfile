@@ -3,10 +3,20 @@
 # skipped because the runtime stage uses a system-installed Chromium instead.
 FROM node:22-bookworm-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
+# apt-get update on Debian mirrors can transiently fail with a GPG signature
+# mismatch when the CDN is serving a partially-updated index. Retry a handful
+# of times before giving up so a flaky deploy self-heals instead of breaking
+# the whole build.
+RUN set -eux; \
+    for i in 1 2 3 4 5; do \
+        apt-get update && break; \
+        echo "apt-get update attempt $i failed, retrying in 5s..."; \
+        sleep 5; \
+    done; \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        make \
+        g++ \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
@@ -27,17 +37,25 @@ RUN npm prune --omit=dev
 # the copy because both stages use the same base image and Node version.
 FROM node:22-bookworm-slim AS runner
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    fonts-liberation \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libxkbcommon0 \
-    libgbm1 \
-    libasound2 \
-    libcairo2 \
-    libpango-1.0-0 \
+# Same retry pattern as the builder stage — these two apt-get update calls
+# are independent layers, either one can hit a flaky mirror.
+RUN set -eux; \
+    for i in 1 2 3 4 5; do \
+        apt-get update && break; \
+        echo "apt-get update attempt $i failed, retrying in 5s..."; \
+        sleep 5; \
+    done; \
+    apt-get install -y --no-install-recommends \
+        chromium \
+        fonts-liberation \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libdrm2 \
+        libxkbcommon0 \
+        libgbm1 \
+        libasound2 \
+        libcairo2 \
+        libpango-1.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
