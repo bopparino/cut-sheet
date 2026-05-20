@@ -13,9 +13,9 @@ type QtyGridProps<T extends string> = {
 
 // Container queries instead of viewport queries: the grid responds to its
 // containing Card's width, not the browser's. A QtyGrid inside a half-width
-// bento cell shows 3 cols; the same QtyGrid in a `lg:col-span-2` wide card
-// shows 4-5. Old viewport-only approach cramped narrow bento cells with too
-// many columns and produced label truncation.
+// bento cell shows 4 cols; the same QtyGrid in a `lg:col-span-2` wide card
+// shows 5-6. Cells stack label-above-input so labels are never truncated
+// by the input width and inputs across a row are vertically aligned.
 export function QtyGrid<T extends string>({
   prefix,
   sizes,
@@ -23,7 +23,7 @@ export function QtyGrid<T extends string>({
   formatLabel,
 }: QtyGridProps<T>) {
   return (
-    <div className="grid grid-cols-2 gap-x-5 gap-y-2 @sm:grid-cols-3 @xl:grid-cols-4 @4xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-3 gap-y-3 @sm:grid-cols-3 @md:grid-cols-4 @xl:grid-cols-5 @4xl:grid-cols-6">
       {sizes.map((size) => (
         <LabeledQty
           key={size}
@@ -66,15 +66,17 @@ function LabeledQty({
   label: string;
   defaultValue: number;
 }) {
-  // Label is natural-width (no flex-1), so it sits snug against its input;
-  // empty space within the cell falls on the right of the input. Combined
-  // with gap-x-5 between cells, each label-input pair reads unambiguously
-  // as one unit.
+  // Stacked: label on top, input below, both filling the cell width. All
+  // labels in a row sit at the same y-position, all inputs at the same
+  // y-position underneath them — no truncation, no jagged input column.
+  // Cell width is uniform via the outer grid track, so labels also line up
+  // horizontally across cells. `truncate` is a safety net for the rare
+  // label that exceeds the track width at small breakpoints.
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-1">
       <Label
         htmlFor={name}
-        className="truncate text-xs font-normal text-muted-foreground"
+        className="truncate text-[11px] font-medium text-muted-foreground"
         title={label}
       >
         {label}
@@ -88,7 +90,7 @@ function LabeledQty({
         step={1}
         defaultValue={defaultValue === 0 ? "" : defaultValue}
         placeholder="0"
-        className="h-8 w-16 text-right"
+        className="h-8 w-full text-right tabular-nums"
       />
     </div>
   );
