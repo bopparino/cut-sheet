@@ -43,10 +43,7 @@ export function CustomDuctRowsCard({
           {Array.from({ length: count }).map((_, i) => {
             const row = initial[i] ?? { qty: 0, w: "", h: "", l: "", sl: "N" as const };
             return (
-              <div
-                key={i}
-                className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1.5"
-              >
+              <div key={i} className="flex items-center gap-1.5">
                 <Input
                   name={`${prefix}.${i}.qty`}
                   type="number"
@@ -56,7 +53,7 @@ export function CustomDuctRowsCard({
                   defaultValue={row.qty === 0 ? "" : row.qty}
                   placeholder="#"
                   aria-label={`${title} row ${i + 1} qty`}
-                  className="h-7 w-12 px-1.5 text-right tabular-nums"
+                  className="h-8 w-12 px-1.5 text-right tabular-nums"
                 />
                 <Times />
                 <Input
@@ -64,7 +61,7 @@ export function CustomDuctRowsCard({
                   defaultValue={row.w}
                   placeholder="W"
                   aria-label={`${title} row ${i + 1} width`}
-                  className="h-7 min-w-0 flex-1 px-2"
+                  className="h-8 min-w-0 flex-1 px-2"
                 />
                 <Times />
                 <Input
@@ -72,7 +69,7 @@ export function CustomDuctRowsCard({
                   defaultValue={row.h}
                   placeholder="H"
                   aria-label={`${title} row ${i + 1} height`}
-                  className="h-7 min-w-0 flex-1 px-2"
+                  className="h-8 min-w-0 flex-1 px-2"
                 />
                 <Times />
                 <Input
@@ -80,7 +77,7 @@ export function CustomDuctRowsCard({
                   defaultValue={row.l}
                   placeholder="L"
                   aria-label={`${title} row ${i + 1} length`}
-                  className="h-7 min-w-0 flex-1 px-2"
+                  className="h-8 min-w-0 flex-1 px-2"
                 />
                 <span aria-hidden className="ml-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   S/L
@@ -89,7 +86,7 @@ export function CustomDuctRowsCard({
                   name={`${prefix}.${i}.sl`}
                   defaultValue={row.sl}
                   aria-label={`${title} row ${i + 1} S/L`}
-                  className="h-7 rounded-md border border-input bg-background px-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="h-8 rounded-md border border-input bg-background px-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   <option value="N">N</option>
                   <option value="Y">Y</option>
