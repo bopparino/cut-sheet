@@ -92,7 +92,7 @@ const DRYER_BOX_LABELS: Record<(typeof DRYER_BOX_KEYS)[number], string> = {
   plastic6: '6" Plastic',
 };
 const BLUE_FLASHING_LABELS: Record<(typeof BLUE_FLASHING_KEYS)[number], string> = {
-  p400: "P400",
+  p400: 'P400 (4")',
   p600: "P600",
   p800: "P800",
   p1000: "P1000",
@@ -131,7 +131,11 @@ export default function BlankPrintPage() {
   return (
     <>
       <style>{`@page { size: 11in 17in; margin: 0.25in; }`}</style>
-      <div className="mx-auto w-[10.5in] bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+      {/* min-h locks the container to the Tabloid content area so the
+          flex-1 spacer can push the bottom strip and footer to the bottom
+          edge. Without min-h the column would collapse to content height
+          and the strip would float right under the shortest column. */}
+      <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
         <PageHeader />
         <div
           className="grid"
@@ -144,6 +148,7 @@ export default function BlankPrintPage() {
           <Col5 />
           <Col6 />
         </div>
+        <div className="flex-1" aria-hidden />
         <BottomStrip />
         <Footer />
       </div>
@@ -160,26 +165,31 @@ function PageHeader() {
         <span className="text-[13pt] font-bold uppercase tracking-wide">Cut Sheet</span>
         <span className="text-[8pt]">Pad #__________________</span>
       </div>
+      {/* Builder and Project get their own rows so the underline is long
+          enough for full company / job names. Date / Delivery / Project
+          Code / Option sit beside them since they're short. */}
       <HRow>
-        <HF label="Builder" flex={3} />
-        <HF label="Date" flex={1.2} />
-        <HF label="Delivery Date" flex={1.2} />
-        <HF label="Foreman" flex={1.5} />
+        <HF label="Builder" flex={4} />
+        <HF label="Date" flex={1.3} />
+        <HF label="Delivery Date" flex={1.5} />
       </HRow>
       <HRow>
-        <HF label="Project" flex={3} />
-        <HF label="Project Code" flex={1.3} />
-        <HF label="Option" flex={1} />
-        <HF label="House Type" flex={1.6} />
+        <HF label="Project" flex={4} />
+        <HF label="Project Code" flex={1.5} />
+        <HF label="Option" flex={1.3} />
+      </HRow>
+      <HRow>
+        <HF label="House Type" flex={2.2} />
+        <HF label="Foreman" flex={1.8} />
+        <HF label="Region (MD/VA/WV)" flex={1.7} />
+        <HF label="Eq To (Job/Whs/Hold)" flex={1.7} />
       </HRow>
       <HRow last>
-        <HF label="Lot" flex={0.8} />
-        <HF label="Block" flex={0.8} />
-        <HF label="Section" flex={0.8} />
-        <HF label="Prop #" flex={1.1} />
-        <HF label="Zone" flex={0.8} />
-        <HF label="Region (MD/VA/WV)" flex={1.8} />
-        <HF label="Eq To (Job/Whs/Hold)" flex={1.8} />
+        <HF label="Lot" flex={1} />
+        <HF label="Block" flex={1} />
+        <HF label="Section" flex={1} />
+        <HF label="Prop #" flex={1.4} />
+        <HF label="Zone" flex={1} />
       </HRow>
     </header>
   );
@@ -364,13 +374,13 @@ function Col1() {
         <QtyList items={RETURN_PLENUM_KEYS.map((k) => RETURN_PLENUM_LABELS[k])} />
       </Section>
       <Section title="End Caps">
-        <WHTable rows={5} />
+        <WHTable rows={6} />
       </Section>
       <Section title="Volume Dampers">
-        <WHTable rows={5} />
+        <WHTable rows={6} />
       </Section>
       <Section title="Canvas Conn">
-        <WHTable rows={4} />
+        <WHTable rows={5} />
       </Section>
       <Section title="Custom Duct">
         <WHTable rows={10} withL />
@@ -544,7 +554,7 @@ function OpenBox({ title }: { title: string }) {
       <div className="border-b border-black px-1.5 py-0.5 text-[9pt] font-bold uppercase tracking-wide">
         {title}
       </div>
-      <div className="h-[1.6in]" />
+      <div className="h-[2.2in]" />
     </div>
   );
 }
