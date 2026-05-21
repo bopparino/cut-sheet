@@ -6,7 +6,6 @@ import {
   DRYER_BOX_KEYS,
   DUCT60_SIZES,
   ELL_BOOTS_SIZES,
-  END_BOOTS_SIZES,
   FANS_KEYS,
   FILTER_RACKS_KEYS,
   FLEX_B_VENT_KEYS,
@@ -28,17 +27,21 @@ import {
   SD_MISC_KEYS,
   SIMPSON_STP_KEYS,
   STRAIGHT_BOOT_BOXES_SIZES,
-  STRT_BOOTS_SIZES,
   TTO_SIZES,
 } from "@/lib/schema";
 
-// 11" × 17" Tabloid portrait blank cutsheet pad master. Compared to the
-// previous Legal squeeze, this version uses the full extra real estate for
-// breathable fonts (8pt body, 9pt section titles), larger qty boxes,
-// generous open-listing sections at the bottom for Wall Regs / Grills /
-// Filter Grills / Floor Regs, and a much bigger Drawing area in the middle
-// column. Container is 10.5" wide (matches Tabloid minus 0.25in margins on
-// each side) so nothing gets cropped at the print trim line.
+// 11" × 17" Tabloid portrait blank cutsheet pad master.
+//
+// The previous version overflowed because three families of sections —
+// flex (Uninsulated/R4/R8), boots (Ell/End/STRT), and RND fittings
+// (Ells/Collars/Vol Dampers) — each had three separate sections with the
+// same size lists. This rewrite collapses each into a single multi-column
+// table: one size column on the left, multiple qty-box columns to the
+// right. That alone saves ~12 vertical inches and turns three previously-
+// overflowing columns into balanced ones.
+//
+// @page locks the paper to Tabloid 11×17 with 0.25in margins so a Cmd-P
+// from the browser produces the same output as /api/pdf/blank.
 
 const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
@@ -126,22 +129,25 @@ const FLEX_B_VENT_LABELS: Record<(typeof FLEX_B_VENT_KEYS)[number], string> = {
 
 export default function BlankPrintPage() {
   return (
-    <div className="mx-auto w-[10.5in] bg-white p-0 font-sans text-[8pt] leading-[1.15] text-black">
-      <PageHeader />
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: "1.7in 1.7in 1.5in 1.7in 1.7in 1.7in" }}
-      >
-        <Col1 />
-        <Col2 />
-        <Col3 />
-        <Col4 />
-        <Col5 />
-        <Col6 />
+    <>
+      <style>{`@page { size: 11in 17in; margin: 0.25in; }`}</style>
+      <div className="mx-auto w-[10.5in] bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+        <PageHeader />
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: "1.75in 1.75in 1.5in 1.85in 1.85in 1.75in" }}
+        >
+          <Col1 />
+          <Col2 />
+          <Col3 />
+          <Col4 />
+          <Col5 />
+          <Col6 />
+        </div>
+        <BottomStrip />
+        <Footer />
       </div>
-      <BottomStrip />
-      <Footer />
-    </div>
+    </>
   );
 }
 
@@ -150,8 +156,8 @@ export default function BlankPrintPage() {
 function PageHeader() {
   return (
     <header className="border-2 border-black">
-      <div className="flex items-center justify-between border-b border-black px-2 py-1">
-        <span className="text-[14pt] font-bold uppercase tracking-wide">Cut Sheet</span>
+      <div className="flex items-center justify-between border-b border-black px-2 py-0.5">
+        <span className="text-[13pt] font-bold uppercase tracking-wide">Cut Sheet</span>
         <span className="text-[8pt]">Pad #__________________</span>
       </div>
       <HRow>
@@ -190,7 +196,7 @@ function HRow({ children, last }: { children: React.ReactNode; last?: boolean })
 function HF({ label, flex }: { label: string; flex: number }) {
   return (
     <div
-      className="flex items-baseline gap-1 border-r border-black px-2 py-1 last:border-r-0"
+      className="flex items-baseline gap-1 border-r border-black px-1.5 py-0.5 last:border-r-0"
       style={{ flex }}
     >
       <span className="shrink-0 text-[7pt] font-medium uppercase tracking-wide text-neutral-700">
@@ -201,48 +207,87 @@ function HF({ label, flex }: { label: string; flex: number }) {
   );
 }
 
-// ---------- Section primitives ----------------------------------------------
+// ---------- Primitives ------------------------------------------------------
 
 function Section({
   title,
   children,
   className,
-  style,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
-  style?: React.CSSProperties;
 }) {
   return (
-    <div
-      className={`border border-black border-t-0 first:border-t ${className ?? ""}`}
-      style={style}
-    >
-      <div className="border-b border-black px-1.5 py-0.5 text-[9pt] font-bold uppercase tracking-wide">
+    <div className={`border border-black border-t-0 first:border-t ${className ?? ""}`}>
+      <div className="border-b border-black px-1.5 py-0.5 text-[8.5pt] font-bold uppercase tracking-wide">
         {title}
       </div>
-      <div className="p-1">{children}</div>
+      <div className="p-0.5">{children}</div>
     </div>
   );
 }
 
 function QtyRow({ label }: { label: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-1 py-0.5">
-      <span className="truncate">{label}</span>
-      <span className="h-3 w-7 shrink-0 border border-black" />
+    <div className="flex items-baseline justify-between gap-1">
+      <span className="truncate leading-[1.3]">{label}</span>
+      <span className="h-[10pt] w-[18pt] shrink-0 border border-black" />
     </div>
   );
 }
 
 function QtyList({ items }: { items: readonly string[] }) {
   return (
-    <div>
+    <div className="space-y-px">
       {items.map((label) => (
         <QtyRow key={label} label={label} />
       ))}
     </div>
+  );
+}
+
+// Multi-qty-per-row table — one size label on the left, multiple qty boxes
+// to the right. Used for the combined Flex (Un/R4/R8), Boots (Ell/End/STRT),
+// and RND (Coll/VolDmp) sections.
+function MultiQtyTable({
+  cols,
+  rows,
+}: {
+  cols: string[];
+  rows: string[];
+}) {
+  return (
+    <table className="w-full border-collapse">
+      <thead>
+        <tr>
+          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[7pt] font-bold uppercase">
+            Size
+          </th>
+          {cols.map((c, i) => (
+            <th
+              key={i}
+              className="bg-neutral-200 px-0.5 py-0 text-center text-[7pt] font-bold uppercase"
+              style={{ width: "20pt" }}
+            >
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((size) => (
+          <tr key={size}>
+            <td className="px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
+            {cols.map((_, i) => (
+              <td key={i} className="px-0 py-px">
+                <span className="block h-[10pt] w-[18pt] border border-black" />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -277,7 +322,7 @@ function WHTable({ rows, withL = false }: { rows: number; withL?: boolean }) {
 
 function PlenumBlock() {
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5 text-[7.5pt]">
       <CheckLine>
         <span className="font-bold">Small</span>
         <span className="ml-1">· 18x22x18 · 18x22x24 · 18x22 C.C.</span>
@@ -297,27 +342,17 @@ function CheckLine({ children }: { children: React.ReactNode }) {
   return (
     <label className="flex items-baseline gap-1.5">
       <span className="mt-px inline-block h-2.5 w-2.5 shrink-0 border border-black" />
-      <span className="text-[7.5pt] leading-tight">{children}</span>
+      <span className="leading-[1.2]">{children}</span>
     </label>
   );
 }
 
 // ---------- Columns ---------------------------------------------------------
 //
-// Six top columns at 1.7 / 1.7 / 1.5 / 1.7 / 1.7 / 1.7 = 10.0in plus 5
-// 0.05in implicit gaps ≈ 10.25in inside the 10.5in container. Distribution
-// is roughly balanced so no column ends with 3in of trailing dead space:
-//
-//   Col1: Project info + tables (Plenum / Return Plenum / End Caps / Volume
-//         Dampers / Canvas Conn / Custom Duct / Miscellaneous)
-//   Col2: Filter Racks / Drain Pans / DRAWING (big) / Straight Boot Boxes /
-//         Simpson STP / S D / Misc / Panning + Cond Regs
-//   Col3: 60" Duct (narrow, dense single list) + Fans
-//   Col4: OV Pipe → Dryer Box stack (oval/boot families, mid-atl, etc.)
-//   Col5: RND Pipe / RND Ells / Air Tights / Saddle Tap / Uninsulated +
-//         Insulated R4 + Insulated R8 Flex
-//   Col6: B-Vent / Flex B-Vent / Blue Flashing / RND Collars / Round Volume
-//         Dampers / Fresh Air Dampers / Gal Redr
+// Six columns at 1.75 / 1.75 / 1.5 / 1.85 / 1.85 / 1.75 = 10.45in inside the
+// 10.5in container. Distributed so the tallest column lands around 10in,
+// fitting comfortably inside the 13in main-grid budget (Tabloid 17in tall
+// minus 1in header, 2in bottom strip, 0.5in footer, ~0.5in margins).
 
 function Col1() {
   return (
@@ -359,6 +394,9 @@ function Col2() {
       <Section title="Drawing">
         <div className="h-[5.5in] border border-dashed border-neutral-400" />
       </Section>
+      <Section title="Panning / Cond Regs">
+        <QtyList items={["Panning Metal (36x36)", "Cond Regs (8x6)"]} />
+      </Section>
       <Section title="Straight Boot Boxes">
         <QtyList items={[...STRAIGHT_BOOT_BOXES_SIZES]} />
       </Section>
@@ -372,9 +410,6 @@ function Col2() {
             ...SD_MISC_EXTRAS_KEYS.map((k) => SD_MISC_EXTRAS_LABELS[k]),
           ]}
         />
-      </Section>
-      <Section title="Panning / Cond Regs">
-        <QtyList items={["Panning Metal (36x36)", "Cond Regs (8x6)"]} />
       </Section>
     </div>
   );
@@ -408,14 +443,11 @@ function Col4() {
       <Section title="Oval S. Heads">
         <QtyList items={[...OVAL_S_HEADS_SIZES]} />
       </Section>
-      <Section title="Ell Boots">
-        <QtyList items={ELL_BOOTS_SIZES.map(bootLabel)} />
-      </Section>
-      <Section title="End Boots">
-        <QtyList items={END_BOOTS_SIZES.map(bootLabel)} />
-      </Section>
-      <Section title="STRT Boots">
-        <QtyList items={STRT_BOOTS_SIZES.map(bootLabel)} />
+      {/* Boots family combined: Ell, End, STRT all share the same 10 sizes,
+          so one table with 10 rows × 3 columns is half the height of three
+          separate sections. */}
+      <Section title="Boots (Ell / End / STRT)">
+        <MultiQtyTable cols={["Ell", "End", "STRT"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
       </Section>
       <Section title="TTO">
         <QtyList items={[...TTO_SIZES]} />
@@ -426,12 +458,6 @@ function Col4() {
       <Section title="Bird Cage">
         <QtyList items={BIRD_CAGE_SIZES.map((s) => `${s}"`)} />
       </Section>
-      <Section title="Metal / Screen">
-        <QtyList items={METAL_SCREEN_KEYS.map((k) => METAL_SCREEN_LABELS[k])} />
-      </Section>
-      <Section title="Dryer Box">
-        <QtyList items={DRYER_BOX_KEYS.map((k) => DRYER_BOX_LABELS[k])} />
-      </Section>
     </div>
   );
 }
@@ -439,26 +465,28 @@ function Col4() {
 function Col5() {
   return (
     <div>
+      <Section title="Metal / Screen">
+        <QtyList items={METAL_SCREEN_KEYS.map((k) => METAL_SCREEN_LABELS[k])} />
+      </Section>
+      <Section title="Dryer Box">
+        <QtyList items={DRYER_BOX_KEYS.map((k) => DRYER_BOX_LABELS[k])} />
+      </Section>
       <Section title="RND Pipe">
         <QtyList items={[...RND_PIPE_SIZES]} />
       </Section>
-      <Section title="RND Ells">
-        <QtyList items={RND_ELL_SIZES.map((s) => `${s}"`)} />
+      {/* RND family combined: Ell, Collar, Volume Damper all use the same 9
+          sizes. One table instead of three sections. */}
+      <Section title="RND Ells / Collars / Vol Dmprs">
+        <MultiQtyTable
+          cols={["Ell", "Coll", "VD"]}
+          rows={RND_SIZES.map((s) => `${s}"`)}
+        />
       </Section>
       <Section title="Air Tights">
         <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
       </Section>
       <Section title="Saddle Tap">
         <QtyList items={SADDLE_TAP_SIZES.map((s) => `${s}"`)} />
-      </Section>
-      <Section title="Uninsulated Flex">
-        <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
-      </Section>
-      <Section title="Insulated Flex R4">
-        <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
-      </Section>
-      <Section title="Insulated Flex R8">
-        <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
       </Section>
     </div>
   );
@@ -467,6 +495,13 @@ function Col5() {
 function Col6() {
   return (
     <div>
+      {/* Flex combined: Uninsulated / R4 / R8 all use the same 9 sizes. */}
+      <Section title="Flex (Un / R4 / R8)">
+        <MultiQtyTable
+          cols={["Un", "R4", "R8"]}
+          rows={FLEX_SIZES.map((s) => `${s}"`)}
+        />
+      </Section>
       <Section title="B-Vent">
         <QtyList items={B_VENT_KEYS.map((k) => B_VENT_LABELS[k])} />
       </Section>
@@ -475,12 +510,6 @@ function Col6() {
       </Section>
       <Section title="Blue Flashing">
         <QtyList items={BLUE_FLASHING_KEYS.map((k) => BLUE_FLASHING_LABELS[k])} />
-      </Section>
-      <Section title="RND Collars">
-        <QtyList items={RND_SIZES.map((s) => `${s}"`)} />
-      </Section>
-      <Section title="Round Volume Dampers">
-        <QtyList items={RND_SIZES.map((s) => `${s}"`)} />
       </Section>
       <Section title="Fresh Air Dampers">
         <QtyList items={[...FRESH_AIR_DAMPER_SIZES]} />
@@ -492,10 +521,11 @@ function Col6() {
   );
 }
 
+// Suppress unused-import warning while keeping the constant in source so the
+// section reads consistently if we ever split RND Ells back out.
+void RND_ELL_SIZES;
+
 // ---------- Bottom strip ----------------------------------------------------
-// Four big open boxes for items where crews hand-list whatever this job has,
-// instead of pre-printed rows. Spans the full 10.5in container; each box is
-// ~2.6in wide × 1.8in tall.
 
 function BottomStrip() {
   return (
@@ -514,7 +544,7 @@ function OpenBox({ title }: { title: string }) {
       <div className="border-b border-black px-1.5 py-0.5 text-[9pt] font-bold uppercase tracking-wide">
         {title}
       </div>
-      <div className="h-[1.8in]" />
+      <div className="h-[1.6in]" />
     </div>
   );
 }
@@ -536,11 +566,11 @@ function Footer() {
 
 function FootCell({ title }: { title: string }) {
   return (
-    <div className="border-l border-black px-2 py-2 first:border-l-0">
+    <div className="border-l border-black px-2 py-1.5 first:border-l-0">
       <div className="text-[7pt] font-bold uppercase tracking-wide text-neutral-700">
         {title}
       </div>
-      <div className="mt-3 border-b border-black" />
+      <div className="mt-2 border-b border-black" />
     </div>
   );
 }

@@ -29,6 +29,10 @@ export async function renderPdfFromUrl(
   options: {
     format?: PaperFormat;
     margin?: { top: string; right: string; bottom: string; left: string };
+    // When true, the rendered page's @page CSS rule wins over the format
+    // option. Lets a print page lock its own paper size so the result is
+    // identical whether the user hits Cmd-P in a browser or the API endpoint.
+    preferCSSPageSize?: boolean;
   } = {},
 ): Promise<Buffer> {
   const browser = await getBrowser();
@@ -38,6 +42,7 @@ export async function renderPdfFromUrl(
     const pdf = await page.pdf({
       format: options.format ?? "Letter",
       printBackground: true,
+      preferCSSPageSize: options.preferCSSPageSize ?? false,
       margin:
         options.margin ?? {
           top: "0.4in",

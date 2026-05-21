@@ -16,8 +16,12 @@ export async function GET() {
     h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const printUrl = `${proto}://${host}/print/blank`;
 
+  // preferCSSPageSize lets the print page's @page rule lock the size,
+  // so identical output whether printed via this endpoint or Cmd-P from
+  // the browser. Format is a fallback if the page doesn't declare @page.
   const pdf = await renderPdfFromUrl(printUrl, {
     format: "Tabloid",
+    preferCSSPageSize: true,
     margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
   });
   return new NextResponse(new Uint8Array(pdf), {
