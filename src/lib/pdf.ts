@@ -22,15 +22,29 @@ async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
-export async function renderPdfFromUrl(url: string): Promise<Buffer> {
+type PaperFormat = "Letter" | "Legal" | "A4";
+
+export async function renderPdfFromUrl(
+  url: string,
+  options: {
+    format?: PaperFormat;
+    margin?: { top: string; right: string; bottom: string; left: string };
+  } = {},
+): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
     await page.goto(url, { waitUntil: "networkidle0" });
     const pdf = await page.pdf({
-      format: "Letter",
+      format: options.format ?? "Letter",
       printBackground: true,
-      margin: { top: "0.4in", right: "0.4in", bottom: "0.4in", left: "0.4in" },
+      margin:
+        options.margin ?? {
+          top: "0.4in",
+          right: "0.4in",
+          bottom: "0.4in",
+          left: "0.4in",
+        },
     });
     return Buffer.from(pdf);
   } finally {
