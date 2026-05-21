@@ -19,7 +19,6 @@ import {
   OVAL_TO_RND_SIZES,
   OV_PIPE_SIZES,
   RETURN_PLENUM_KEYS,
-  RND_ELL_SIZES,
   RND_PIPE_SIZES,
   RND_SIZES,
   SADDLE_TAP_SIZES,
@@ -30,18 +29,16 @@ import {
   TTO_SIZES,
 } from "@/lib/schema";
 
-// 11" × 17" Tabloid portrait blank cutsheet pad master.
+// Two-page Tabloid 11x17 pad master:
+//   Page 1 — blank cutsheet with header + 6 balanced qty/table columns +
+//            anchored bottom strip (Wall/Grills/Filter/Floor Regs).
+//   Page 2 — fittings selection grid (4x6 cells, each with SL? + QTY +
+//            label + drawing placeholder).
 //
-// The previous version overflowed because three families of sections —
-// flex (Uninsulated/R4/R8), boots (Ell/End/STRT), and RND fittings
-// (Ells/Collars/Vol Dampers) — each had three separate sections with the
-// same size lists. This rewrite collapses each into a single multi-column
-// table: one size column on the left, multiple qty-box columns to the
-// right. That alone saves ~12 vertical inches and turns three previously-
-// overflowing columns into balanced ones.
-//
-// @page locks the paper to Tabloid 11×17 with 0.25in margins so a Cmd-P
-// from the browser produces the same output as /api/pdf/blank.
+// Drawing section is removed from page 1 per direction; the second page
+// covers documentation. Metal/Screen sits with the "outside-of-house"
+// wall-mounted boxes (Mid Atl Wall Caps, Bird Cage, Dryer Box) since
+// they're functionally the same family.
 
 const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
@@ -131,43 +128,45 @@ export default function BlankPrintPage() {
   return (
     <>
       <style>{`@page { size: 11in 17in; margin: 0.25in; }`}</style>
-      {/* min-h locks the container to the Tabloid content area so the
-          flex-1 spacer can push the bottom strip and footer to the bottom
-          edge. Without min-h the column would collapse to content height
-          and the strip would float right under the shortest column. */}
-      <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
-        <PageHeader />
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: "1.75in 1.75in 1.5in 1.85in 1.85in 1.75in" }}
-        >
-          <Col1 />
-          <Col2 />
-          <Col3 />
-          <Col4 />
-          <Col5 />
-          <Col6 />
-        </div>
-        <div className="flex-1" aria-hidden />
-        <BottomStrip />
-        <Footer />
-      </div>
+      <Page1 />
+      <div className="break-before-page" />
+      <Page2 />
     </>
   );
 }
 
-// ---------- Header -----------------------------------------------------------
+// ============================================================================
+// PAGE 1 — Cutsheet
+// ============================================================================
+
+function Page1() {
+  return (
+    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+      <PageHeader />
+      <div className="grid grid-cols-6">
+        <Col1 />
+        <Col2 />
+        <Col3 />
+        <Col4 />
+        <Col5 />
+        <Col6 />
+      </div>
+      <div className="flex-1" aria-hidden />
+      <BottomStrip />
+      <Footer />
+    </div>
+  );
+}
+
+// ---------- Header (taller field rows for handwriting room) -----------------
 
 function PageHeader() {
   return (
     <header className="border-2 border-black">
-      <div className="flex items-center justify-between border-b border-black px-2 py-0.5">
-        <span className="text-[13pt] font-bold uppercase tracking-wide">Cut Sheet</span>
-        <span className="text-[8pt]">Pad #__________________</span>
+      <div className="flex items-center justify-between border-b border-black px-2 py-1">
+        <span className="text-[14pt] font-bold uppercase tracking-wide">Cut Sheet</span>
+        <span className="text-[9pt]">Pad #_____________________</span>
       </div>
-      {/* Builder and Project get their own rows so the underline is long
-          enough for full company / job names. Date / Delivery / Project
-          Code / Option sit beside them since they're short. */}
       <HRow>
         <HF label="Builder" flex={4} />
         <HF label="Date" flex={1.3} />
@@ -203,10 +202,12 @@ function HRow({ children, last }: { children: React.ReactNode; last?: boolean })
   );
 }
 
+// items-end + tall padding-top gives generous handwriting room above the
+// underline. min-h locks the cell height so all rows look uniform.
 function HF({ label, flex }: { label: string; flex: number }) {
   return (
     <div
-      className="flex items-baseline gap-1 border-r border-black px-1.5 py-0.5 last:border-r-0"
+      className="flex min-h-[32pt] items-end gap-1 border-r border-black px-2 pb-1 pt-3 last:border-r-0"
       style={{ flex }}
     >
       <span className="shrink-0 text-[7pt] font-medium uppercase tracking-wide text-neutral-700">
@@ -257,16 +258,7 @@ function QtyList({ items }: { items: readonly string[] }) {
   );
 }
 
-// Multi-qty-per-row table — one size label on the left, multiple qty boxes
-// to the right. Used for the combined Flex (Un/R4/R8), Boots (Ell/End/STRT),
-// and RND (Coll/VolDmp) sections.
-function MultiQtyTable({
-  cols,
-  rows,
-}: {
-  cols: string[];
-  rows: string[];
-}) {
+function MultiQtyTable({ cols, rows }: { cols: string[]; rows: string[] }) {
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -357,12 +349,12 @@ function CheckLine({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------- Columns ---------------------------------------------------------
+// ---------- Columns (rebalanced, drawing removed) ---------------------------
 //
-// Six columns at 1.75 / 1.75 / 1.5 / 1.85 / 1.85 / 1.75 = 10.45in inside the
-// 10.5in container. Distributed so the tallest column lands around 10in,
-// fitting comfortably inside the 13in main-grid budget (Tabloid 17in tall
-// minus 1in header, 2in bottom strip, 0.5in footer, ~0.5in margins).
+// Equal 6-col grid via Tailwind grid-cols-6 → each col = 10.5in / 6 = 1.75in.
+// Right edge of last column lines up perfectly with right edge of container.
+// Sections re-grouped so Metal/Screen lives with the other "outside-of-
+// house" wall-mounted boxes (Mid Atl, Bird Cage, Dryer Box) in Col 5.
 
 function Col1() {
   return (
@@ -373,6 +365,15 @@ function Col1() {
       <Section title="Return Plenum">
         <QtyList items={RETURN_PLENUM_KEYS.map((k) => RETURN_PLENUM_LABELS[k])} />
       </Section>
+      <Section title="Filter Racks">
+        <QtyList items={FILTER_RACKS_KEYS.map((k) => FILTER_RACKS_LABELS[k])} />
+      </Section>
+      <Section title="Drain Pans">
+        <QtyList items={[...DRAIN_PANS_KEYS]} />
+      </Section>
+      <Section title="Panning / Cond Regs">
+        <QtyList items={["Panning Metal (36x36)", "Cond Regs (8x6)"]} />
+      </Section>
       <Section title="End Caps">
         <WHTable rows={6} />
       </Section>
@@ -382,11 +383,8 @@ function Col1() {
       <Section title="Canvas Conn">
         <WHTable rows={5} />
       </Section>
-      <Section title="Custom Duct">
-        <WHTable rows={10} withL />
-      </Section>
-      <Section title="Miscellaneous">
-        <WHTable rows={8} />
+      <Section title="Gal Redr">
+        <QtyList items={[...GAL_REDR_SIZES]} />
       </Section>
     </div>
   );
@@ -395,17 +393,11 @@ function Col1() {
 function Col2() {
   return (
     <div>
-      <Section title="Filter Racks">
-        <QtyList items={FILTER_RACKS_KEYS.map((k) => FILTER_RACKS_LABELS[k])} />
+      <Section title="Custom Duct">
+        <WHTable rows={10} withL />
       </Section>
-      <Section title="Drain Pans">
-        <QtyList items={[...DRAIN_PANS_KEYS]} />
-      </Section>
-      <Section title="Drawing">
-        <div className="h-[5.5in] border border-dashed border-neutral-400" />
-      </Section>
-      <Section title="Panning / Cond Regs">
-        <QtyList items={["Panning Metal (36x36)", "Cond Regs (8x6)"]} />
+      <Section title="Miscellaneous">
+        <WHTable rows={8} />
       </Section>
       <Section title="Straight Boot Boxes">
         <QtyList items={[...STRAIGHT_BOOT_BOXES_SIZES]} />
@@ -420,6 +412,9 @@ function Col2() {
             ...SD_MISC_EXTRAS_KEYS.map((k) => SD_MISC_EXTRAS_LABELS[k]),
           ]}
         />
+      </Section>
+      <Section title="Fresh Air Dampers">
+        <QtyList items={[...FRESH_AIR_DAMPER_SIZES]} />
       </Section>
     </div>
   );
@@ -445,7 +440,7 @@ function Col4() {
         <QtyList items={OV_PIPE_SIZES.map((s) => `${s}"`)} />
       </Section>
       <Section title="Oval Ells">
-        <QtyList items={[...OVAL_ELL_SIZES]} />
+        <QtyList items={OVAL_ELL_SIZES.map((s) => s.replace("F", '" F'))} />
       </Section>
       <Section title="Oval to Rnd">
         <QtyList items={[...OVAL_TO_RND_SIZES]} />
@@ -453,28 +448,32 @@ function Col4() {
       <Section title="Oval S. Heads">
         <QtyList items={[...OVAL_S_HEADS_SIZES]} />
       </Section>
-      {/* Boots family combined: Ell, End, STRT all share the same 10 sizes,
-          so one table with 10 rows × 3 columns is half the height of three
-          separate sections. */}
+      {/* Boots family combined: Ell, End, STRT share the same 10 sizes. */}
       <Section title="Boots (Ell / End / STRT)">
-        <MultiQtyTable cols={["Ell", "End", "STRT"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
+        <MultiQtyTable
+          cols={["Ell", "End", "STRT"]}
+          rows={ELL_BOOTS_SIZES.map(bootLabel)}
+        />
       </Section>
       <Section title="TTO">
         <QtyList items={[...TTO_SIZES]} />
       </Section>
+    </div>
+  );
+}
+
+// Col 5: the "outside-of-house" wall-mounted box family is grouped together
+// at the top — Mid Atl Wall Caps, Bird Cage, Metal/Screen, Dryer Box —
+// followed by RND stock. Matches the shop's mental model of these items.
+function Col5() {
+  return (
+    <div>
       <Section title="Mid Atl. Wall Caps">
         <QtyList items={MID_ATLANTIC_KEYS.map((k) => MID_ATLANTIC_LABELS[k])} />
       </Section>
       <Section title="Bird Cage">
         <QtyList items={BIRD_CAGE_SIZES.map((s) => `${s}"`)} />
       </Section>
-    </div>
-  );
-}
-
-function Col5() {
-  return (
-    <div>
       <Section title="Metal / Screen">
         <QtyList items={METAL_SCREEN_KEYS.map((k) => METAL_SCREEN_LABELS[k])} />
       </Section>
@@ -484,19 +483,8 @@ function Col5() {
       <Section title="RND Pipe">
         <QtyList items={[...RND_PIPE_SIZES]} />
       </Section>
-      {/* RND family combined: Ell, Collar, Volume Damper all use the same 9
-          sizes. One table instead of three sections. */}
       <Section title="RND Ells / Collars / Vol Dmprs">
-        <MultiQtyTable
-          cols={["Ell", "Coll", "VD"]}
-          rows={RND_SIZES.map((s) => `${s}"`)}
-        />
-      </Section>
-      <Section title="Air Tights">
-        <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
-      </Section>
-      <Section title="Saddle Tap">
-        <QtyList items={SADDLE_TAP_SIZES.map((s) => `${s}"`)} />
+        <MultiQtyTable cols={["Ell", "Coll", "VD"]} rows={RND_SIZES.map((s) => `${s}"`)} />
       </Section>
     </div>
   );
@@ -505,12 +493,14 @@ function Col5() {
 function Col6() {
   return (
     <div>
-      {/* Flex combined: Uninsulated / R4 / R8 all use the same 9 sizes. */}
+      <Section title="Air Tights">
+        <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
+      </Section>
+      <Section title="Saddle Tap">
+        <QtyList items={SADDLE_TAP_SIZES.map((s) => `${s}"`)} />
+      </Section>
       <Section title="Flex (Un / R4 / R8)">
-        <MultiQtyTable
-          cols={["Un", "R4", "R8"]}
-          rows={FLEX_SIZES.map((s) => `${s}"`)}
-        />
+        <MultiQtyTable cols={["Un", "R4", "R8"]} rows={FLEX_SIZES.map((s) => `${s}"`)} />
       </Section>
       <Section title="B-Vent">
         <QtyList items={B_VENT_KEYS.map((k) => B_VENT_LABELS[k])} />
@@ -521,21 +511,11 @@ function Col6() {
       <Section title="Blue Flashing">
         <QtyList items={BLUE_FLASHING_KEYS.map((k) => BLUE_FLASHING_LABELS[k])} />
       </Section>
-      <Section title="Fresh Air Dampers">
-        <QtyList items={[...FRESH_AIR_DAMPER_SIZES]} />
-      </Section>
-      <Section title="Gal Redr">
-        <QtyList items={[...GAL_REDR_SIZES]} />
-      </Section>
     </div>
   );
 }
 
-// Suppress unused-import warning while keeping the constant in source so the
-// section reads consistently if we ever split RND Ells back out.
-void RND_ELL_SIZES;
-
-// ---------- Bottom strip ----------------------------------------------------
+// ---------- Bottom strip + footer (anchored to page bottom) -----------------
 
 function BottomStrip() {
   return (
@@ -559,8 +539,6 @@ function OpenBox({ title }: { title: string }) {
   );
 }
 
-// ---------- Footer ----------------------------------------------------------
-
 function Footer() {
   return (
     <footer
@@ -582,6 +560,139 @@ function FootCell({ title }: { title: string }) {
       </div>
       <div className="mt-2 border-b border-black" />
     </div>
+  );
+}
+
+// ============================================================================
+// PAGE 2 — Fittings selection grid
+// ============================================================================
+//
+// 4-col × 6-row grid of fitting cells. Each cell has:
+//   - SL? toggle (small N / Y boxes) at top-left
+//   - QTY field with a small box at top-right
+//   - A dashed drawing area in the middle (placeholder for the fitting
+//     illustration — the shop's existing fittings template artwork goes
+//     here when sent to the print company)
+//   - A label slot at the bottom for the fitting name
+//
+// The cell list below is intentionally generic ("Fitting 01", "Fitting 02"…)
+// until the shop confirms the exact set of fittings to include and provides
+// each illustration. Renaming any cell is a one-line edit below.
+
+type FittingCell = {
+  label: string;
+  // SL options shown: "N" only, "Y" only, or both. The user template shows
+  // a mix; default both since either is a fast pen-stroke.
+  sl?: "N" | "Y" | "both";
+};
+
+const FITTING_CELLS: FittingCell[] = [
+  { label: "Damper Box (DB)" },
+  { label: "DB Triangle" },
+  { label: "Right-Angle Bend" },
+  { label: "Triangle Fitting" },
+  { label: "Volume Damper (VD)" },
+  { label: "Stock CAS Box" },
+  { label: "Stock CAS L-Box", sl: "Y" },
+  { label: "V-Cut Box" },
+  { label: "Trapezoid" },
+  { label: "Round Dome" },
+  { label: "Transfer Grill" },
+  { label: "Slope Offset" },
+  { label: "Step Offset (3½)" },
+  { label: "Step (½)" },
+  { label: "Long Curve" },
+  { label: "End Cap (small)" },
+  { label: "Open Square" },
+  { label: "Stepped Box" },
+  { label: "V-Cut Large" },
+  { label: "Bent Fitting (½)" },
+  { label: "Custom L Box" },
+  { label: "Round Loop" },
+  { label: "Wide Trapezoid" },
+  { label: "Custom Panel" },
+];
+
+function Page2() {
+  return (
+    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+      <Page2Header />
+      <div className="grid flex-1 grid-cols-4">
+        {FITTING_CELLS.map((cell, i) => (
+          <FittingTile key={i} cell={cell} />
+        ))}
+      </div>
+      <Page2Footer />
+    </div>
+  );
+}
+
+function Page2Header() {
+  return (
+    <header className="border-2 border-black">
+      <div className="flex items-center justify-between px-2 py-1">
+        <span className="text-[14pt] font-bold uppercase tracking-wide">Fittings</span>
+        <span className="text-[8pt]">Cutsheet Pad #_____________________</span>
+      </div>
+    </header>
+  );
+}
+
+function FittingTile({ cell }: { cell: FittingCell }) {
+  const sl = cell.sl ?? "both";
+  return (
+    <div className="flex flex-col border border-black border-l-0 border-t-0 first:border-l">
+      <div className="flex items-center justify-between gap-1 border-b border-black px-1.5 py-0.5">
+        <SLToggle mode={sl} />
+        <div className="flex items-baseline gap-1 text-[7.5pt] font-medium uppercase tracking-wide">
+          <span>Qty</span>
+          <span className="inline-block h-[10pt] w-[24pt] border border-black" />
+        </div>
+      </div>
+      <div className="flex flex-1 items-center justify-center p-1">
+        <div className="flex h-full min-h-[1.7in] w-full items-center justify-center border border-dashed border-neutral-400 text-[7pt] uppercase tracking-wide text-neutral-400">
+          drawing
+        </div>
+      </div>
+      <div className="border-t border-black bg-neutral-100 px-1.5 py-0.5 text-center text-[8pt] font-medium">
+        {cell.label}
+      </div>
+    </div>
+  );
+}
+
+function SLToggle({ mode }: { mode: "N" | "Y" | "both" }) {
+  const showN = mode === "N" || mode === "both";
+  const showY = mode === "Y" || mode === "both";
+  return (
+    <div className="flex items-center gap-1.5 text-[7.5pt] font-medium uppercase tracking-wide">
+      <span>SL?</span>
+      {showN && (
+        <label className="flex items-center gap-0.5">
+          <span className="inline-block h-2 w-2 border border-black" />
+          <span>N</span>
+        </label>
+      )}
+      {showY && (
+        <label className="flex items-center gap-0.5">
+          <span className="inline-block h-2 w-2 border border-black" />
+          <span>Y</span>
+        </label>
+      )}
+    </div>
+  );
+}
+
+function Page2Footer() {
+  return (
+    <footer
+      className="grid border border-black border-t-0 text-[8pt]"
+      style={{ gridTemplateColumns: "1fr 1fr 2fr" }}
+    >
+      <FootCell title="Builder / Lot" />
+      <FootCell title="Date" />
+      <FootCell title="Notes" />
+    </footer>
   );
 }
 

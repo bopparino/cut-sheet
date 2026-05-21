@@ -108,7 +108,10 @@ const PlenumContentsSchema = z.object({
   large: z.object({ "24x22x18": qty, "24x22x24": qty, "24x22CC": qty }),
 });
 
-export const OVAL_ELL_SIZES = ["5", "6", "7", "8", "5F", "6F", "7F"] as const;
+// Oval Ells: only the F (female) variants are actually used per the shop.
+// The bare 5/6/7/8 sizes were a v1 paper-form holdover that crews never
+// filled in.
+export const OVAL_ELL_SIZES = ["5F", "6F", "7F"] as const;
 const OvalEllsSchema = z.object(
   Object.fromEntries(OVAL_ELL_SIZES.map((s) => [s, qty])) as Record<
     (typeof OVAL_ELL_SIZES)[number],
