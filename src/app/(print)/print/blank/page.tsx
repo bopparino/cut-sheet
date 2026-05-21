@@ -565,14 +565,16 @@ function FootCell({ title }: { title: string }) {
 
 
 // ============================================================================
-// PAGE 2 — Fittings (embedded high-fidelity artwork)
+// PAGE 2 — Fittings grid (28 blank boxes)
 // ============================================================================
 //
-// The shop's existing Fittings.pdf is the single source of truth for the
-// fitting drawings. Save that PDF as a 300 DPI PNG at
-// `public/fittings-template.png` — see public/README.md. This page just
-// embeds it. The artwork already carries its own per-fitting QTY: and
-// SL?: N/Y labels; no overlay is needed.
+// 4×7 grid of empty cells. Each cell shows only an SL?: N/Y toggle and a
+// QTY field at the top; the rest of the cell is blank for the printed
+// artwork or hand-drawn sketch. No fitting names, no "drawing" placeholder
+// text — the printed pad gets the actual fitting illustrations laid in by
+// the print shop (or filled by hand on each pad).
+
+const FITTING_BOX_COUNT = 28;
 
 function Page2() {
   return (
@@ -585,14 +587,36 @@ function Page2() {
           <span className="text-[8pt]">Cutsheet Pad #_____________________</span>
         </div>
       </header>
-      <div className="flex flex-1 items-center justify-center p-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/fittings-template.png"
-          alt="Fittings reference"
-          className="max-h-full max-w-full object-contain"
-        />
+      <div className="grid flex-1 grid-cols-4">
+        {Array.from({ length: FITTING_BOX_COUNT }).map((_, i) => (
+          <FittingBox key={i} />
+        ))}
       </div>
+    </div>
+  );
+}
+
+function FittingBox() {
+  return (
+    <div className="flex flex-col border border-black border-l-0 border-t-0 first:border-l">
+      <div className="flex items-center justify-between gap-1 border-b border-black px-1.5 py-0.5">
+        <div className="flex items-center gap-1.5 text-[7.5pt] font-medium uppercase tracking-wide">
+          <span>SL?</span>
+          <label className="flex items-center gap-0.5">
+            <span className="inline-block h-2 w-2 border border-black" />
+            <span>N</span>
+          </label>
+          <label className="flex items-center gap-0.5">
+            <span className="inline-block h-2 w-2 border border-black" />
+            <span>Y</span>
+          </label>
+        </div>
+        <div className="flex items-baseline gap-1 text-[7.5pt] font-medium uppercase tracking-wide">
+          <span>Qty</span>
+          <span className="inline-block h-[10pt] w-[24pt] border border-black" />
+        </div>
+      </div>
+      <div className="flex-1" />
     </div>
   );
 }
