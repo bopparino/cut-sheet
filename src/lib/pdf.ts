@@ -22,7 +22,7 @@ async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
-type PaperFormat = "Letter" | "Legal" | "A4";
+type PaperFormat = "Letter" | "Legal" | "Tabloid" | "A4";
 
 export async function renderPdfFromUrl(
   url: string,

@@ -5,9 +5,10 @@ import { renderPdfFromUrl } from "@/lib/pdf";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Renders /print/blank at 8.5" × 14" (Legal) for the print-shop pad master.
-// Tighter margins than the per-cutsheet PDFs since pads usually trim closer
-// to the edge; the print company can bleed-trim from there.
+// Renders /print/blank at 11" × 17" (Tabloid portrait) for the print-shop
+// pad master. The shop's printer has 11x17 loaded so we use all of it for
+// readability instead of cramming on Legal. Tight margins so the design
+// gets close to the trim edge.
 export async function GET() {
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
@@ -16,7 +17,7 @@ export async function GET() {
   const printUrl = `${proto}://${host}/print/blank`;
 
   const pdf = await renderPdfFromUrl(printUrl, {
-    format: "Legal",
+    format: "Tabloid",
     margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
   });
   return new NextResponse(new Uint8Array(pdf), {
