@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "../globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Cut Sheet Form",
@@ -10,23 +23,32 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <header className="border-b">
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="theme-insight min-h-screen bg-background text-foreground antialiased">
+        <header className="border-b border-border bg-card">
           <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-            <Link href="/browse" className="text-lg font-semibold tracking-tight">
+            <Link
+              href="/browse"
+              className="text-lg font-semibold tracking-tight text-foreground"
+            >
               Cut Sheet Form
             </Link>
-            <div className="flex items-center gap-4 text-sm">
-              <Link href="/browse" className="text-muted-foreground hover:text-foreground">
+            <div className="flex items-center gap-5 text-sm">
+              <Link
+                href="/browse"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
                 Browse
               </Link>
-              <Link href="/search" className="text-muted-foreground hover:text-foreground">
+              <Link
+                href="/search"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
                 Search
               </Link>
               <Link
                 href="/form/new"
-                className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground hover:opacity-90"
+                className="btn-glow rounded-md bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-foreground"
               >
                 New Cutsheet
               </Link>

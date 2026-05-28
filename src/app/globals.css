@@ -46,6 +46,71 @@
   --ring: oklch(0.556 0 0);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   THEME: Amber Alabaster / Solar Industrial — scoped overrides
+   Applied via .theme-insight on the (app) body. Print routes do
+   NOT receive this class, so PDFs render with the defaults above.
+═══════════════════════════════════════════════════════════ */
+.theme-insight {
+  --radius: 0.75rem;
+
+  --background: #F9F9F8;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --primary: #FF8C00;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F5F4;
+  --secondary-foreground: #1A1A1A;
+  --muted: #F5F5F4;
+  --muted-foreground: #57534E;
+  --accent: #FFB347;
+  --accent-foreground: #1A1A1A;
+  --destructive: #EF4444;
+  --border: #E7E5E4;
+  --input: #E7E5E4;
+  --ring: #FF8C00;
+
+  /* Extension tokens (Insight-only, not part of shadcn) */
+  --accent-mid: #E07B00;
+  --accent-glow: rgba(255, 140, 0, 0.15);
+  --accent-glow-strong: rgba(255, 140, 0, 0.25);
+  --shadow-glow: 0 0 20px rgba(255, 140, 0, 0.12);
+
+  --gray-50:  #FAFAF9;
+  --gray-100: #F5F5F4;
+  --gray-200: #E7E5E4;
+  --gray-300: #D6D3D1;
+  --gray-400: #A8A29E;
+  --gray-600: #57534E;
+  --gray-800: #1A1A1A;
+  --gray-900: #0C0C0C;
+
+  --status-draft-bg:        #F5F5F4;
+  --status-draft-text:      #71717A;
+  --status-proposed-bg:     rgba(255, 140, 0, 0.08);
+  --status-proposed-text:   #B45309;
+  --status-contracted-bg:   rgba(16, 185, 129, 0.08);
+  --status-contracted-text: #065F46;
+  --status-complete-bg:     #1A1A1A;
+  --status-complete-text:   #FAFAF9;
+  --status-lost-bg:         rgba(239, 68, 68, 0.08);
+  --status-lost-text:       #DC2626;
+
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: -0.006em;
+}
+
+.theme-insight h1,
+.theme-insight h2,
+.theme-insight h3,
+.theme-insight h4 {
+  letter-spacing: -0.02em;
+  color: var(--gray-900);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -79,4 +144,57 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Insight signature utilities — only render under .theme-insight
+═══════════════════════════════════════════════════════════ */
+
+.theme-insight .label-caps {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+.theme-insight .font-mono-data {
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum' 1;
+}
+
+.theme-insight .badge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.theme-insight .badge-draft      { background: var(--status-draft-bg);      color: var(--status-draft-text); }
+.theme-insight .badge-proposed   { background: var(--status-proposed-bg);   color: var(--status-proposed-text); }
+.theme-insight .badge-contracted { background: var(--status-contracted-bg); color: var(--status-contracted-text); }
+.theme-insight .badge-complete   { background: var(--status-complete-bg);   color: var(--status-complete-text); }
+.theme-insight .badge-lost       { background: var(--status-lost-bg);       color: var(--status-lost-text); }
+
+/* Inner-glow LED button — apply .btn-glow to any element with bg-primary */
+.theme-insight .btn-glow {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(255, 140, 0, 0.3);
+  transition: all 0.15s ease;
+}
+.theme-insight .btn-glow:hover:not(:disabled) {
+  background: var(--accent-mid);
+  box-shadow:
+    0 2px 8px rgba(255, 140, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 15px rgba(255, 140, 0, 0.15);
+  transform: translateY(-0.5px);
+}
+.theme-insight .btn-glow:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.985);
 }
