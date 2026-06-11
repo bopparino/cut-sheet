@@ -65,7 +65,10 @@ const present = (v: unknown): boolean => {
 
 // ----- input loading ------------------------------------------------------
 
-const REQUIRED_TABLES = ["Header", "Custom_Duct", "Stock_Duct", "PreFab"];
+// Header is the spine; the section tables are optional because Access skips
+// empty tables when exporting (e.g. a builder with no custom duct rows).
+// Missing sections just mean those parts of each sheet stay empty.
+const SECTION_TABLES = ["Custom_Duct", "Stock_Duct", "PreFab"];
 
 // Excel serial dates come out of exceljs as UTC Date objects; format with the
 // UTC getters so '2021-07-06 08:30:21' survives the round trip unshifted.
@@ -124,32 +127,14 @@ async function loadInput(path: string): Promise<Tables> {
   return JSON.parse(readFileSync(full, "utf8")) as Tables;
 }
 
-// Merge all inputs into one table set; assembly below joins on Cut Sheet #
-// regardless of which letter-directory a row arrived from.
-const raw: Tables = {};
-for (const input of inputs) {
-  const tables = await loadInput(input);
-  const found = REQUIRED_TABLES.filter((t) => tables[t]);
-  if (found.length < REQUIRED_TABLES.length) {
-    throw new Error(
-      `${input}: missing table(s) ${REQUIRED_TABLES.filter((t) => !tables[t]).join(", ")}`,
-    );
-  }
-  for (const [name, t] of Object.entries(tables)) {
-    if (!raw[name]) raw[name] = { headers: t.headers, rows: [] };
-    raw[name].rows.push(...t.rows);
-  }
-  console.log(`${input}: ${tables.Header.rows.length} header rows`);
-}
-
-// ----- index the four live tables by Cut Sheet # -------------------------
+// NOTE: inputs are processed one source at a time (see the assemble section).
+// Each letter's Access library was its own database with its own autonumber,
+// so "Cut Sheet #" collides freely ACROSS sources — joining the section
+// tables to headers is only valid within a single export directory.
 
 const SHEET_KEY = (r: Row) => num(r["Cut Sheet #"] ?? r["Cut Sheet ."]);
-const byId = (t: { rows: Row[] }) => new Map(t.rows.map((r) => [SHEET_KEY(r), r]));
-const headerRows = raw.Header.rows;
-const customById = byId(raw.Custom_Duct);
-const stockById = byId(raw.Stock_Duct);
-const prefabById = byId(raw.PreFab);
+const byId = (t: { rows: Row[] } | undefined) =>
+  new Map((t?.rows ?? []).map((r) => [SHEET_KEY(r), r]));
 
 // ----- per-section mappers ------------------------------------------------
 
@@ -179,11 +164,13 @@ function constantCols(rows: Row[]): Set<string> {
   return out;
 }
 
-const CONSTANTS = {
-  customDuct: constantCols(raw.Custom_Duct.rows),
-  stock: constantCols(raw.Stock_Duct.rows),
-  prefab: constantCols(raw.PreFab.rows),
-  header: constantCols(raw.Header.rows),
+// Recomputed per source directory before its rows are assembled — each
+// letter's Access library has its own form defaults.
+let CONSTANTS = {
+  customDuct: new Set<string>(),
+  stock: new Set<string>(),
+  prefab: new Set<string>(),
+  header: new Set<string>(),
 };
 
 /** Push "Legacy — col: value" for every present value in `cols`. */
@@ -509,6 +496,12 @@ const EQ_MAP: Record<string, "Job" | "Whs" | "Hold"> = { J: "Job", W: "Whs", H: 
 const REGIONS = new Set(["MD", "VA", "WV"]);
 
 type Assembled = {
+  // Dedupe identity. "Cut Sheet #" alone collides across the per-letter
+  // Access databases (each restarted its autonumber), so the key is
+  // propNumber|CutSheet#|BUILDER — verified to separate every real sheet in
+  // the PT1+PT2 exports, while still collapsing the template sheets that
+  // were exported identically into several letter directories.
+  key: string;
   legacyId: number;
   cutsheet: Cutsheet;
   builder: string;
@@ -519,9 +512,27 @@ type Assembled = {
 const assembled: Assembled[] = [];
 const failures: { id: number; error: string }[] = [];
 let leftoverTotal = 0;
+let emptySkipped = 0;
 
-for (const h of headerRows) {
+function assembleSource(tables: Tables) {
+  const customById = byId(tables.Custom_Duct);
+  const stockById = byId(tables.Stock_Duct);
+  const prefabById = byId(tables.PreFab);
+  CONSTANTS = {
+    customDuct: constantCols(tables.Custom_Duct?.rows ?? []),
+    stock: constantCols(tables.Stock_Duct?.rows ?? []),
+    prefab: constantCols(tables.PreFab?.rows ?? []),
+    header: constantCols(tables.Header.rows),
+  };
+
+  for (const h of tables.Header.rows) {
   const id = SHEET_KEY(h);
+  // Empty Access artifact rows (no builder, house, project, or lot) exist in
+  // most letter exports — nothing worth importing.
+  if (!str(h.Builder) && !str(h["House Type"]) && !str(h.Project) && !str(h.Lot)) {
+    emptySkipped++;
+    continue;
+  }
   const cs = emptyCutsheet();
   const leftovers: string[] = [];
 
@@ -564,12 +575,25 @@ for (const h of headerRows) {
     continue;
   }
   assembled.push({
+    key: `${str(h.property_number)}|${id}|${str(h.Builder).toUpperCase()}`,
     legacyId: id,
     cutsheet: parsed.data,
     builder: str(h.Builder) || "(no builder)",
     createdAt: stamp(h.DateCreated),
     updatedAt: stamp(h["Date Modified"]) ?? stamp(h.DateCreated),
   });
+  }
+}
+
+for (const input of inputs) {
+  const tables = await loadInput(input);
+  if (!tables.Header) throw new Error(`${input}: missing Header table`);
+  const missing = SECTION_TABLES.filter((t) => !tables[t]);
+  console.log(
+    `${input}: ${tables.Header.rows.length} header rows` +
+      (missing.length ? ` (no ${missing.join(", ")} file)` : ""),
+  );
+  assembleSource(tables);
 }
 
 // ----- write --------------------------------------------------------------
@@ -612,14 +636,36 @@ db.exec(`
 const version = db.pragma("user_version", { simple: true }) as number;
 if (version < 4) db.pragma("user_version = 4");
 
-// Script-owned dedupe ledger: which legacy Cut Sheet #s are already in this
-// DB, and which row each became. The app never reads this table.
+// Script-owned dedupe ledger: which legacy sheets are already in this DB,
+// and which row each became. The app never reads this table. Keyed by
+// propNumber|CutSheet#|BUILDER (see Assembled.key) because Cut Sheet # alone
+// collides across the per-letter Access databases.
 db.exec(`
   CREATE TABLE IF NOT EXISTS legacy_imports (
-    legacy_id INTEGER PRIMARY KEY,
+    key TEXT PRIMARY KEY,
     cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE
   );
 `);
+
+// Migrate a v1 ledger (legacy_id INTEGER PRIMARY KEY, written by the first K
+// import): rebuild each key from the cutsheet row the id maps to.
+const ledgerCols = db.prepare("PRAGMA table_info(legacy_imports)").all() as { name: string }[];
+if (ledgerCols.some((c) => c.name === "legacy_id")) {
+  db.exec(`
+    CREATE TABLE legacy_imports_v2 (
+      key TEXT PRIMARY KEY,
+      cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE
+    );
+    INSERT INTO legacy_imports_v2 (key, cutsheet_id)
+      SELECT json_extract(c.data, '$.header.propNumber') || '|' || li.legacy_id || '|' ||
+             UPPER(TRIM(json_extract(c.data, '$.header.builder'))),
+             li.cutsheet_id
+      FROM legacy_imports li JOIN cutsheets c ON c.id = li.cutsheet_id;
+    DROP TABLE legacy_imports;
+    ALTER TABLE legacy_imports_v2 RENAME TO legacy_imports;
+  `);
+  console.log("migrated legacy_imports ledger to composite keys");
+}
 
 const existing = (db.prepare("SELECT COUNT(*) AS n FROM cutsheets").get() as { n: number }).n;
 const ledger = (db.prepare("SELECT COUNT(*) AS n FROM legacy_imports").get() as { n: number }).n;
@@ -631,10 +677,8 @@ if (existing > 0 && ledger === 0 && !force) {
   );
   process.exit(1);
 }
-const alreadyImported = new Set<number>(
-  (db.prepare("SELECT legacy_id FROM legacy_imports").all() as { legacy_id: number }[]).map(
-    (r) => r.legacy_id,
-  ),
+const alreadyImported = new Set<string>(
+  (db.prepare("SELECT key FROM legacy_imports").all() as { key: string }[]).map((r) => r.key),
 );
 
 const insertFolder = db.prepare(
@@ -649,7 +693,7 @@ const insertSheet = db.prepare(
    VALUES (?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))`,
 );
 const recordImport = db.prepare(
-  "INSERT INTO legacy_imports (legacy_id, cutsheet_id) VALUES (?, ?)",
+  "INSERT INTO legacy_imports (key, cutsheet_id) VALUES (?, ?)",
 );
 
 const ALPHABET = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
@@ -683,7 +727,7 @@ const seed = db.transaction(() => {
   );
 
   for (const a of assembled) {
-    if (alreadyImported.has(a.legacyId)) {
+    if (alreadyImported.has(a.key)) {
       skipped++;
       continue;
     }
@@ -704,7 +748,11 @@ const seed = db.transaction(() => {
       a.createdAt,
       a.updatedAt,
     );
-    recordImport.run(a.legacyId, Number(res.lastInsertRowid));
+    recordImport.run(a.key, Number(res.lastInsertRowid));
+    // Keep the in-memory set current so the same sheet appearing twice within
+    // one run (e.g. a template exported into several letter directories) is
+    // skipped instead of violating the ledger's PRIMARY KEY.
+    alreadyImported.add(a.key);
     imported++;
   }
 });
@@ -712,6 +760,7 @@ seed();
 
 console.log(`imported ${imported} cutsheets into ${dbPath}`);
 if (skipped > 0) console.log(`skipped ${skipped} already-imported (legacy_imports ledger)`);
+if (emptySkipped > 0) console.log(`skipped ${emptySkipped} empty Access artifact rows`);
 console.log(`folders created: ${foldersCreated}`);
 console.log(`legacy leftover lines preserved in Miscellaneous: ${leftoverTotal}`);
 if (failures.length > 0) {
