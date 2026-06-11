@@ -587,7 +587,7 @@ function Page2() {
           <span className="text-[8pt]">Cutsheet Pad #_____________________</span>
         </div>
       </header>
-      <div className="grid flex-1 grid-cols-4">
+      <div className="grid flex-1 grid-cols-4 border-l border-black">
         {Array.from({ length: FITTING_BOX_COUNT }).map((_, i) => (
           <FittingBox key={i} />
         ))}
@@ -598,7 +598,7 @@ function Page2() {
 
 function FittingBox() {
   return (
-    <div className="flex flex-col border border-black border-l-0 border-t-0 first:border-l">
+    <div className="flex flex-col border border-black border-l-0 border-t-0">
       <div className="flex items-center justify-between gap-1 border-b border-black px-1.5 py-0.5">
         <div className="flex items-center gap-1.5 text-[7.5pt] font-medium uppercase tracking-wide">
           <span>SL?</span>

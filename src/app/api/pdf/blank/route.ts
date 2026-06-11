@@ -9,11 +9,13 @@ export const dynamic = "force-dynamic";
 // pad master. The shop's printer has 11x17 loaded so we use all of it for
 // readability instead of cramming on Legal. Tight margins so the design
 // gets close to the trim edge.
-export async function GET() {
+export async function GET(req: Request) {
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
+  // A TLS-terminating proxy sets x-forwarded-proto; without one, the actual
+  // request scheme is the right answer (LAN IPs and 127.0.0.1 are plain http).
   const proto =
-    h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
   const printUrl = `${proto}://${host}/print/blank`;
 
   // preferCSSPageSize lets the print page's @page rule lock the size,

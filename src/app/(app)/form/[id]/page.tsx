@@ -208,8 +208,11 @@ export default async function EditCutsheetPage({
       : 0;
   const isHouse = houseSiblingCount > 1;
 
+  // key={row.id}: same-segment navigations (e.g. Clone's /form/A → /form/B
+  // redirect) reconcile in place otherwise, carrying touched uncontrolled
+  // inputs and row-count state from the old cutsheet into the new one.
   return (
-    <div className="space-y-6">
+    <div key={row.id} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <input

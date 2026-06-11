@@ -12,7 +12,13 @@ type CutsheetRow = {
   updated_at: string;
 };
 
-type LotRow = { id: number; lot: string | null; deliveryDate: string | null };
+type LotRow = {
+  id: number;
+  lot: string | null;
+  deliveryDate: string | null;
+  propNumber: string | null;
+  builder: string | null;
+};
 
 type SearchParams = {
   name?: string;
@@ -42,15 +48,18 @@ export default async function SearchPage({
 
   // Build the WHERE clause dynamically. Each populated filter contributes one
   // AND clause + one named param; missing filters drop out entirely.
+  // User-typed % and _ are LIKE wildcards — escape them so searches match
+  // the literal text.
+  const escapeLike = (s: string) => s.replace(/[\\%_]/g, "\\$&");
   const wheres: string[] = [];
   const params: Record<string, string> = {};
   if (filters.name) {
-    wheres.push("LOWER(json_extract(data, '$.name')) LIKE @name");
-    params.name = `%${filters.name.toLowerCase()}%`;
+    wheres.push("LOWER(json_extract(data, '$.name')) LIKE @name ESCAPE '\\'");
+    params.name = `%${escapeLike(filters.name.toLowerCase())}%`;
   }
   if (filters.builder) {
-    wheres.push("LOWER(json_extract(data, '$.header.builder')) LIKE @builder");
-    params.builder = `%${filters.builder.toLowerCase()}%`;
+    wheres.push("LOWER(json_extract(data, '$.header.builder')) LIKE @builder ESCAPE '\\'");
+    params.builder = `%${escapeLike(filters.builder.toLowerCase())}%`;
   }
   if (filters.lot) {
     wheres.push("json_extract(data, '$.header.lot') = @lot");
@@ -222,12 +231,21 @@ function FilterField({
 // must be within DUPLICATE_WINDOW_DAYS of each other, and the lot must match
 // non-empty. Incomplete cutsheets (missing date or lot) never trigger the
 // warning, which keeps the badge useful instead of noisy.
+//
+// Two exclusions keep multi-builder shops and multi-zone houses from
+// drowning the badge in false positives:
+// - same non-empty propNumber → these are zones of one house (the combined
+//   house PDF depends on them sharing propNumber + lot), not duplicates
+// - both builders non-empty and different → "Lot 12" is only unique within
+//   a builder, so cross-builder collisions are coincidence, not dups
 function findDuplicateLotIds(): Set<number> {
   const all = db
     .prepare(
       `SELECT id,
         json_extract(data, '$.header.lot') AS lot,
-        json_extract(data, '$.header.deliveryDate') AS deliveryDate
+        json_extract(data, '$.header.deliveryDate') AS deliveryDate,
+        json_extract(data, '$.header.propNumber') AS propNumber,
+        json_extract(data, '$.header.builder') AS builder
       FROM cutsheets
       WHERE deleted_at IS NULL
         AND json_extract(data, '$.header.lot') IS NOT NULL
@@ -252,13 +270,21 @@ function findDuplicateLotIds(): Set<number> {
     if (group.length < 2) continue;
     for (let i = 0; i < group.length; i++) {
       for (let j = i + 1; j < group.length; j++) {
-        const a = group[i]!.deliveryDate;
-        const b = group[j]!.deliveryDate;
-        if (!a || !b) continue;
-        const diff = Math.abs(new Date(a).getTime() - new Date(b).getTime());
+        const x = group[i]!;
+        const y = group[j]!;
+        if (!x.deliveryDate || !y.deliveryDate) continue;
+        const propX = (x.propNumber ?? "").trim();
+        const propY = (y.propNumber ?? "").trim();
+        if (propX && propX === propY) continue;
+        const builderX = (x.builder ?? "").trim().toLowerCase();
+        const builderY = (y.builder ?? "").trim().toLowerCase();
+        if (builderX && builderY && builderX !== builderY) continue;
+        const diff = Math.abs(
+          new Date(x.deliveryDate).getTime() - new Date(y.deliveryDate).getTime(),
+        );
         if (diff <= windowMs) {
-          dups.add(group[i]!.id);
-          dups.add(group[j]!.id);
+          dups.add(x.id);
+          dups.add(y.id);
         }
       }
     }

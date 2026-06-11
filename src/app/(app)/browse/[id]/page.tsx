@@ -142,6 +142,7 @@ export default async function FolderPage({
         </Card>
       ) : (
         <BrowseGrid
+          key={folder.id}
           folders={folders}
           cutsheets={cutsheets}
           view={view}

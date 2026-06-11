@@ -38,7 +38,13 @@ export async function renderPdfFromUrl(
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    await page.goto(url, { waitUntil: "networkidle0" });
+    const res = await page.goto(url, { waitUntil: "networkidle0" });
+    // The existence checks in the API routes catch most bad inputs, but a
+    // schema-invalid row still notFound()s in the print page — without this
+    // guard the user downloads Next's 404 page as a PDF with HTTP 200.
+    if (!res || res.status() >= 400) {
+      throw new Error(`Print page ${url} responded ${res ? res.status() : "with no response"}`);
+    }
     const pdf = await page.pdf({
       format: options.format ?? "Letter",
       printBackground: true,

@@ -26,6 +26,7 @@ export default async function PrintHousePage({
          AND json_extract(data, '$.header.propNumber') = ?
          AND json_extract(data, '$.header.lot') = ?
        ORDER BY
+         CAST(json_extract(data, '$.header.zone') AS INTEGER) ASC,
          json_extract(data, '$.header.zone') ASC,
          id ASC`,
     )

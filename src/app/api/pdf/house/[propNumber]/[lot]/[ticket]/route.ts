@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const VALID_TICKETS = new Set(["stock", "custom", "truck"]);
 
 export async function GET(
-  _req: Request,
+  req: Request,
   {
     params,
   }: {
@@ -38,7 +38,9 @@ export async function GET(
 
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  // A TLS-terminating proxy sets x-forwarded-proto; without one, the actual
+  // request scheme is the right answer (LAN IPs and 127.0.0.1 are plain http).
+  const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
   const printUrl = `${proto}://${host}/print/house/${encodeURIComponent(propNumber)}/${encodeURIComponent(lot)}/${ticket}`;
 
   const pdf = await renderPdfFromUrl(printUrl);
@@ -46,7 +48,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="house-${propNumber}-${lot}-${ticket}.pdf"`,
+      "Content-Disposition": `inline; filename="house-${encodeURIComponent(propNumber)}-${encodeURIComponent(lot)}-${ticket}.pdf"`,
     },
   });
 }
