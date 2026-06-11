@@ -13,12 +13,18 @@ import {
   type FolderItem,
 } from "@/components/folders/BrowseGrid";
 import { db } from "@/lib/db";
-import { ancestorChain, isDescendantOrSelf, listAllFolders, withPaths } from "@/lib/folders";
+import {
+  ancestorChain,
+  isDescendantOrSelf,
+  listAllFolders,
+  subtreeCutsheetCounts,
+  withPaths,
+} from "@/lib/folders";
 import { moveFolder, renameFolder } from "@/lib/actions";
 
 type Folder = { id: number; name: string; parent_id: number | null };
 type CutsheetRow = { id: number; data: string; updated_at: string };
-type SubfolderRow = { id: number; name: string; cutsheet_count: number };
+type SubfolderRow = { id: number; name: string };
 
 export const dynamic = "force-dynamic";
 
@@ -52,14 +58,12 @@ export default async function FolderPage({
 
   const subfolderRows = db
     .prepare<[number], SubfolderRow>(
-      `SELECT f.id, f.name,
-              (SELECT COUNT(*) FROM cutsheets c
-                 WHERE c.folder_id = f.id AND c.deleted_at IS NULL) AS cutsheet_count
-       FROM folders f
+      `SELECT f.id, f.name FROM folders f
        WHERE f.parent_id = ?
        ORDER BY f.name COLLATE NOCASE ASC`,
     )
     .all(numeric);
+  const counts = subtreeCutsheetCounts();
 
   const cutsheetRows = db
     .prepare<[number], CutsheetRow>(
@@ -72,7 +76,7 @@ export default async function FolderPage({
   const folders: FolderItem[] = subfolderRows.map((f) => ({
     id: f.id,
     name: f.name,
-    cutsheetCount: f.cutsheet_count,
+    cutsheetCount: counts.get(f.id) ?? 0,
   }));
   const cutsheets: CutsheetItem[] = cutsheetRows.map((r) => toCutsheetItem(r));
 
@@ -124,7 +128,7 @@ export default async function FolderPage({
           <DeleteFolderButton
             folderId={folder.id}
             folderName={folder.name}
-            cutsheetCount={cutsheets.length}
+            cutsheetCount={counts.get(folder.id) ?? 0}
           />
         </div>
       </div>

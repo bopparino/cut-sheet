@@ -1,17 +1,22 @@
 /**
- * One-time seed: import legacy Access-table exports into the cutsheets DB.
+ * Seed/append: import legacy Access-table exports into the cutsheets DB.
  *
- * Input: a JSON file produced from the five tbl_Cut_Sheet_Library_*.xlsx
- * exports (Header, Custom_Duct, Stock_Duct, PreFab, DuctBoard), shaped as
- *   { [tableName]: { headers: string[], rows: Record<string, unknown>[] } }
- * with every row carrying `property_number` and `Cut Sheet #` join keys.
+ * Inputs (any mix, repeatable): directories containing the five
+ * tbl_Cut_Sheet_Library_*.xlsx exports (Header, Custom_Duct, Stock_Duct,
+ * PreFab, DuctBoard — one letter's worth per directory), or pre-converted
+ * JSON files shaped as
+ *   { [tableName]: { headers: string[], rows: Record<string, unknown>[] } }.
+ * Every row carries `property_number` and `Cut Sheet #` join keys.
  *
  * Usage:
- *   npx tsx scripts/import-legacy.ts <raw.json> [--force]
+ *   npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force]
  *
  * DATABASE_PATH picks the target DB (defaults to ./data/cutsheets.db, same
- * as the app). Refuses to run against a non-empty cutsheets table unless
- * --force is passed, so a re-run can't silently double-seed.
+ * as the app). Safe to re-run and to append later letters: imported legacy
+ * ids are recorded in a script-owned `legacy_imports` table (the app never
+ * reads it) and already-imported sheets are skipped. Folder structure is
+ * found-or-created by name, never duplicated. --force is only needed against
+ * a non-empty DB that predates the legacy_imports ledger.
  *
  * Mapping decisions (per Austin, 2026-06-11):
  * - DuctBoard table is skipped entirely (no longer used).
@@ -24,25 +29,21 @@
  *   plus IMPORTS > A-Z > <builder> holding the imported sheets, lettered by
  *   the builder's first character ("#" catch-all for non-letter builders).
  */
-import { readFileSync } from "node:fs";
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
+import ExcelJS from "exceljs";
 import { CutsheetSchema, emptyCutsheet, type Cutsheet } from "../src/lib/schema";
 
 type Row = Record<string, unknown>;
 type Tables = Record<string, { headers: string[]; rows: Row[] }>;
 
-const [, , inputPath, ...flags] = process.argv;
-if (!inputPath) {
-  console.error("usage: npx tsx scripts/import-legacy.ts <raw.json> [--force]");
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const inputs = args.filter((a) => a !== "--force");
+if (inputs.length === 0) {
+  console.error("usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force]");
   process.exit(1);
-}
-const force = flags.includes("--force");
-
-const raw = JSON.parse(readFileSync(resolve(inputPath), "utf8")) as Tables;
-for (const t of ["Header", "Custom_Duct", "Stock_Duct", "PreFab"]) {
-  if (!raw[t]) throw new Error(`input JSON is missing table ${t}`);
 }
 
 // ----- coercion helpers --------------------------------------------------
@@ -61,6 +62,85 @@ const present = (v: unknown): boolean => {
   if (typeof v === "number") return v !== 0;
   return str(v) !== "" && str(v) !== "0";
 };
+
+// ----- input loading ------------------------------------------------------
+
+const REQUIRED_TABLES = ["Header", "Custom_Duct", "Stock_Duct", "PreFab"];
+
+// Excel serial dates come out of exceljs as UTC Date objects; format with the
+// UTC getters so '2021-07-06 08:30:21' survives the round trip unshifted.
+function fmtDate(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ` +
+    `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`
+  );
+}
+
+function cellValue(v: ExcelJS.CellValue): unknown {
+  if (v == null) return null;
+  if (v instanceof Date) return fmtDate(v);
+  if (typeof v === "object") {
+    if ("richText" in v) return v.richText.map((rt) => rt.text).join("");
+    if ("text" in v) return cellValue(v.text as ExcelJS.CellValue);
+    if ("result" in v) return cellValue(v.result as ExcelJS.CellValue);
+    return null; // error cells etc.
+  }
+  return v;
+}
+
+async function readXlsxTable(path: string): Promise<{ headers: string[]; rows: Row[] }> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(path);
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error(`${path}: workbook has no sheets`);
+  const headers: string[] = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (c, col) => {
+    headers[col - 1] = str(cellValue(c.value));
+  });
+  const rows: Row[] = [];
+  ws.eachRow((row, n) => {
+    if (n === 1) return;
+    const r: Row = {};
+    headers.forEach((h, i) => {
+      if (h) r[h] = cellValue(row.getCell(i + 1).value);
+    });
+    rows.push(r);
+  });
+  return { headers: headers.filter(Boolean), rows };
+}
+
+async function loadInput(path: string): Promise<Tables> {
+  const full = resolve(path);
+  if (statSync(full).isDirectory()) {
+    const out: Tables = {};
+    for (const f of readdirSync(full)) {
+      const m = /^tbl_Cut_Sheet_Library_(.+)\.xlsx$/i.exec(f);
+      if (!m) continue;
+      out[m[1]] = await readXlsxTable(join(full, f));
+    }
+    return out;
+  }
+  return JSON.parse(readFileSync(full, "utf8")) as Tables;
+}
+
+// Merge all inputs into one table set; assembly below joins on Cut Sheet #
+// regardless of which letter-directory a row arrived from.
+const raw: Tables = {};
+for (const input of inputs) {
+  const tables = await loadInput(input);
+  const found = REQUIRED_TABLES.filter((t) => tables[t]);
+  if (found.length < REQUIRED_TABLES.length) {
+    throw new Error(
+      `${input}: missing table(s) ${REQUIRED_TABLES.filter((t) => !tables[t]).join(", ")}`,
+    );
+  }
+  for (const [name, t] of Object.entries(tables)) {
+    if (!raw[name]) raw[name] = { headers: t.headers, rows: [] };
+    raw[name].rows.push(...t.rows);
+  }
+  console.log(`${input}: ${tables.Header.rows.length} header rows`);
+}
 
 // ----- index the four live tables by Cut Sheet # -------------------------
 
@@ -429,6 +509,7 @@ const EQ_MAP: Record<string, "Job" | "Whs" | "Hold"> = { J: "Job", W: "Whs", H: 
 const REGIONS = new Set(["MD", "VA", "WV"]);
 
 type Assembled = {
+  legacyId: number;
   cutsheet: Cutsheet;
   builder: string;
   createdAt: string | null;
@@ -483,6 +564,7 @@ for (const h of headerRows) {
     continue;
   }
   assembled.push({
+    legacyId: id,
     cutsheet: parsed.data,
     builder: str(h.Builder) || "(no builder)",
     createdAt: stamp(h.DateCreated),
@@ -530,20 +612,44 @@ db.exec(`
 const version = db.pragma("user_version", { simple: true }) as number;
 if (version < 4) db.pragma("user_version = 4");
 
+// Script-owned dedupe ledger: which legacy Cut Sheet #s are already in this
+// DB, and which row each became. The app never reads this table.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS legacy_imports (
+    legacy_id INTEGER PRIMARY KEY,
+    cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE
+  );
+`);
+
 const existing = (db.prepare("SELECT COUNT(*) AS n FROM cutsheets").get() as { n: number }).n;
-if (existing > 0 && !force) {
+const ledger = (db.prepare("SELECT COUNT(*) AS n FROM legacy_imports").get() as { n: number }).n;
+if (existing > 0 && ledger === 0 && !force) {
   console.error(
-    `cutsheets table already has ${existing} rows — pass --force to append anyway`,
+    `cutsheets table has ${existing} rows but no legacy_imports ledger — ` +
+      `this DB predates dedupe, so a re-import would duplicate. ` +
+      `Pass --force only if you're sure these inputs aren't already in it.`,
   );
   process.exit(1);
 }
+const alreadyImported = new Set<number>(
+  (db.prepare("SELECT legacy_id FROM legacy_imports").all() as { legacy_id: number }[]).map(
+    (r) => r.legacy_id,
+  ),
+);
 
 const insertFolder = db.prepare(
   "INSERT INTO folders (name, parent_id) VALUES (?, ?)",
 );
+// `parent_id IS ?` (not =) so a NULL parent matches top-level folders.
+const findFolder = db.prepare(
+  "SELECT id FROM folders WHERE name = ? AND parent_id IS ?",
+);
 const insertSheet = db.prepare(
   `INSERT INTO cutsheets (data, folder_id, created_at, updated_at)
    VALUES (?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))`,
+);
+const recordImport = db.prepare(
+  "INSERT INTO legacy_imports (legacy_id, cutsheet_id) VALUES (?, ?)",
 );
 
 const ALPHABET = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
@@ -553,44 +659,60 @@ const builderLetter = (builder: string) => {
 };
 
 let foldersCreated = 0;
+let imported = 0;
+let skipped = 0;
 const builderFolderIds = new Map<string, number>();
 const seed = db.transaction(() => {
-  const mkFolder = (name: string, parentId: number | null) => {
+  // Find-or-create, so re-runs and later letter batches reuse the existing
+  // tree instead of duplicating it.
+  const folder = (name: string, parentId: number | null) => {
+    const found = findFolder.get(name, parentId) as { id: number } | undefined;
+    if (found) return found.id;
     foldersCreated++;
     return Number(insertFolder.run(name, parentId).lastInsertRowid);
   };
 
   // Empty A-Z folders at the top level for day-to-day filing.
-  for (const l of ALPHABET) mkFolder(l, null);
+  for (const l of ALPHABET) folder(l, null);
 
   // IMPORTS > A-Z, created up front so the imported tree is complete even
   // for letters with no current builder.
-  const importsId = mkFolder("IMPORTS", null);
+  const importsId = folder("IMPORTS", null);
   const letterIds = new Map<string, number>(
-    ALPHABET.map((l) => [l, mkFolder(l, importsId)]),
+    ALPHABET.map((l) => [l, folder(l, importsId)]),
   );
 
   for (const a of assembled) {
+    if (alreadyImported.has(a.legacyId)) {
+      skipped++;
+      continue;
+    }
     let folderId = builderFolderIds.get(a.builder);
     if (folderId == null) {
       const letter = builderLetter(a.builder);
       let letterId = letterIds.get(letter);
       if (letterId == null) {
-        letterId = mkFolder(letter, importsId); // "#" catch-all, created lazily
+        letterId = folder(letter, importsId); // "#" catch-all, created lazily
         letterIds.set(letter, letterId);
       }
-      folderId = mkFolder(a.builder, letterId);
+      folderId = folder(a.builder, letterId);
       builderFolderIds.set(a.builder, folderId);
     }
-    insertSheet.run(JSON.stringify(a.cutsheet), folderId, a.createdAt, a.updatedAt);
+    const res = insertSheet.run(
+      JSON.stringify(a.cutsheet),
+      folderId,
+      a.createdAt,
+      a.updatedAt,
+    );
+    recordImport.run(a.legacyId, Number(res.lastInsertRowid));
+    imported++;
   }
 });
 seed();
 
-console.log(`imported ${assembled.length} cutsheets into ${dbPath}`);
-console.log(
-  `folders created: ${foldersCreated} (A-Z, IMPORTS/A-Z, ${builderFolderIds.size} builder folders)`,
-);
+console.log(`imported ${imported} cutsheets into ${dbPath}`);
+if (skipped > 0) console.log(`skipped ${skipped} already-imported (legacy_imports ledger)`);
+console.log(`folders created: ${foldersCreated}`);
 console.log(`legacy leftover lines preserved in Miscellaneous: ${leftoverTotal}`);
 if (failures.length > 0) {
   console.error(`FAILED validation: ${failures.length}`);

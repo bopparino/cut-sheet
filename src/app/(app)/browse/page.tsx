@@ -9,7 +9,7 @@ import {
   type FolderItem,
 } from "@/components/folders/BrowseGrid";
 import { db } from "@/lib/db";
-import { listAllFolders, withPaths } from "@/lib/folders";
+import { listAllFolders, subtreeCutsheetCounts, withPaths } from "@/lib/folders";
 
 type CutsheetRow = {
   id: number;
@@ -17,7 +17,7 @@ type CutsheetRow = {
   folder_id: number | null;
   updated_at: string;
 };
-type FolderRow = { id: number; name: string; cutsheet_count: number };
+type FolderRow = { id: number; name: string };
 
 export const dynamic = "force-dynamic";
 
@@ -40,14 +40,12 @@ export default async function BrowsePage({
 
   const folderRows = db
     .prepare<[], FolderRow>(
-      `SELECT f.id, f.name,
-              (SELECT COUNT(*) FROM cutsheets c
-                 WHERE c.folder_id = f.id AND c.deleted_at IS NULL) AS cutsheet_count
-       FROM folders f
+      `SELECT f.id, f.name FROM folders f
        WHERE f.parent_id IS NULL
        ORDER BY f.name COLLATE NOCASE ASC`,
     )
     .all();
+  const counts = subtreeCutsheetCounts();
 
   const unfiledRows = db
     .prepare<[], CutsheetRow>(
@@ -61,7 +59,7 @@ export default async function BrowsePage({
   const folders: FolderItem[] = folderRows.map((f) => ({
     id: f.id,
     name: f.name,
-    cutsheetCount: f.cutsheet_count,
+    cutsheetCount: counts.get(f.id) ?? 0,
   }));
   const cutsheets: CutsheetItem[] = unfiledRows.map((r) => toCutsheetItem(r));
 
