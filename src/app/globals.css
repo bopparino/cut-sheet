@@ -50,6 +50,8 @@
    THEME: Amber Alabaster / Solar Industrial — scoped overrides
    Applied via .theme-insight on the (app) body. Print routes do
    NOT receive this class, so PDFs render with the defaults above.
+   Dark variant (.dark .theme-insight) is appended at the bottom of
+   this file; next-themes toggles the .dark class on <html>.
 ═══════════════════════════════════════════════════════════ */
 .theme-insight {
   --radius: 0.75rem;
@@ -198,3 +200,73 @@
 .theme-insight .btn-glow:active:not(:disabled) {
   transform: translateY(0.5px) scale(0.985);
 }
+/* ============================================================
+   theme-insight · DARK extension  (Amber Alabaster, warm-stone)
+   ------------------------------------------------------------
+   Your shipped `.theme-insight` is light-only. This adds a dark
+   variant that keeps the orange identity. Paste into globals.css.
+   Gate it with whatever you use to toggle dark (the prototype
+   sets a `dark` class on the root, so `.dark .theme-insight`
+   below matches your `@custom-variant dark` convention).
+
+   Light values are unchanged — your existing `.theme-insight`
+   block already matches the prototype. Only dark is new.
+   ============================================================ */
+
+.dark .theme-insight {
+  /* shadcn core */
+  --background: #17130F;
+  --foreground: #FAF7F4;
+  --card: #211C17;
+  --card-foreground: #FAF7F4;
+  --popover: #211C17;
+  --popover-foreground: #FAF7F4;
+  --primary: #FF9D2E;           /* slightly lifted so it reads on dark */
+  --primary-foreground: #1A1206;
+  --secondary: #2E2720;
+  --secondary-foreground: #FAF7F4;
+  --muted: #26201A;
+  --muted-foreground: #C4BCB2;
+  --accent: #FFB04D;
+  --accent-foreground: #1A1206;
+  --destructive: #F87171;
+  --border: #383029;
+  --input: #383029;
+  --ring: #FF9D2E;
+
+  /* Insight extension tokens */
+  --accent-mid: #FFB04D;
+  --accent-glow: rgba(255, 157, 46, 0.18);
+  --accent-glow-strong: rgba(255, 157, 46, 0.30);
+  --shadow-glow: 0 0 20px rgba(255, 157, 46, 0.14);
+
+  --gray-50:  #1B1611;
+  --gray-100: #26201A;
+  --gray-200: #383029;
+  --gray-300: #4A4036;
+  --gray-400: #8A8178;
+  --gray-600: #C4BCB2;
+  --gray-800: #FAF7F4;
+  --gray-900: #FFFFFF;
+
+  /* status chips on dark */
+  --status-draft-bg:        #2E2720;
+  --status-draft-text:      #A8A29E;
+  --status-proposed-bg:     rgba(255, 157, 46, 0.16);
+  --status-proposed-text:   #FFB659;
+  --status-contracted-bg:   rgba(52, 211, 153, 0.14);
+  --status-contracted-text: #6EE7B7;
+  --status-complete-bg:     #FAF7F4;
+  --status-complete-text:   #17130F;
+  --status-lost-bg:         rgba(248, 113, 113, 0.14);
+  --status-lost-text:       #FCA5A5;
+}
+
+/* Optional: soften the LED button glow on dark so it doesn't bloom. */
+.dark .theme-insight .btn-glow {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 157, 46, 0.35);
+}
+

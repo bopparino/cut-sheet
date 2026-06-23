@@ -88,7 +88,7 @@ export default async function FolderPage({
   const move = moveFolder.bind(null, folder.id);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-8 py-7">
       <Breadcrumbs chain={breadcrumb} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">

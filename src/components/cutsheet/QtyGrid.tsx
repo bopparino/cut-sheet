@@ -90,7 +90,7 @@ function LabeledQty({
         step={1}
         defaultValue={defaultValue === 0 ? "" : defaultValue}
         placeholder="0"
-        className="h-8 w-full text-right tabular-nums"
+        className="font-mono-data h-8 w-full text-right tabular-nums [&:not(:placeholder-shown)]:border-primary/50 [&:not(:placeholder-shown)]:bg-primary/5 [&:not(:placeholder-shown)]:font-semibold"
       />
     </div>
   );
