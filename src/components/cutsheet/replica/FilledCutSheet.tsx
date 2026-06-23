@@ -85,20 +85,24 @@ function VBox({ v, black }: { v?: string; black?: boolean }) {
   );
 }
 
-function VRow({ label, v }: { label: string; v: string }) {
+// `ruled` matches blank2's 60" Duct — gray rules under each row to fill the
+// otherwise-sparse tall column.
+function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-1">
+    <div
+      className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
+    >
       <span className="truncate leading-[1.3]">{label}</span>
       <VBox v={v} />
     </div>
   );
 }
 
-function VList({ items }: { items: { label: string; v: string }[] }) {
+function VList({ items, ruled = true }: { items: { label: string; v: string }[]; ruled?: boolean }) {
   return (
-    <div className="space-y-px">
+    <div className={ruled ? "space-y-1" : "space-y-px"}>
       {items.map((it) => (
-        <VRow key={it.label} label={it.label} v={it.v} />
+        <VRow key={it.label} label={it.label} v={it.v} ruled={ruled} />
       ))}
     </div>
   );
@@ -126,9 +130,9 @@ function VMultiTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="px-0.5 py-0 text-[8pt] leading-[1.3]">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{r.label}</td>
             {r.cells.map((cell, i) => (
-              <td key={i} className="px-0 py-px text-center">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 <VBox v={"v" in cell ? cell.v : undefined} black={"black" in cell} />
               </td>
             ))}
@@ -263,7 +267,7 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
       <div className="grid grid-cols-4">
         <div>
           <Section title='60" Duct'>
-            <VList items={DUCT60_SIZES.map((s) => ({ label: duct60Label(s), v: num(d.stock.duct60[s]) }))} />
+            <VList items={DUCT60_SIZES.map((s) => ({ label: duct60Label(s), v: num(d.stock.duct60[s]) }))} ruled />
           </Section>
           <Section title="S D / Misc">
             <VList items={(["drive24", "slips26", "mastic", "brushes"] as const).map((k) => ({ label: SD_MISC_LABELS[k], v: num(d.stock.sdMisc[k]) }))} />
@@ -274,9 +278,12 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
             <WHFilled rows={d.custom.customDuct} min={12} withL />
           </Section>
           <Section title="Miscellaneous">
+            {/* 7 lines standard, more if the data has more. */}
             <div className="space-y-px text-[8pt]">
-              {(d.custom.miscellaneous.length ? d.custom.miscellaneous : [""]).map((m, i) => (
-                <div key={i} className="min-h-[11pt] border-b border-black/30">{m}</div>
+              {Array.from({ length: Math.max(7, d.custom.miscellaneous.length) }).map((_, i) => (
+                <div key={i} className="min-h-[11pt] border-b border-black/30">
+                  {d.custom.miscellaneous[i] ?? ""}
+                </div>
               ))}
             </div>
           </Section>
@@ -381,8 +388,8 @@ function CutPage({ data: d }: { data: Cutsheet }) {
           <Section title="Elbows">
             <VMultiTable cols={["Qty"]} rows={RND_ELL_SIZES.map((s) => ({ label: `${s}"`, cells: [{ v: num(fo.rndEll[s]) }] }))} />
           </Section>
-          <Section title="Boots (Ell / Rnd / Strt)">
-            <VMultiTable cols={["Ell", "Rnd", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
+          <Section title="Boots (Ell / End / Strt)">
+            <VMultiTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
           </Section>
           <Section title="Air Tights">
             <VList items={FLEX_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.airTights[s]) }))} />

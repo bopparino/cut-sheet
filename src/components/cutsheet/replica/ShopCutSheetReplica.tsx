@@ -50,7 +50,7 @@ export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
         {/* Col 1 */}
         <div>
           <Section title='60" Duct'>
-            <QtyInputList prefix="duct60" sizes={DUCT60_SIZES} values={d.stock.duct60} label={duct60Label} />
+            <QtyInputList prefix="duct60" sizes={DUCT60_SIZES} values={d.stock.duct60} label={duct60Label} ruled />
           </Section>
           <Section title="S D / Misc">
             <QtyInputList prefix="sdMisc" sizes={SD_MISC_KEYS} values={d.stock.sdMisc} label={(k) => SD_MISC_LABELS[k]} />
@@ -62,7 +62,7 @@ export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
             <CustomDuctInputTable prefix="customDuct" rows={12} initial={d.custom.customDuct} />
           </Section>
           <Section title="Miscellaneous">
-            <MiscInputList prefix="miscellaneous" rows={6} initial={d.custom.miscellaneous} />
+            <MiscInputList prefix="miscellaneous" rows={7} initial={d.custom.miscellaneous} />
           </Section>
           <Section title="Canvas Conn">
             <WHInputTable prefix="canvasConn" rows={5} initial={d.custom.canvasConn} />

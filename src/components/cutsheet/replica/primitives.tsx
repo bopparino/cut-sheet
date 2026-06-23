@@ -53,16 +53,24 @@ export function QtyInputList<T extends string>({
   sizes,
   values,
   label,
+  // Light gray rule under each row — applied across all qty-list sections for a
+  // cohesive ledger look (the thick-black-border W/H tables, the fitting grid,
+  // and the register lists opt out by using different components).
+  ruled = true,
 }: {
   prefix: string;
   sizes: readonly T[];
   values: Record<T, number>;
   label?: (s: T) => string;
+  ruled?: boolean;
 }) {
   return (
-    <div className="space-y-0.5">
+    <div className={ruled ? "space-y-1" : "space-y-0.5"}>
       {sizes.map((s) => (
-        <div key={s} className="flex items-center justify-between gap-1">
+        <div
+          key={s}
+          className={`flex items-center justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
+        >
           <span className="truncate">{label ? label(s) : s}</span>
           <QtyInput name={`${prefix}.${s}`} value={values[s]} />
         </div>
@@ -81,7 +89,7 @@ export function SingletonInputRow({
   value: number;
 }) {
   return (
-    <div className="flex items-center justify-between gap-1">
+    <div className="flex items-center justify-between gap-1 border-b border-neutral-300 pb-0.5">
       <span className="truncate">{label}</span>
       <QtyInput name={name} value={value} />
     </div>
@@ -113,9 +121,9 @@ export function MultiQtyInputTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="px-0.5">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5">{r.label}</td>
             {r.cells.map((cell, i) => (
-              <td key={i} className="px-0 py-px text-center">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 {"blackout" in cell ? (
                   <span className="inline-block h-5 w-9 border border-black bg-black" />
                 ) : (

@@ -179,20 +179,24 @@ function Section({
   );
 }
 
-function QtyRow({ label }: { label: string }) {
+// `ruled` draws a light gray rule under each row — used on tall, sparse lists
+// (60" Duct) so the column reads as ledger lines instead of empty white space.
+function QtyRow({ label, ruled }: { label: string; ruled?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-1">
+    <div
+      className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
+    >
       <span className="truncate leading-[1.3]">{label}</span>
       <span className="h-[10pt] w-[18pt] shrink-0 border border-black" />
     </div>
   );
 }
 
-function QtyList({ items }: { items: readonly string[] }) {
+function QtyList({ items, ruled = true }: { items: readonly string[]; ruled?: boolean }) {
   return (
-    <div className="space-y-px">
+    <div className={ruled ? "space-y-1" : "space-y-px"}>
       {items.map((label) => (
-        <QtyRow key={label} label={label} />
+        <QtyRow key={label} label={label} ruled={ruled} />
       ))}
     </div>
   );
@@ -231,9 +235,9 @@ function MultiQtyTable({
       <tbody>
         {rows.map((size) => (
           <tr key={size}>
-            <td className="px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
             {cols.map((col, i) => (
-              <td key={i} className="px-0 py-px">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px">
                 <span
                   className={`block h-[10pt] w-[18pt] border border-black ${
                     blackout?.(col, size) ? "bg-black" : ""
@@ -339,7 +343,7 @@ function ShopPage() {
       <div className="grid grid-cols-4">
         <div>
           <Section title='60" Duct'>
-            <QtyList items={DUCT60_SIZES.map(duct60Label)} />
+            <QtyList items={DUCT60_SIZES.map(duct60Label)} ruled />
           </Section>
           <Section title="S D / Misc">
             <QtyList items={['24" Drive', '26" Slips', "Mastic", "Brushes"]} />
@@ -350,7 +354,7 @@ function ShopPage() {
             <WHTable rows={12} withL />
           </Section>
           <Section title="Miscellaneous">
-            <WHTable rows={6} />
+            <WHTable rows={7} />
           </Section>
           <Section title="Canvas Conn">
             <WHTable rows={5} />
@@ -464,8 +468,8 @@ function CutPage() {
           <Section title="Elbows">
             <MultiQtyTable cols={["Qty"]} rows={RND_SIZES.map((s) => `${s}"`)} />
           </Section>
-          <Section title="Boots (Ell / Rnd / Strt)">
-            <MultiQtyTable cols={["Ell", "Rnd", "Strt"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
+          <Section title="Boots (Ell / End / Strt)">
+            <MultiQtyTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
           </Section>
           <Section title="Air Tights">
             <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />
