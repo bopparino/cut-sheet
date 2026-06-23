@@ -87,7 +87,7 @@ function VBox({ v, black }: { v?: string; black?: boolean }) {
 
 // `ruled` matches blank2's 60" Duct — gray rules under each row to fill the
 // otherwise-sparse tall column.
-function VRow({ label, v, ruled }: { label: string; v: string; ruled?: boolean }) {
+function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: boolean }) {
   return (
     <div
       className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
@@ -98,7 +98,7 @@ function VRow({ label, v, ruled }: { label: string; v: string; ruled?: boolean }
   );
 }
 
-function VList({ items, ruled }: { items: { label: string; v: string }[]; ruled?: boolean }) {
+function VList({ items, ruled = true }: { items: { label: string; v: string }[]; ruled?: boolean }) {
   return (
     <div className={ruled ? "space-y-1" : "space-y-px"}>
       {items.map((it) => (
@@ -130,9 +130,9 @@ function VMultiTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="px-0.5 py-0 text-[8pt] leading-[1.3]">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{r.label}</td>
             {r.cells.map((cell, i) => (
-              <td key={i} className="px-0 py-px text-center">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 <VBox v={"v" in cell ? cell.v : undefined} black={"black" in cell} />
               </td>
             ))}

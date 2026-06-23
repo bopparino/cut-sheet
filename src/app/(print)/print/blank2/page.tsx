@@ -192,7 +192,7 @@ function QtyRow({ label, ruled }: { label: string; ruled?: boolean }) {
   );
 }
 
-function QtyList({ items, ruled }: { items: readonly string[]; ruled?: boolean }) {
+function QtyList({ items, ruled = true }: { items: readonly string[]; ruled?: boolean }) {
   return (
     <div className={ruled ? "space-y-1" : "space-y-px"}>
       {items.map((label) => (
@@ -235,9 +235,9 @@ function MultiQtyTable({
       <tbody>
         {rows.map((size) => (
           <tr key={size}>
-            <td className="px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
             {cols.map((col, i) => (
-              <td key={i} className="px-0 py-px">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px">
                 <span
                   className={`block h-[10pt] w-[18pt] border border-black ${
                     blackout?.(col, size) ? "bg-black" : ""

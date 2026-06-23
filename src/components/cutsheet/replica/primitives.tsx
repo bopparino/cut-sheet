@@ -53,9 +53,10 @@ export function QtyInputList<T extends string>({
   sizes,
   values,
   label,
-  // Light gray rule under each row — keeps a tall, sparse list (60" Duct)
-  // from reading as empty white space.
-  ruled,
+  // Light gray rule under each row — applied across all qty-list sections for a
+  // cohesive ledger look (the thick-black-border W/H tables, the fitting grid,
+  // and the register lists opt out by using different components).
+  ruled = true,
 }: {
   prefix: string;
   sizes: readonly T[];
@@ -88,7 +89,7 @@ export function SingletonInputRow({
   value: number;
 }) {
   return (
-    <div className="flex items-center justify-between gap-1">
+    <div className="flex items-center justify-between gap-1 border-b border-neutral-300 pb-0.5">
       <span className="truncate">{label}</span>
       <QtyInput name={name} value={value} />
     </div>
@@ -120,9 +121,9 @@ export function MultiQtyInputTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="px-0.5">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5">{r.label}</td>
             {r.cells.map((cell, i) => (
-              <td key={i} className="px-0 py-px text-center">
+              <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 {"blackout" in cell ? (
                   <span className="inline-block h-5 w-9 border border-black bg-black" />
                 ) : (
