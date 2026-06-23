@@ -53,16 +53,23 @@ export function QtyInputList<T extends string>({
   sizes,
   values,
   label,
+  // Light gray rule under each row — keeps a tall, sparse list (60" Duct)
+  // from reading as empty white space.
+  ruled,
 }: {
   prefix: string;
   sizes: readonly T[];
   values: Record<T, number>;
   label?: (s: T) => string;
+  ruled?: boolean;
 }) {
   return (
-    <div className="space-y-0.5">
+    <div className={ruled ? "space-y-1" : "space-y-0.5"}>
       {sizes.map((s) => (
-        <div key={s} className="flex items-center justify-between gap-1">
+        <div
+          key={s}
+          className={`flex items-center justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
+        >
           <span className="truncate">{label ? label(s) : s}</span>
           <QtyInput name={`${prefix}.${s}`} value={values[s]} />
         </div>
