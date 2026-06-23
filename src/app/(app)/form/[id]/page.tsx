@@ -210,6 +210,12 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <Link
+            href={`/form/${row.id}/replica`}
+            className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium text-foreground hover:bg-secondary"
+          >
+            Replica
+          </Link>
           {(["filled", "stock", "custom", "truck"] as const).map((t) => {
             const label = { filled: "Filled PDF", stock: "Stock", custom: "Custom", truck: "Truck" }[t];
             const href =

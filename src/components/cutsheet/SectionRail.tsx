@@ -34,7 +34,7 @@ export function SectionRail({ items }: { items: RailItem[] }) {
   };
 
   return (
-    <nav className="sticky top-24 hidden w-44 shrink-0 flex-col gap-0.5 lg:flex">
+    <nav className="sticky top-24 hidden w-44 shrink-0 flex-col gap-0.5 self-start lg:flex">
       <p className="label-caps px-2.5 pb-1.5">Sections</p>
       {items.map((it) => (
         <a
