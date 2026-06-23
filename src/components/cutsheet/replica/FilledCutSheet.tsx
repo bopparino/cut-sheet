@@ -381,8 +381,8 @@ function CutPage({ data: d }: { data: Cutsheet }) {
           <Section title="Elbows">
             <VMultiTable cols={["Qty"]} rows={RND_ELL_SIZES.map((s) => ({ label: `${s}"`, cells: [{ v: num(fo.rndEll[s]) }] }))} />
           </Section>
-          <Section title="Boots (Ell / Rnd / Strt)">
-            <VMultiTable cols={["Ell", "Rnd", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
+          <Section title="Boots (Ell / End / Strt)">
+            <VMultiTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
           </Section>
           <Section title="Air Tights">
             <VList items={FLEX_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.airTights[s]) }))} />

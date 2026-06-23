@@ -464,8 +464,8 @@ function CutPage() {
           <Section title="Elbows">
             <MultiQtyTable cols={["Qty"]} rows={RND_SIZES.map((s) => `${s}"`)} />
           </Section>
-          <Section title="Boots (Ell / Rnd / Strt)">
-            <MultiQtyTable cols={["Ell", "Rnd", "Strt"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
+          <Section title="Boots (Ell / End / Strt)">
+            <MultiQtyTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
           </Section>
           <Section title="Air Tights">
             <QtyList items={FLEX_SIZES.map((s) => `${s}"`)} />

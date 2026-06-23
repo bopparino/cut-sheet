@@ -145,9 +145,9 @@ export function CutSheetReplica({ data }: { data: Cutsheet }) {
               rows={RND_ELL_SIZES.map((s) => ({ label: `${s}"`, cells: [{ name: `rndEll.${s}`, value: fo.rndEll[s] }] }))}
             />
           </Section>
-          <Section title="Boots (Ell / Rnd / Strt)">
+          <Section title="Boots (Ell / End / Strt)">
             <MultiQtyInputTable
-              colLabels={["Ell", "Rnd", "Strt"]}
+              colLabels={["Ell", "End", "Strt"]}
               rows={ELL_BOOTS_SIZES.map((s) => ({
                 label: bootLabel(s),
                 cells: [
