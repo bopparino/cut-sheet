@@ -1,17 +1,9 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FileText, ChevronRight, AlertTriangle, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 
-type CutsheetRow = {
-  id: number;
-  data: string;
-  created_at: string;
-  updated_at: string;
-};
-
+type CutsheetRow = { id: number; data: string; created_at: string; updated_at: string };
 type LotRow = {
   id: number;
   lot: string | null;
@@ -19,7 +11,6 @@ type LotRow = {
   propNumber: string | null;
   builder: string | null;
 };
-
 type SearchParams = {
   name?: string;
   builder?: string;
@@ -46,10 +37,6 @@ export default async function SearchPage({
     deliveryTo: (sp.deliveryTo ?? "").trim(),
   };
 
-  // Build the WHERE clause dynamically. Each populated filter contributes one
-  // AND clause + one named param; missing filters drop out entirely.
-  // User-typed % and _ are LIKE wildcards — escape them so searches match
-  // the literal text.
   const escapeLike = (s: string) => s.replace(/[\\%_]/g, "\\$&");
   const wheres: string[] = [];
   const params: Record<string, string> = {};
@@ -74,8 +61,6 @@ export default async function SearchPage({
     params.deliveryTo = filters.deliveryTo;
   }
 
-  // deleted_at IS NULL is always part of WHERE — soft-deleted cutsheets only
-  // surface in /admin/trash.
   const allWheres = ["deleted_at IS NULL", ...wheres];
   const sql = `
     SELECT id, data, created_at, updated_at FROM cutsheets
@@ -85,62 +70,69 @@ export default async function SearchPage({
   `;
   const rows = db.prepare(sql).all(params) as CutsheetRow[];
 
-  // Duplicate-lot detection runs against *all* cutsheets — a lot collision is
-  // meaningful even when it falls outside the active filter window, otherwise
-  // filtering by builder=ABC would hide a dup against builder=DEF.
-  const dupLotIds = findDuplicateLotIds();
+  const { ids: dupLotIds, lots: dupLots } = findDuplicates();
 
   const hasFilters =
-    filters.name ||
-    filters.builder ||
-    filters.lot ||
-    filters.deliveryFrom ||
-    filters.deliveryTo;
+    !!(filters.name || filters.builder || filters.lot || filters.deliveryFrom || filters.deliveryTo);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Saved Cutsheets</h1>
-        <Button asChild>
-          <Link href="/form/new">New Cutsheet</Link>
-        </Button>
-      </div>
+    <div>
+      <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
+        <h1 className="text-xl font-bold tracking-tight">Search cutsheets</h1>
+        <Link
+          href="/form/new"
+          className="btn-glow ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground"
+        >
+          <Plus className="h-4 w-4" /> New Cutsheet
+        </Link>
+      </header>
 
-      <Card>
-        <CardContent>
-          <form method="get" action="/search" className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-            <FilterField label="Name" name="name" defaultValue={filters.name} />
-            <FilterField label="Builder" name="builder" defaultValue={filters.builder} />
-            <FilterField label="Lot" name="lot" defaultValue={filters.lot} />
-            <FilterField
-              label="Delivery From"
-              name="deliveryFrom"
-              type="date"
-              defaultValue={filters.deliveryFrom}
-            />
-            <FilterField
-              label="Delivery To"
-              name="deliveryTo"
-              type="date"
-              defaultValue={filters.deliveryTo}
-            />
-            <div className="flex items-center gap-2 sm:col-span-5">
-              <Button type="submit" size="sm">Filter</Button>
-              {hasFilters && (
-                <Button type="button" variant="outline" size="sm" asChild>
-                  <Link href="/search">Clear</Link>
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="px-8 py-7">
+        {/* Filter row */}
+        <form
+          method="get"
+          action="/search"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow)]"
+        >
+          <Field label="Name" name="name" defaultValue={filters.name} className="min-w-[180px] flex-1" />
+          <Field label="Builder" name="builder" defaultValue={filters.builder} className="min-w-[160px] flex-1" />
+          <Field label="Lot" name="lot" defaultValue={filters.lot} className="w-28" />
+          <Field label="Delivery from" name="deliveryFrom" type="date" defaultValue={filters.deliveryFrom} className="w-40" />
+          <Field label="Delivery to" name="deliveryTo" type="date" defaultValue={filters.deliveryTo} className="w-40" />
+          <button
+            type="submit"
+            className="btn-glow h-10 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground"
+          >
+            Filter
+          </button>
+          {hasFilters && (
+            <Link
+              href="/search"
+              className="h-10 rounded-lg border border-border px-4 text-sm font-medium leading-10 text-muted-foreground hover:bg-secondary"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
 
-      {rows.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+        {/* Summary */}
+        <div className="mb-3 mt-5 flex items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            <span className="font-semibold text-foreground">{rows.length}</span> result
+            {rows.length === 1 ? "" : "s"}
+          </span>
+          {dupLots.size > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-[var(--status-lost-text)]">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {dupLots.size} possible duplicate lot{dupLots.size === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">
             {hasFilters ? (
-              <>No cutsheets match these filters.</>
+              "No cutsheets match these filters."
             ) : (
               <>
                 No cutsheets yet.{" "}
@@ -150,95 +142,90 @@ export default async function SearchPage({
                 .
               </>
             )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="p-0">
-          <ul className="divide-y">
-            {rows.map((row) => {
-              const data = JSON.parse(row.data) as {
-                name?: string;
-                header?: {
-                  lot?: string;
-                  builder?: string;
-                  project?: string;
-                  deliveryDate?: string;
-                };
-              };
-              const h = data.header ?? {};
-              const title =
-                (data.name ?? "").trim() ||
-                [h.builder, h.project].filter(Boolean).join(" · ") ||
-                `Cutsheet #${row.id}`;
-              const meta = [h.lot ? `Lot ${h.lot}` : null, h.deliveryDate || null]
-                .filter(Boolean)
-                .join(" · ");
-              const isDup = dupLotIds.has(row.id);
-              return (
-                <li key={row.id}>
-                  <Link
-                    href={`/form/${row.id}`}
-                    className="flex items-center justify-between px-5 py-4 hover:bg-accent"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <div className="font-medium">{title}</div>
-                        {meta && <div className="text-xs text-muted-foreground">{meta}</div>}
-                      </div>
-                      {isDup && (
-                        <span
-                          title={`Another cutsheet shares this lot within ${DUPLICATE_WINDOW_DAYS} days`}
-                          className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800"
-                        >
-                          Dup lot
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Updated {row.updated_at}
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
+          </div>
+        ) : (
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+            {rows.map((row) => (
+              <ResultRow key={row.id} row={row} isDup={dupLotIds.has(row.id)} />
+            ))}
           </ul>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-function FilterField({
+function ResultRow({ row, isDup }: { row: CutsheetRow; isDup: boolean }) {
+  const data = JSON.parse(row.data) as {
+    name?: string;
+    header?: { lot?: string; builder?: string; project?: string; deliveryDate?: string };
+  };
+  const h = data.header ?? {};
+  const title =
+    (data.name ?? "").trim() ||
+    [h.builder, h.project].filter(Boolean).join(" · ") ||
+    `Cutsheet #${row.id}`;
+  const meta = [
+    h.lot ? `Lot ${h.lot}` : null,
+    h.builder || null,
+    h.deliveryDate ? `Del ${h.deliveryDate}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <li>
+      <Link href={`/form/${row.id}`} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-accent/40">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <FileText className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-semibold">{title}</span>
+            {isDup && (
+              <Badge variant="lost" title={`Shares a lot within ${DUPLICATE_WINDOW_DAYS} days`}>
+                Dup Lot
+              </Badge>
+            )}
+          </div>
+          {meta && <div className="font-mono-data truncate text-xs text-muted-foreground">{meta}</div>}
+        </div>
+        <span className="shrink-0 text-xs text-muted-foreground">Updated {row.updated_at}</span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Link>
+    </li>
+  );
+}
+
+function Field({
   label,
   name,
   type = "text",
   defaultValue,
+  className,
 }: {
   label: string;
   name: string;
   type?: string;
   defaultValue: string;
+  className?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} type={type} defaultValue={defaultValue} className="h-9" />
-    </div>
+    <label className={`flex flex-col gap-1 ${className ?? ""}`}>
+      <span className="label-caps">{label}</span>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+      />
+    </label>
   );
 }
 
-// Conservative dup rule: both cutsheets must have a delivery date, the dates
-// must be within DUPLICATE_WINDOW_DAYS of each other, and the lot must match
-// non-empty. Incomplete cutsheets (missing date or lot) never trigger the
-// warning, which keeps the badge useful instead of noisy.
-//
-// Two exclusions keep multi-builder shops and multi-zone houses from
-// drowning the badge in false positives:
-// - same non-empty propNumber → these are zones of one house (the combined
-//   house PDF depends on them sharing propNumber + lot), not duplicates
-// - both builders non-empty and different → "Lot 12" is only unique within
-//   a builder, so cross-builder collisions are coincidence, not dups
-function findDuplicateLotIds(): Set<number> {
+// Conservative dup rule: both cutsheets have a delivery date within
+// DUPLICATE_WINDOW_DAYS and a matching non-empty lot. Same propNumber (house
+// zones) and differing non-empty builders are excluded as false positives.
+function findDuplicates(): { ids: Set<number>; lots: Set<string> } {
   const all = db
     .prepare(
       `SELECT id,
@@ -264,9 +251,10 @@ function findDuplicateLotIds(): Set<number> {
     byLot.set(key, list);
   }
 
-  const dups = new Set<number>();
+  const ids = new Set<number>();
+  const lots = new Set<string>();
   const windowMs = DUPLICATE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  for (const group of byLot.values()) {
+  for (const [lotKey, group] of byLot) {
     if (group.length < 2) continue;
     for (let i = 0; i < group.length; i++) {
       for (let j = i + 1; j < group.length; j++) {
@@ -283,11 +271,12 @@ function findDuplicateLotIds(): Set<number> {
           new Date(x.deliveryDate).getTime() - new Date(y.deliveryDate).getTime(),
         );
         if (diff <= windowMs) {
-          dups.add(x.id);
-          dups.add(y.id);
+          ids.add(x.id);
+          ids.add(y.id);
+          lots.add(lotKey);
         }
       }
     }
   }
-  return dups;
+  return { ids, lots };
 }
