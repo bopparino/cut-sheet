@@ -225,10 +225,19 @@ export default async function EditCutsheetPage({
             className="-mx-1 w-full max-w-xl rounded bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:bg-accent/50 px-1"
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            #{row.id} · Updated {row.updated_at}
+            #{row.id} · Updated {row.updated_at} ·{" "}
+            <Link
+              href={`/form/${row.id}/replica`}
+              className="underline underline-offset-4"
+            >
+              replica view
+            </Link>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Filled new-cut-sheet PDF — same endpoint the replica view uses.
+              Single-cutsheet only (no house-combined variant). */}
+          <PdfLink href={`/api/pdf/${row.id}/filled`}>Filled PDF</PdfLink>
           {(["stock", "custom", "truck"] as const).map((t) => {
             const label =
               { stock: "Stock PDF", custom: "Custom PDF", truck: "Truck PDF" }[t];

@@ -249,6 +249,107 @@ export async function updateCutsheet(id: number, formData: FormData) {
   if (folderId != null) revalidatePath(`/browse/${folderId}`);
 }
 
+// Replica save — the full two-page Cut Sheet replica (pages 1 + 2). Writes
+// every field the new sheet surfaces. A few legacy schema fields aren't on the
+// new design (tto, plenumContents, sdMiscExtras.angles, and Flex R4 outside
+// 4/6/8) — those are preserved from `current` so the replica never silently
+// zeroes data it doesn't show.
+export async function updateCutSheetReplica(id: number, formData: FormData) {
+  const row = db
+    .prepare<[number], { data: string }>(
+      "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
+    .get(id);
+  if (!row) throw new Error(`Cutsheet ${id} not found`);
+
+  const current = CutsheetSchema.parse(JSON.parse(row.data));
+
+  // Flex R4: only 4/6/8 have inputs (the rest are blacked out on the sheet).
+  // Overlay just those onto current so unstocked sizes keep their stored value.
+  const r4read = readNumberMap(formData, "insulatedFlexR4", FLEX_SIZES);
+  const insulatedFlexR4 = {
+    ...current.formOnly.insulatedFlexR4,
+    "4": r4read["4"],
+    "6": r4read["6"],
+    "8": r4read["8"],
+  };
+
+  const next: Cutsheet = {
+    ...current,
+    name: String(formData.get("name") ?? "").trim(),
+    header: readHeaderFromFormData(formData),
+    stock: {
+      duct60: readNumberMap(formData, "duct60", DUCT60_SIZES),
+      sdMisc: readNumberMap(formData, "sdMisc", SD_MISC_KEYS),
+    },
+    custom: {
+      endCaps: readWHRows(formData, "endCaps"),
+      volumeDampers: readWHRows(formData, "volumeDampers"),
+      canvasConn: readWHRows(formData, "canvasConn"),
+      customDuct: readCustomDuctRows(formData, "customDuct"),
+      miscellaneous: readStringRows(formData, "miscellaneous"),
+      rndCollars: readNumberMap(formData, "rndCollars", RND_SIZES),
+      roundVolumeDampers: readNumberMap(formData, "roundVolumeDampers", RND_SIZES),
+    },
+    truck: {
+      ovPipe: readNumberMap(formData, "ovPipe", OV_PIPE_SIZES),
+      rndPipe: readNumberMap(formData, "rndPipe", RND_PIPE_SIZES),
+    },
+    formOnly: {
+      ...current.formOnly,
+      filterRacks: readNumberMap(formData, "filterRacks", FILTER_RACKS_KEYS),
+      drainPans: readNumberMap(formData, "drainPans", DRAIN_PANS_KEYS),
+      returnPlenum: readNumberMap(formData, "returnPlenum", RETURN_PLENUM_KEYS),
+      ovalEll: readNumberMap(formData, "ovalEll", OVAL_ELL_SIZES),
+      ovalToRnd: readNumberMap(formData, "ovalToRnd", OVAL_TO_RND_SIZES),
+      ovalSHeads: readNumberMap(formData, "ovalSHeads", OVAL_S_HEADS_SIZES),
+      ellBoots: readNumberMap(formData, "ellBoots", ELL_BOOTS_SIZES),
+      endBoots: readNumberMap(formData, "endBoots", END_BOOTS_SIZES),
+      strtBoots: readNumberMap(formData, "strtBoots", STRT_BOOTS_SIZES),
+      midAtlanticWallCaps: readNumberMap(formData, "midAtlanticWallCaps", MID_ATLANTIC_KEYS),
+      birdCage: readNumberMap(formData, "birdCage", BIRD_CAGE_SIZES),
+      metalScreen: readNumberMap(formData, "metalScreen", METAL_SCREEN_KEYS),
+      dryerBox: readNumberMap(formData, "dryerBox", DRYER_BOX_KEYS),
+      rndEll: readNumberMap(formData, "rndEll", RND_ELL_SIZES),
+      blueFlashing: readNumberMap(formData, "blueFlashing", BLUE_FLASHING_KEYS),
+      freshAirDampers: readNumberMap(formData, "freshAirDampers", FRESH_AIR_DAMPER_SIZES),
+      galRedr: readNumberMap(formData, "galRedr", GAL_REDR_SIZES),
+      fans: readNumberMap(formData, "fans", FANS_KEYS),
+      straightBootBoxes: readNumberMap(formData, "straightBootBoxes", STRAIGHT_BOOT_BOXES_SIZES),
+      simpsonStp: readNumberMap(formData, "simpsonStp", SIMPSON_STP_KEYS),
+      // angles isn't on the new sheet — keep it; bubbleWrap/foilIns are.
+      sdMiscExtras: {
+        ...current.formOnly.sdMiscExtras,
+        bubbleWrap: readSingleNumber(formData, "sdMiscExtras.bubbleWrap"),
+        foilIns: readSingleNumber(formData, "sdMiscExtras.foilIns"),
+      },
+      uninsulatedFlex: readNumberMap(formData, "uninsulatedFlex", FLEX_SIZES),
+      insulatedFlexR4,
+      insulatedFlexR8: readNumberMap(formData, "insulatedFlexR8", FLEX_SIZES),
+      saddleTap: readNumberMap(formData, "saddleTap", SADDLE_TAP_SIZES),
+      airTights: readNumberMap(formData, "airTights", FLEX_SIZES),
+      bVent: readNumberMap(formData, "bVent", B_VENT_KEYS),
+      flexBVent: readNumberMap(formData, "flexBVent", FLEX_B_VENT_KEYS),
+      panningMetal36x36: readSingleNumber(formData, "panningMetal36x36"),
+      condRegs8x6: readSingleNumber(formData, "condRegs8x6"),
+      wallRegs: readStringRows(formData, "wallRegs"),
+      grills: readStringRows(formData, "grills"),
+      filterGrills: readStringRows(formData, "filterGrills"),
+      floorRegs: readStringRows(formData, "floorRegs"),
+      // tto + plenumContents aren't on the new sheet — preserved via spread.
+    },
+  };
+  const parsed = CutsheetSchema.parse(next);
+  // Folder is managed on the card form, not here — leave folder_id untouched so
+  // a replica save never unfiles the cutsheet (the replica has no folder input).
+  db.prepare(
+    "UPDATE cutsheets SET data = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(JSON.stringify(parsed), id);
+  revalidatePath(`/form/${id}`);
+  revalidatePath(`/form/${id}/replica`);
+  revalidatePath("/search");
+}
+
 // Soft-delete: cutsheet stays in the DB with deleted_at set, so /admin/trash
 // can resurrect it. Looks irreversible to the user; isn't.
 export async function deleteCutsheet(id: number) {
