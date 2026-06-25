@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SectionRail, type RailItem } from "@/components/cutsheet/SectionRail";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/utils";
 import {
   BIRD_CAGE_SIZES,
   BLUE_FLASHING_KEYS,
@@ -206,7 +207,7 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
           />
           <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-muted-foreground">
             #{row.id}
-            {d.header.lot ? ` · Lot ${d.header.lot}` : ""} · Updated {row.updated_at}
+            {d.header.lot ? ` · Lot ${d.header.lot}` : ""} · Updated {formatDateTime(row.updated_at)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

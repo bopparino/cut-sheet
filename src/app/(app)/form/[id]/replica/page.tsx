@@ -9,6 +9,7 @@ import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
 import { updateCutSheetReplica } from "@/lib/actions";
+import { formatDateTime } from "@/lib/utils";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
@@ -74,7 +75,7 @@ export default async function ShopReplicaPage({
             className="-mx-1 w-full max-w-md truncate rounded bg-transparent px-1 text-base font-bold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:bg-accent/50"
           />
           <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-muted-foreground">
-            Replica view · Pages 1–2 · #{row.id} · Updated {row.updated_at}
+            Replica view · Pages 1–2 · #{row.id} · Updated {formatDateTime(row.updated_at)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -107,9 +108,8 @@ export default async function ShopReplicaPage({
 
       <div className="space-y-5 px-6 py-7">
         <p className="rounded-xl border border-[var(--status-proposed-text)]/25 bg-[var(--status-proposed-bg)] px-4 py-2.5 text-xs text-[var(--status-proposed-text)]">
-          Editable two-page cut sheet — every box is a real field. Saving writes the same data the
-          Stock / Custom / Truck PDFs read and produces the Filled PDF above. Use Photos / Documents
-          below for fitting sketches and register schedules that are easier drawn than typed.
+          Every box is a real field. Saving updates the Stock, Custom, Truck, and Filled PDFs. Use
+          Photos and Documents below for sketches and schedules.
         </p>
 
         <CutsheetForm formId={FORM_ID} action={save} className="space-y-6">

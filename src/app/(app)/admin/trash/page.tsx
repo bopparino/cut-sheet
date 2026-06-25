@@ -1,6 +1,7 @@
 import { Info } from "lucide-react";
 import { TrashRowActions } from "@/components/cutsheet/TrashRowActions";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/utils";
 
 type TrashRow = { id: number; data: string; deleted_at: string; updated_at: string };
 
@@ -24,11 +25,7 @@ export default function TrashPage() {
       <div className="px-8 py-7">
         <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Deleted cutsheets are kept here as a safety net —{" "}
-            <span className="font-semibold text-foreground">nothing is ever truly gone</span> until
-            purged. Restore one to put it back where it was.
-          </p>
+          <p>Deleted cutsheets stay here until purged. Restore one to put it back.</p>
         </div>
 
         {rows.length === 0 ? (
@@ -61,7 +58,7 @@ export default function TrashPage() {
                     <tr key={row.id} className="transition-colors hover:bg-accent/30">
                       <td className="px-5 py-3.5 font-semibold">{title}</td>
                       <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{h.lot || "—"}</td>
-                      <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{row.deleted_at}</td>
+                      <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{formatDateTime(row.deleted_at)}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex justify-end">
                           <TrashRowActions cutsheetId={row.id} title={title} />
