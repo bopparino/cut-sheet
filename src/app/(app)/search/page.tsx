@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FileText, ChevronRight, AlertTriangle, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/utils";
 
 type CutsheetRow = { id: number; data: string; created_at: string; updated_at: string };
 type LotRow = {
@@ -189,7 +190,7 @@ function ResultRow({ row, isDup }: { row: CutsheetRow; isDup: boolean }) {
           </div>
           {meta && <div className="font-mono-data truncate text-xs text-muted-foreground">{meta}</div>}
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">Updated {row.updated_at}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">Updated {formatDateTime(row.updated_at)}</span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Link>
     </li>

@@ -17,12 +17,21 @@ export function AppSidebar({ trashCount }: { trashCount: number }) {
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card px-3 py-4">
       <Link href="/browse" className="mb-5 flex items-center gap-2.5 px-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-[var(--logo-chip)] text-[11px] font-bold tracking-tight">
-          MET
+        {/* Logo always sits on a white chip (Brand Guidelines §02/§03).
+            Monogram alone is correct for this tight square placement. */}
+        <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-[var(--logo-chip)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/metcalfe-monogram.png"
+            alt="Metcalfe"
+            width={28}
+            height={28}
+            className="h-7 w-7 object-contain"
+          />
         </span>
         <span className="leading-tight">
-          <span className="block text-sm font-bold tracking-tight">Cut Sheet</span>
-          <span className="block text-xs text-muted-foreground">Metcalfe HVAC</span>
+          <span className="block text-sm font-bold tracking-tight text-[var(--heading)]">Cut Sheet</span>
+          <span className="block text-xs font-medium text-[var(--brand-red)]">Metcalfe HVAC</span>
         </span>
       </Link>
 

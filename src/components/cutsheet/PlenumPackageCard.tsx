@@ -38,8 +38,10 @@ export function PlenumPackageCard({
             <label
               key={opt.value}
               className={cn(
-                "flex cursor-pointer flex-col gap-1 rounded-md border border-input p-3 text-sm transition-colors",
+                "group flex cursor-pointer flex-col gap-1 rounded-md border border-input p-3 text-sm transition-colors",
                 "hover:bg-accent has-[input:checked]:border-foreground has-[input:checked]:bg-accent",
+                // Orange fill is light in both themes, so checked text must be dark
+                "has-[input:checked]:text-accent-foreground",
               )}
             >
               <span className="flex items-center gap-2">
@@ -52,7 +54,9 @@ export function PlenumPackageCard({
                 />
                 <span className="font-semibold">{opt.label}</span>
               </span>
-              <span className="pl-6 text-xs text-muted-foreground">{opt.contents}</span>
+              <span className="pl-6 text-xs text-muted-foreground group-has-[input:checked]:text-accent-foreground/75">
+                {opt.contents}
+              </span>
             </label>
           ))}
         </fieldset>

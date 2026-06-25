@@ -9,6 +9,7 @@ import {
   type FolderItem,
 } from "@/components/folders/BrowseGrid";
 import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/utils";
 import { listAllFolders, subtreeCutsheetCounts, withPaths } from "@/lib/folders";
 
 type CutsheetRow = {
@@ -182,7 +183,7 @@ function RecentTile({ row }: { row: CutsheetRow }) {
             )}
           </div>
           <div className="line-clamp-2 text-sm font-semibold leading-snug">{item.title}</div>
-          <div className="mt-auto text-[10px] text-muted-foreground">Updated {item.updatedAt}</div>
+          <div className="mt-auto text-[10px] text-muted-foreground">Updated {formatDateTime(item.updatedAt)}</div>
         </CardContent>
       </Card>
     </Link>

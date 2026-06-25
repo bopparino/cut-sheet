@@ -1,5 +1,6 @@
 import { buildTicketSections } from "@/lib/ticket-rules";
 import type { Cutsheet, TicketKind } from "@/lib/schema";
+import { formatDateTime } from "@/lib/utils";
 
 type Props = {
   cutsheet: Cutsheet;
@@ -73,7 +74,7 @@ export function TicketSheet({
           ) : (
             <div className="font-semibold">Cutsheet #{cutsheetId}</div>
           )}
-          <div className="text-neutral-500">Updated {updatedAt}</div>
+          <div className="text-neutral-500">Updated {formatDateTime(updatedAt)}</div>
         </div>
       </header>
 

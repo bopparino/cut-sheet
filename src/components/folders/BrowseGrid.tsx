@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { bulkDelete, bulkMove } from "@/lib/actions";
+import { formatDateTime } from "@/lib/utils";
 
 export type FolderItem = { id: number; name: string; cutsheetCount: number };
 export type CutsheetItem = {
@@ -368,7 +369,7 @@ function CutsheetTile({
         <div className="line-clamp-1 text-xs text-muted-foreground">{cutsheet.meta}</div>
       )}
       <div className="mt-auto text-[10px] text-muted-foreground">
-        Updated {cutsheet.updatedAt}
+        Updated {formatDateTime(cutsheet.updatedAt)}
       </div>
     </CardContent>
   );
@@ -477,7 +478,7 @@ function CutsheetListRow({
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        Updated {cutsheet.updatedAt}
+        Updated {formatDateTime(cutsheet.updatedAt)}
       </div>
     </>
   );

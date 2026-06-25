@@ -81,6 +81,25 @@
   --accent-glow-strong: rgba(255, 140, 0, 0.25);
   --shadow-glow: 0 0 20px rgba(255, 140, 0, 0.12);
 
+  /* ── Heritage brand colors (Brand Guidelines §04) ──────────
+     Navy LEADS: headlines, wordmark, dark/trust surfaces.
+     Red is ACCENT ONLY: service descriptor, heat cues, small
+     emphasis — kept under ~10% of any surface, never a large
+     fill. Orange (--primary) remains the only interactive color. */
+  --brand-navy: #101850;
+  --navy-900: #0A1238;
+  --navy-800: #101850;
+  --navy-700: #1B2A6B;
+  --navy-500: #3A4A93;
+  --navy-300: #8E97C2;
+  --navy-100: #DBDEEC;
+  --brand-red: #E01008;
+
+  /* Headlines render navy on light surfaces. Flipped in dark. */
+  --heading: var(--brand-navy);
+  /* White chip the logo always sits on (Brand Guidelines §02). */
+  --logo-chip: #FFFFFF;
+
   --gray-50:  #FAFAF9;
   --gray-100: #F5F5F4;
   --gray-200: #E7E5E4;
@@ -110,7 +129,7 @@
 .theme-insight h3,
 .theme-insight h4 {
   letter-spacing: -0.02em;
-  color: var(--gray-900);
+  color: var(--heading);
 }
 
 @theme inline {
@@ -239,6 +258,12 @@
   --accent-glow: rgba(255, 157, 46, 0.18);
   --accent-glow-strong: rgba(255, 157, 46, 0.30);
   --shadow-glow: 0 0 20px rgba(255, 157, 46, 0.14);
+
+  /* Heritage navy can't carry headlines on a dark surface — flip
+     to near-white. Navy ramp + --brand-red stay fixed for use as
+     accent surfaces/cues. Logo chip stays white (on-dark rule). */
+  --heading: #FAF7F4;
+  --brand-red: #FF5A4D;  /* lifted so the descriptor reads on dark */
 
   --gray-50:  #1B1611;
   --gray-100: #26201A;
