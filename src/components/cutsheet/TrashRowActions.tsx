@@ -61,7 +61,7 @@ export function TrashRowActions({
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button type="button" size="sm" variant="destructive" disabled={isPending}>
-            Purge
+            Delete forever
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

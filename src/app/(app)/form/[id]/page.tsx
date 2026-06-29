@@ -15,10 +15,8 @@ import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { SectionRail, type RailItem } from "@/components/cutsheet/SectionRail";
 import { db } from "@/lib/db";
-import { formatDateTime } from "@/lib/utils";
 import {
   BIRD_CAGE_SIZES,
   BLUE_FLASHING_KEYS,
@@ -188,59 +186,67 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
   return (
     <div key={row.id}>
       {/* Sticky action bar */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background/85 px-6 py-3 backdrop-blur">
-        <Link
-          href="/browse"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back
-        </Link>
-        <div className="min-w-0 flex-1">
-          <input
-            type="text"
-            name="name"
-            form={FORM_ID}
-            defaultValue={d.name}
-            aria-label="Cutsheet name"
-            placeholder={title}
-            className="-mx-1 w-full max-w-md truncate rounded bg-transparent px-1 text-base font-bold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:bg-accent/50"
-          />
-          <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-muted-foreground">
-            #{row.id}
-            {d.header.lot ? ` · Lot ${d.header.lot}` : ""} · Updated {formatDateTime(row.updated_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
           <Link
-            href={`/form/${row.id}/replica`}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium text-foreground hover:bg-secondary"
+            href="/browse"
+            className="flex items-center gap-1 rounded-sm px-2 py-1.5 text-[13px] text-[var(--text-2)] hover:bg-accent hover:text-foreground"
           >
-            Replica
+            <ChevronLeft className="h-4 w-4" /> Browse
           </Link>
-          {(["filled", "stock", "custom", "truck"] as const).map((t) => {
-            const label = { filled: "Filled PDF", stock: "Stock", custom: "Custom", truck: "Truck" }[t];
-            const href =
-              t === "filled"
-                ? `/api/pdf/${row.id}/filled`
-                : isHouse
-                  ? `/api/pdf/house/${encodeURIComponent(d.header.propNumber)}/${encodeURIComponent(d.header.lot)}/${t}`
-                  : `/api/pdf/${row.id}/${t}`;
-            return (
-              <PdfLink key={t} href={href} primary={t === "filled"}>
-                {isHouse && t !== "filled" ? `${label} (${houseSiblingCount})` : label}
-              </PdfLink>
-            );
-          })}
-          <FolderSelect form={FORM_ID} folders={folders} value={row.folder_id} />
-          <CloneCutsheetButton cutsheetId={numeric} />
-          <DeleteCutsheetButton cutsheetId={numeric} />
-          <button
-            type="submit"
-            form={FORM_ID}
-            className="btn-glow rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-          >
-            Save
-          </button>
+          <div className="min-w-0 flex-1">
+            <input
+              type="text"
+              name="name"
+              form={FORM_ID}
+              defaultValue={d.name}
+              aria-label="Cutsheet name"
+              placeholder={title}
+              className="-mx-1 w-full max-w-md truncate rounded-sm bg-transparent px-1 text-[16px] font-bold tracking-[-0.01em] outline-none focus-visible:bg-accent"
+            />
+            <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-[var(--text-3)]">
+              #{row.id}
+              {d.header.lot ? ` · Lot ${d.header.lot}` : ""}
+              {d.header.builder ? ` · ${d.header.builder}` : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <FolderSelect form={FORM_ID} folders={folders} value={row.folder_id} />
+            <CloneCutsheetButton cutsheetId={numeric} />
+            <DeleteCutsheetButton cutsheetId={numeric} />
+            <button
+              type="submit"
+              form={FORM_ID}
+              className="btn-glow inline-flex h-9 items-center rounded-sm border border-primary bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        {/* OPEN AS — segmented control */}
+        <div className="flex items-center gap-3 px-6 pb-3">
+          <span className="label-caps">Open as</span>
+          <div className="inline-flex overflow-hidden rounded-sm border border-input">
+            <span className="flex h-[34px] items-center border-r border-input bg-primary px-[13px] font-mono-data text-[11px] font-semibold uppercase tracking-[0.04em] text-primary-foreground">
+              Card
+            </span>
+            <Segment href={`/form/${row.id}/replica`}>Replica</Segment>
+            <Segment href={`/api/pdf/${row.id}/filled`} external>Filled PDF</Segment>
+            {(["stock", "custom", "truck"] as const).map((t) => (
+              <Segment
+                key={t}
+                external
+                href={
+                  isHouse
+                    ? `/api/pdf/house/${encodeURIComponent(d.header.propNumber)}/${encodeURIComponent(d.header.lot)}/${t}`
+                    : `/api/pdf/${row.id}/${t}`
+                }
+              >
+                {t === "stock" ? "Stock" : t === "custom" ? "Custom" : "Truck"}
+              </Segment>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -347,6 +353,11 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
   );
 }
 
+const SECTION_ORDER = [
+  "g-header", "g-stock", "g-custom", "g-truck", "g-racks", "g-boots", "g-oval",
+  "g-flex", "g-caps", "g-fans", "g-misc", "g-registers", "g-docs",
+];
+
 function Group({
   id,
   title,
@@ -358,15 +369,41 @@ function Group({
   pdf?: string;
   children: React.ReactNode;
 }) {
+  const idx = SECTION_ORDER.indexOf(id);
+  const num = idx >= 0 ? String(idx + 1).padStart(2, "0") : "";
   return (
-    <section id={id} className="scroll-mt-24 space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-primary" />
-        <h2 className="text-base font-bold tracking-tight">{title}</h2>
-        {pdf && <Badge variant="pdf">{pdf}</Badge>}
+    <section id={id} className="scroll-mt-32 space-y-3">
+      <div className="flex items-baseline gap-2.5 border-b border-border pb-2.5">
+        <span className="font-mono-data text-[12px] font-semibold text-[var(--text-ghost)]">{num}</span>
+        <h2 className="text-[15px] font-bold tracking-[-0.01em] text-foreground">{title}</h2>
+        {pdf && (
+          <span className="font-mono-data text-[10px] uppercase tracking-[0.08em] text-[var(--text-3)]">
+            · prints {pdf}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+function Segment({
+  href,
+  external,
+  children,
+}: {
+  href: string;
+  external?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      {...(external ? { target: "_blank" } : {})}
+      className="flex h-[34px] items-center border-r border-input bg-card px-[13px] font-mono-data text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-2)] transition-colors last:border-r-0 hover:bg-accent hover:text-foreground"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -401,25 +438,9 @@ function SingletonField({ label, name, defaultValue }: { label: string; name: st
         step={1}
         defaultValue={defaultValue === 0 ? "" : defaultValue}
         placeholder="0"
-        className="font-mono-data h-8 w-20 text-right [&:not(:placeholder-shown)]:border-primary/50 [&:not(:placeholder-shown)]:bg-primary/5 [&:not(:placeholder-shown)]:font-semibold"
+        className="font-mono-data h-8 w-20 text-right [&:not(:placeholder-shown)]:border-[var(--ink)] [&:not(:placeholder-shown)]:bg-[var(--fill)] [&:not(:placeholder-shown)]:font-semibold [&:not(:placeholder-shown)]:text-foreground"
       />
     </div>
-  );
-}
-
-function PdfLink({ href, children, primary }: { href: string; children: React.ReactNode; primary?: boolean }) {
-  return (
-    <Link
-      href={href}
-      target="_blank"
-      className={
-        primary
-          ? "rounded-lg bg-primary/10 px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/15"
-          : "rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-      }
-    >
-      {children}
-    </Link>
   );
 }
 
@@ -429,8 +450,8 @@ function FolderSelect({ form, folders, value }: { form: string; folders: FolderO
       name="folder_id"
       form={form}
       defaultValue={value == null ? "" : String(value)}
-      aria-label="Folder"
-      className="h-8 rounded-lg border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+      aria-label="Filed under"
+      className="h-9 rounded-sm border border-input bg-card px-2 text-[12px] text-foreground outline-none"
     >
       <option value="">Unfiled</option>
       {folders.map((f) => (

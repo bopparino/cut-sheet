@@ -73,10 +73,10 @@ function LabeledQty({
   // horizontally across cells. `truncate` is a safety net for the rare
   // label that exceeds the track width at small breakpoints.
   return (
-    <div className="flex flex-col gap-1 [&:has(input:not(:placeholder-shown))_label]:text-[var(--heading)]">
+    <div className="flex flex-col gap-1 [&:has(input:not(:placeholder-shown))_label]:text-[var(--ink)]">
       <Label
         htmlFor={name}
-        className="font-mono-data truncate text-[11px] font-medium text-muted-foreground"
+        className="font-mono-data truncate text-[11px] font-medium text-[var(--text-3)]"
         title={label}
       >
         {label}
@@ -90,7 +90,7 @@ function LabeledQty({
         step={1}
         defaultValue={defaultValue === 0 ? "" : defaultValue}
         placeholder="0"
-        className="font-mono-data h-8 w-full text-right text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none placeholder:text-muted-foreground/40 [&:not(:placeholder-shown)]:border-[var(--clay-line)] [&:not(:placeholder-shown)]:bg-[var(--clay-tint)] [&:not(:placeholder-shown)]:font-bold [&:not(:placeholder-shown)]:text-[var(--heading)]"
+        className="font-mono-data h-[34px] w-full text-right text-[13px] tabular-nums text-[var(--value-empty)] [&:not(:placeholder-shown)]:border-[var(--ink)] [&:not(:placeholder-shown)]:bg-[var(--fill)] [&:not(:placeholder-shown)]:font-semibold [&:not(:placeholder-shown)]:text-foreground"
       />
     </div>
   );

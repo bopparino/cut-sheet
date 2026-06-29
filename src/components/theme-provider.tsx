@@ -2,13 +2,15 @@
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
-// Toggles a `.dark` class on <html>; `.dark .theme-insight` (globals.css)
-// supplies the warm-stone dark tokens. Defaults to light.
+// The interface is a single light monochrome-graphite system; there is no
+// dark variant. next-themes stays mounted (other code may read it) but the
+// theme is forced light so nothing can flip the surfaces.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class"
       defaultTheme="light"
+      forcedTheme="light"
       enableSystem={false}
       disableTransitionOnChange
     >

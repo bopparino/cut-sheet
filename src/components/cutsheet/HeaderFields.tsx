@@ -48,7 +48,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={name} className="label-caps">{label}</Label>
       <Input id={name} name={name} type={type} defaultValue={defaultValue ?? ""} />
     </div>
   );
@@ -69,12 +69,12 @@ function SelectField({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={name} className="label-caps">{label}</Label>
       <select
         id={name}
         name={name}
         defaultValue={defaultValue}
-        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
+        className="flex h-[38px] w-full rounded-sm border border-input bg-card px-[11px] text-[13.5px] outline-none"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
