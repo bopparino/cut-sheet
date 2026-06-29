@@ -77,7 +77,7 @@ function NavLink({
       href={href}
       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
         active
-          ? "bg-accent font-semibold text-primary shadow-[inset_3px_0_0_0_var(--primary)]"
+          ? "bg-accent font-semibold text-primary"
           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
       }`}
     >
