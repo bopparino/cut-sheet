@@ -158,27 +158,51 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
       : 0;
   const isHouse = houseSiblingCount > 1;
 
+  // Active-item count per section (non-zero quantities, filled rows, filled
+  // fields, or attachments). Drives the rail count badges. Display-only.
+  const f = d.formOnly;
+  const headerCount = Object.values(d.header).filter(
+    (v) => typeof v === "string" && v.trim() !== "" && v !== "none",
+  ).length;
   const stockCount = nz(d.stock.duct60) + nz(d.stock.sdMisc);
   const customCount =
     nzRows(d.custom.endCaps) + nzRows(d.custom.volumeDampers) + nzRows(d.custom.canvasConn) +
     nzRows(d.custom.customDuct) + d.custom.miscellaneous.filter(Boolean).length +
     nz(d.custom.rndCollars) + nz(d.custom.roundVolumeDampers);
   const truckCount = nz(d.truck.ovPipe) + nz(d.truck.rndPipe);
+  const racksCount = nz(f.filterRacks) + nz(f.drainPans) + nz(f.returnPlenum);
+  const bootsCount =
+    nz(f.straightBootBoxes) + nz(f.simpsonStp) + nz(f.ellBoots) + nz(f.endBoots) +
+    nz(f.strtBoots) + nz(f.tto);
+  const ovalCount =
+    nz(f.ovalEll) + nz(f.ovalToRnd) + nz(f.ovalSHeads) + nz(f.rndEll) + nz(f.airTights) + nz(f.saddleTap);
+  const flexCount = nz(f.uninsulatedFlex) + nz(f.insulatedFlexR4) + nz(f.insulatedFlexR8);
+  const capsCount =
+    nz(f.midAtlanticWallCaps) + nz(f.birdCage) + nz(f.metalScreen) + nz(f.dryerBox) +
+    nz(f.bVent) + nz(f.flexBVent) + nz(f.blueFlashing);
+  const fansCount = nz(f.fans);
+  const miscCount =
+    nz(f.freshAirDampers) + nz(f.galRedr) + nz(f.sdMiscExtras) +
+    (f.panningMetal36x36 > 0 ? 1 : 0) + (f.condRegs8x6 > 0 ? 1 : 0);
+  const registersCount =
+    f.wallRegs.filter(Boolean).length + f.grills.filter(Boolean).length +
+    f.filterGrills.filter(Boolean).length + f.floorRegs.filter(Boolean).length;
+  const docsCount = photos.length + documents.length;
 
   const rail: RailItem[] = [
-    { id: "g-header", label: "Header" },
+    { id: "g-header", label: "Header", badge: headerCount },
     { id: "g-stock", label: "Stock duct", badge: stockCount },
     { id: "g-custom", label: "Custom", badge: customCount },
     { id: "g-truck", label: "Truck", badge: truckCount },
-    { id: "g-racks", label: "Racks & plenum" },
-    { id: "g-boots", label: "Boots & boxes" },
-    { id: "g-oval", label: "Oval & round" },
-    { id: "g-flex", label: "Flex" },
-    { id: "g-caps", label: "Caps & vents" },
-    { id: "g-fans", label: "Fans" },
-    { id: "g-misc", label: "Misc & extras" },
-    { id: "g-registers", label: "Registers" },
-    { id: "g-docs", label: "Documents" },
+    { id: "g-racks", label: "Racks & plenum", badge: racksCount },
+    { id: "g-boots", label: "Boots & boxes", badge: bootsCount },
+    { id: "g-oval", label: "Oval & round", badge: ovalCount },
+    { id: "g-flex", label: "Flex", badge: flexCount },
+    { id: "g-caps", label: "Caps & vents", badge: capsCount },
+    { id: "g-fans", label: "Fans", badge: fansCount },
+    { id: "g-misc", label: "Misc & extras", badge: miscCount },
+    { id: "g-registers", label: "Registers", badge: registersCount },
+    { id: "g-docs", label: "Documents", badge: docsCount },
   ];
 
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
