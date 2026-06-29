@@ -64,7 +64,7 @@ function migrate(db: Database.Database): void {
 
   if (version < 1) {
     // The pre-versioning CHECK constraint only allowed 'drawing' and 'image'.
-    // SQLite can't alter CHECK constraints in place — rebuild the table only
+    // SQLite can't alter CHECK constraints in place - rebuild the table only
     // if the stored DDL hasn't already been updated by the bootstrap above.
     const tableInfo = db
       .prepare(
@@ -109,7 +109,7 @@ function migrate(db: Database.Database): void {
     // Folders: cutsheets gain a nullable folder_id pointing at the folders
     // table. The bootstrap above already creates folders and the index for
     // fresh DBs; this guard adds the column to existing DBs in place.
-    // ON DELETE SET NULL — deleting a folder unfiles its cutsheets, not
+    // ON DELETE SET NULL - deleting a folder unfiles its cutsheets, not
     // deletes them. That matches user expectation ("folder organization is
     // separate from cutsheet existence").
     const cols = db.prepare("PRAGMA table_info(cutsheets)").all() as Array<{
@@ -126,7 +126,7 @@ function migrate(db: Database.Database): void {
 
   if (version < 4) {
     // Subfolders: folders gain a nullable parent_id pointing at folders.id.
-    // ON DELETE CASCADE — deleting a folder takes its subfolders with it.
+    // ON DELETE CASCADE - deleting a folder takes its subfolders with it.
     // Cutsheets within any of those folders still revert to unfiled via the
     // existing cutsheets.folder_id ON DELETE SET NULL, so no cutsheet is
     // ever destroyed by folder deletion at any depth.
@@ -144,7 +144,7 @@ function migrate(db: Database.Database): void {
 }
 
 // Lazy: open on first access. `next build` imports every route module to
-// collect page data — if we opened at module-load, multiple build workers
+// collect page data - if we opened at module-load, multiple build workers
 // would race to acquire the WAL-mode lock and one would explode with
 // SQLITE_BUSY. Deferring keeps the build pure; the connection only opens
 // when a request handler actually touches the DB.

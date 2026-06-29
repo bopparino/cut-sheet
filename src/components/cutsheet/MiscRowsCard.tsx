@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 type Props = {
   title: string;
-  // FormData key prefix — inputs are named `${prefix}.${index}`.
+  // FormData key prefix - inputs are named `${prefix}.${index}`.
   prefix: string;
   initial: string[];
   // Empty rows below this baseline render even when the saved data is shorter,

@@ -11,7 +11,7 @@ type Props = {
   // ticket on a fresh PDF page. Used when stacking multiple zones in a
   // house-combined print.
   pageBreakBefore?: boolean;
-  // When true, this is part of a combined house print — show the zone label
+  // When true, this is part of a combined house print - show the zone label
   // prominently in the header block so it's obvious which slice of the
   // combined PDF the reader is looking at.
   asPartOfHouse?: boolean;

@@ -47,7 +47,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   THEME: Amber Alabaster / Solar Industrial — scoped overrides
+   THEME: Amber Alabaster / Solar Industrial - scoped overrides
    Applied via .theme-insight on the (app) body. Print routes do
    NOT receive this class, so PDFs render with the defaults above.
    Dark variant (.dark .theme-insight) is appended at the bottom of
@@ -62,30 +62,43 @@
   --card-foreground: #1A1A1A;
   --popover: #FFFFFF;
   --popover-foreground: #1A1A1A;
-  --primary: #FF8C00;
+  /* Primary is clay/brick: reserved for primary actions and the active
+     state only. Color elsewhere carries meaning, never decoration. */
+  --primary: #A8432A;
   --primary-foreground: #FFFFFF;
+  --primary-hover: #8E3722;
   --secondary: #F5F5F4;
   --secondary-foreground: #1A1A1A;
   --muted: #F5F5F4;
   --muted-foreground: #57534E;
-  --accent: #FFB347;
-  --accent-foreground: #1A1A1A;
-  --destructive: #EF4444;
+  /* Accent = the soft clay tint used behind the active nav row / hover. */
+  --accent: #F4E9E3;
+  --accent-foreground: #A8432A;
+  --destructive: #DC2626;
   --border: #E7E5E4;
-  --input: #E7E5E4;
-  --ring: #FF8C00;
+  --input: #DAD6D2;
+  --ring: #A8432A;
 
-  /* Extension tokens (Insight-only, not part of shadcn) */
-  --accent-mid: #E07B00;
-  --accent-glow: rgba(255, 140, 0, 0.15);
-  --accent-glow-strong: rgba(255, 140, 0, 0.25);
-  --shadow-glow: 0 0 20px rgba(255, 140, 0, 0.12);
+  /* Clay tint used for active/selected surfaces (cream + brick text). */
+  --clay-tint:  rgba(168, 67, 42, 0.08);
+  --clay-line:  rgba(168, 67, 42, 0.30);
 
-  /* ── Heritage brand colors (Brand Guidelines §04) ──────────
-     Navy LEADS: headlines, wordmark, dark/trust surfaces.
-     Red is ACCENT ONLY: service descriptor, heat cues, small
-     emphasis — kept under ~10% of any surface, never a large
-     fill. Orange (--primary) remains the only interactive color. */
+  /* ── Semantic colors - each means one thing ──────────────────
+     amber = needs attention / unsorted   red = duplicate / overdue
+     green = ready / released             navy = headings + data */
+  --warn-bg:   #FBF1DD;
+  --warn-fg:   #92510A;
+  --warn-line: #E7C893;
+  --danger-bg: #FBE9E7;
+  --danger-fg: #B42318;
+  --danger-line: #F0B4AC;
+  --ok-bg:     #E6F4EC;
+  --ok-fg:     #15803D;
+  --ok-line:   #A6D9BC;
+
+  /* Heritage navy: headlines, wordmark, tabular data, trust surfaces.
+     Navy and neutral stone dominate; clay is the single interactive
+     color; the semantic set above is the only other color allowed. */
   --brand-navy: #101850;
   --navy-900: #0A1238;
   --navy-800: #101850;
@@ -111,14 +124,14 @@
 
   --status-draft-bg:        #F5F5F4;
   --status-draft-text:      #71717A;
-  --status-proposed-bg:     rgba(255, 140, 0, 0.08);
-  --status-proposed-text:   #B45309;
-  --status-contracted-bg:   rgba(16, 185, 129, 0.08);
-  --status-contracted-text: #065F46;
+  --status-proposed-bg:     var(--clay-tint);
+  --status-proposed-text:   #A8432A;
+  --status-contracted-bg:   var(--ok-bg);
+  --status-contracted-text: var(--ok-fg);
   --status-complete-bg:     #1A1A1A;
   --status-complete-text:   #FAFAF9;
-  --status-lost-bg:         rgba(239, 68, 68, 0.08);
-  --status-lost-text:       #DC2626;
+  --status-lost-bg:         var(--danger-bg);
+  --status-lost-text:       var(--danger-fg);
 
   font-family: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   letter-spacing: -0.006em;
@@ -168,13 +181,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Insight signature utilities — only render under .theme-insight
+   Insight signature utilities - only render under .theme-insight
 ═══════════════════════════════════════════════════════════ */
 
+/* Small section/column labels read as technical data, not SaaS chrome:
+   monospaced, uppercase, tracked. */
 .theme-insight .label-caps {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gray-400);
 }
@@ -200,25 +216,39 @@
 .theme-insight .badge-complete   { background: var(--status-complete-bg);   color: var(--status-complete-text); }
 .theme-insight .badge-lost       { background: var(--status-lost-bg);       color: var(--status-lost-text); }
 
-/* Inner-glow LED button — apply .btn-glow to any element with bg-primary */
+/* Flat primary button. The old version was an inner-glow "LED" with a
+   colored ring and bloom on hover - a generative-UI tell. Now it is a
+   plain solid clay button that simply darkens on hover. */
 .theme-insight .btn-glow {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 0 1px rgba(255, 140, 0, 0.3);
-  transition: all 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 .theme-insight .btn-glow:hover:not(:disabled) {
-  background: var(--accent-mid);
-  box-shadow:
-    0 2px 8px rgba(255, 140, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 15px rgba(255, 140, 0, 0.15);
-  transform: translateY(-0.5px);
+  background: var(--primary-hover);
 }
 .theme-insight .btn-glow:active:not(:disabled) {
-  transform: translateY(0.5px) scale(0.985);
+  background: var(--primary-hover);
 }
+
+/* ── Semantic chips + banner ─────────────────────────────────
+   One color = one meaning. Used for duplicate-lot flags, the
+   unfiled-imports banner, and status pills. */
+.theme-insight .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.theme-insight .chip-warn   { background: var(--warn-bg);   color: var(--warn-fg);   border-color: var(--warn-line); }
+.theme-insight .chip-danger { background: var(--danger-bg); color: var(--danger-fg); border-color: var(--danger-line); }
+.theme-insight .chip-ok     { background: var(--ok-bg);     color: var(--ok-fg);     border-color: var(--ok-line); }
+.theme-insight .chip-muted  { background: var(--secondary); color: var(--muted-foreground); border-color: var(--border); }
 /* ============================================================
    theme-insight · DARK extension  (Amber Alabaster, warm-stone)
    ------------------------------------------------------------
@@ -228,7 +258,7 @@
    sets a `dark` class on the root, so `.dark .theme-insight`
    below matches your `@custom-variant dark` convention).
 
-   Light values are unchanged — your existing `.theme-insight`
+   Light values are unchanged - your existing `.theme-insight`
    block already matches the prototype. Only dark is new.
    ============================================================ */
 
@@ -240,26 +270,35 @@
   --card-foreground: #FAF7F4;
   --popover: #211C17;
   --popover-foreground: #FAF7F4;
-  --primary: #FF9D2E;           /* slightly lifted so it reads on dark */
-  --primary-foreground: #1A1206;
+  --primary: #C75A3E;           /* clay lifted so it reads on dark */
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #B14A30;
   --secondary: #2E2720;
   --secondary-foreground: #FAF7F4;
   --muted: #26201A;
   --muted-foreground: #C4BCB2;
-  --accent: #FFB04D;
-  --accent-foreground: #1A1206;
-  --destructive: #F87171;
+  --accent: #34231D;            /* dark clay tint for active nav */
+  --accent-foreground: #E8967B;
+  --destructive: #F2766A;
   --border: #383029;
-  --input: #383029;
-  --ring: #FF9D2E;
+  --input: #45392F;
+  --ring: #C75A3E;
 
-  /* Insight extension tokens */
-  --accent-mid: #FFB04D;
-  --accent-glow: rgba(255, 157, 46, 0.18);
-  --accent-glow-strong: rgba(255, 157, 46, 0.30);
-  --shadow-glow: 0 0 20px rgba(255, 157, 46, 0.14);
+  --clay-tint:  rgba(199, 90, 62, 0.16);
+  --clay-line:  rgba(199, 90, 62, 0.40);
 
-  /* Heritage navy can't carry headlines on a dark surface — flip
+  /* Semantic set on dark */
+  --warn-bg:   rgba(245, 158, 11, 0.14);
+  --warn-fg:   #F4C46B;
+  --warn-line: rgba(245, 158, 11, 0.32);
+  --danger-bg: rgba(220, 38, 38, 0.16);
+  --danger-fg: #F2A29A;
+  --danger-line: rgba(220, 38, 38, 0.36);
+  --ok-bg:     rgba(52, 211, 153, 0.14);
+  --ok-fg:     #6EE7B7;
+  --ok-line:   rgba(52, 211, 153, 0.30);
+
+  /* Heritage navy can't carry headlines on a dark surface - flip
      to near-white. Navy ramp + --brand-red stay fixed for use as
      accent surfaces/cues. Logo chip stays white (on-dark rule). */
   --heading: #FAF7F4;
@@ -277,21 +316,13 @@
   /* status chips on dark */
   --status-draft-bg:        #2E2720;
   --status-draft-text:      #A8A29E;
-  --status-proposed-bg:     rgba(255, 157, 46, 0.16);
-  --status-proposed-text:   #FFB659;
-  --status-contracted-bg:   rgba(52, 211, 153, 0.14);
-  --status-contracted-text: #6EE7B7;
+  --status-proposed-bg:     var(--clay-tint);
+  --status-proposed-text:   #E8967B;
+  --status-contracted-bg:   var(--ok-bg);
+  --status-contracted-text: var(--ok-fg);
   --status-complete-bg:     #FAF7F4;
   --status-complete-text:   #17130F;
   --status-lost-bg:         rgba(248, 113, 113, 0.14);
   --status-lost-text:       #FCA5A5;
-}
-
-/* Optional: soften the LED button glow on dark so it doesn't bloom. */
-.dark .theme-insight .btn-glow {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(255, 157, 46, 0.35);
 }
 

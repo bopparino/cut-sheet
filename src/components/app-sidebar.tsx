@@ -35,14 +35,14 @@ export function AppSidebar({ trashCount }: { trashCount: number }) {
         </span>
       </Link>
 
-      <p className="label-caps px-2 pb-1.5 pt-1">Workspace</p>
       <nav className="flex flex-col gap-0.5">
         {WORKSPACE.map((item) => (
           <NavLink key={item.href} {...item} active={item.match(pathname)} />
         ))}
       </nav>
 
-      <p className="label-caps px-2 pb-1.5 pt-4">Admin</p>
+      <div className="my-3 border-t border-border" />
+
       <nav className="flex flex-col gap-0.5">
         <NavLink
           href="/admin/trash"
@@ -54,7 +54,7 @@ export function AppSidebar({ trashCount }: { trashCount: number }) {
       </nav>
 
       <div className="flex-1" />
-      <DarkModeToggle />
+      <ThemeToggle />
     </aside>
   );
 }
@@ -77,7 +77,7 @@ function NavLink({
       href={href}
       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
         active
-          ? "bg-primary/10 font-semibold text-primary"
+          ? "bg-accent font-semibold text-primary shadow-[inset_3px_0_0_0_var(--primary)]"
           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
       }`}
     >
@@ -92,7 +92,9 @@ function NavLink({
   );
 }
 
-function DarkModeToggle() {
+// Icon-only theme toggle. The old version was a labeled sliding pill in the
+// corner - a consumer-app affordance out of place in a shop tool.
+function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -102,18 +104,11 @@ function DarkModeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      aria-label="Toggle dark mode"
-      className="flex items-center gap-2.5 rounded-lg border border-border px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      title={isDark ? "Light mode" : "Dark mode"}
+      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
     >
       {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
-      <span className="flex-1 text-left">Dark mode</span>
-      <span
-        className={`relative h-5 w-9 rounded-full transition-colors ${isDark ? "bg-primary" : "bg-border"}`}
-      >
-        <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${isDark ? "left-[18px]" : "left-0.5"}`}
-        />
-      </span>
     </button>
   );
 }

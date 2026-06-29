@@ -17,7 +17,7 @@ const OPTIONS: { value: Plenum; label: string; contents: string }[] = [
   },
 ];
 
-// Native radios in a fieldset — accessible, no extra deps, posts cleanly via
+// Native radios in a fieldset - accessible, no extra deps, posts cleanly via
 // FormData as a single `plenumPackage` value.
 export function PlenumPackageCard({
   value,
@@ -39,8 +39,9 @@ export function PlenumPackageCard({
               key={opt.value}
               className={cn(
                 "group flex cursor-pointer flex-col gap-1 rounded-md border border-input p-3 text-sm transition-colors",
-                "hover:bg-accent has-[input:checked]:border-foreground has-[input:checked]:bg-accent",
-                // Orange fill is light in both themes, so checked text must be dark
+                // Restrained selected state: soft clay tint + clay border + clay
+                // text, never a saturated fill. Emphasis matches importance.
+                "hover:bg-accent has-[input:checked]:border-[var(--clay-line)] has-[input:checked]:bg-accent",
                 "has-[input:checked]:text-accent-foreground",
               )}
             >
@@ -50,7 +51,7 @@ export function PlenumPackageCard({
                   name="plenumPackage"
                   value={opt.value}
                   defaultChecked={value === opt.value}
-                  className="h-4 w-4"
+                  className="h-4 w-4 accent-[var(--primary)]"
                 />
                 <span className="font-semibold">{opt.label}</span>
               </span>

@@ -17,7 +17,7 @@ export async function GET(
   if (!Number.isInteger(numeric)) return new NextResponse("bad id", { status: 400 });
   if (!VALID_TICKETS.has(ticket)) return new NextResponse("bad ticket", { status: 400 });
 
-  // Verify the cutsheet exists before launching Puppeteer — otherwise the
+  // Verify the cutsheet exists before launching Puppeteer - otherwise the
   // print route renders a Next.js 404 page and Puppeteer happily prints it,
   // so the user downloads a "page not found" PDF.
   const exists = db
@@ -29,7 +29,7 @@ export async function GET(
 
   // Build the absolute URL for the print page using the incoming request's
   // host headers. Puppeteer runs in the same process, so this is a loopback
-  // call back into Next.js — same auth context, same DB connection.
+  // call back into Next.js - same auth context, same DB connection.
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   // A TLS-terminating proxy sets x-forwarded-proto; without one, the actual

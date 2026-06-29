@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { FileText, ChevronRight, AlertTriangle, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ChevronRight, AlertTriangle, Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/utils";
 
@@ -79,7 +78,12 @@ export default async function SearchPage({
   return (
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
-        <h1 className="text-xl font-bold tracking-tight">Search cutsheets</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">Search</h1>
+          <p className="font-mono-data mt-0.5 text-xs text-muted-foreground">
+            Find any cutsheet across all builders
+          </p>
+        </div>
         <Link
           href="/form/new"
           className="btn-glow ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground"
@@ -93,7 +97,7 @@ export default async function SearchPage({
         <form
           method="get"
           action="/search"
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow)]"
+          className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4"
         >
           <Field label="Name" name="name" defaultValue={filters.name} className="min-w-[180px] flex-1" />
           <Field label="Builder" name="builder" defaultValue={filters.builder} className="min-w-[160px] flex-1" />
@@ -118,13 +122,13 @@ export default async function SearchPage({
 
         {/* Summary */}
         <div className="mb-3 mt-5 flex items-center gap-3 text-sm text-muted-foreground">
-          <span>
+          <span className="font-mono-data">
             <span className="font-semibold text-foreground">{rows.length}</span> result
             {rows.length === 1 ? "" : "s"}
           </span>
           {dupLots.size > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-[var(--status-lost-text)]">
-              <AlertTriangle className="h-3.5 w-3.5" />
+            <span className="chip chip-danger">
+              <AlertTriangle className="h-3 w-3" />
               {dupLots.size} possible duplicate lot{dupLots.size === 1 ? "" : "s"}
             </span>
           )}
@@ -175,22 +179,20 @@ function ResultRow({ row, isDup }: { row: CutsheetRow; isDup: boolean }) {
     .join(" · ");
   return (
     <li>
-      <Link href={`/form/${row.id}`} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-accent/40">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <FileText className="h-4 w-4" />
-        </span>
+      <Link href={`/form/${row.id}`} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-accent/40">
+        <span className="font-mono-data w-12 shrink-0 text-[11px] text-muted-foreground">#{row.id}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold">{title}</span>
+            <span className="truncate text-sm font-semibold text-foreground">{title}</span>
             {isDup && (
-              <Badge variant="lost" title={`Shares a lot within ${DUPLICATE_WINDOW_DAYS} days`}>
-                Dup Lot
-              </Badge>
+              <span className="chip chip-danger" title={`Shares a lot within ${DUPLICATE_WINDOW_DAYS} days`}>
+                Dup lot
+              </span>
             )}
           </div>
           {meta && <div className="font-mono-data truncate text-xs text-muted-foreground">{meta}</div>}
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">Updated {formatDateTime(row.updated_at)}</span>
+        <span className="font-mono-data shrink-0 text-[11px] text-muted-foreground">{formatDateTime(row.updated_at)}</span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Link>
     </li>

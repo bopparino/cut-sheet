@@ -143,7 +143,7 @@ export async function createCutsheet(formData: FormData) {
 }
 
 // Cookie-cutter houses: clone an existing cutsheet's data into a new row.
-// Photos / documents stay on the original — the user is duplicating the
+// Photos / documents stay on the original - the user is duplicating the
 // numeric data, not the attached evidence.
 export async function cloneCutsheet(id: number) {
   const row = db
@@ -249,10 +249,10 @@ export async function updateCutsheet(id: number, formData: FormData) {
   if (folderId != null) revalidatePath(`/browse/${folderId}`);
 }
 
-// Replica save — the full two-page Cut Sheet replica (pages 1 + 2). Writes
+// Replica save - the full two-page Cut Sheet replica (pages 1 + 2). Writes
 // every field the new sheet surfaces. A few legacy schema fields aren't on the
 // new design (tto, plenumContents, sdMiscExtras.angles, and Flex R4 outside
-// 4/6/8) — those are preserved from `current` so the replica never silently
+// 4/6/8) - those are preserved from `current` so the replica never silently
 // zeroes data it doesn't show.
 export async function updateCutSheetReplica(id: number, formData: FormData) {
   const row = db
@@ -317,7 +317,7 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
       fans: readNumberMap(formData, "fans", FANS_KEYS),
       straightBootBoxes: readNumberMap(formData, "straightBootBoxes", STRAIGHT_BOOT_BOXES_SIZES),
       simpsonStp: readNumberMap(formData, "simpsonStp", SIMPSON_STP_KEYS),
-      // angles isn't on the new sheet — keep it; bubbleWrap/foilIns are.
+      // angles isn't on the new sheet - keep it; bubbleWrap/foilIns are.
       sdMiscExtras: {
         ...current.formOnly.sdMiscExtras,
         bubbleWrap: readSingleNumber(formData, "sdMiscExtras.bubbleWrap"),
@@ -336,11 +336,11 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
       grills: readStringRows(formData, "grills"),
       filterGrills: readStringRows(formData, "filterGrills"),
       floorRegs: readStringRows(formData, "floorRegs"),
-      // tto + plenumContents aren't on the new sheet — preserved via spread.
+      // tto + plenumContents aren't on the new sheet - preserved via spread.
     },
   };
   const parsed = CutsheetSchema.parse(next);
-  // Folder is managed on the card form, not here — leave folder_id untouched so
+  // Folder is managed on the card form, not here - leave folder_id untouched so
   // a replica save never unfiles the cutsheet (the replica has no folder input).
   db.prepare(
     "UPDATE cutsheets SET data = ?, updated_at = datetime('now') WHERE id = ?",
@@ -395,7 +395,7 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     throw new Error(
-      `File too large — ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB limit`,
+      `File too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB limit`,
     );
   }
 
@@ -407,7 +407,7 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
   revalidatePath(`/form/${cutsheetId}`);
 }
 
-// Documents are anything that isn't an image — PDF / Word / Excel / etc.
+// Documents are anything that isn't an image - PDF / Word / Excel / etc.
 // We don't enforce a strict MIME allowlist because browsers report Office
 // docs inconsistently; instead we reject only image MIMEs (those belong in
 // PhotosCard) and bound by size.
@@ -419,7 +419,7 @@ export async function uploadDocument(cutsheetId: number, formData: FormData) {
   }
   if (file.size > MAX_DOCUMENT_BYTES) {
     throw new Error(
-      `Document too large — ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB limit`,
+      `Document too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB limit`,
     );
   }
 
@@ -601,7 +601,7 @@ export async function bulkDelete(formData: FormData) {
 }
 
 // FK ON DELETE SET NULL on cutsheets.folder_id detaches the contained
-// cutsheets — they revert to "unfiled" rather than being deleted.
+// cutsheets - they revert to "unfiled" rather than being deleted.
 export async function deleteFolder(id: number) {
   db.prepare("DELETE FROM folders WHERE id = ?").run(id);
   revalidatePath("/browse");

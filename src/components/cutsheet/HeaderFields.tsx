@@ -29,8 +29,8 @@ export function HeaderFields({ initial }: Props) {
       <Field label="Date" name="date" type="date" defaultValue={h?.date} />
       <Field label="Delivery Date" name="deliveryDate" type="date" defaultValue={h?.deliveryDate} />
 
-      <SelectField label="Region" name="region" defaultValue={h?.region ?? ""} options={REGIONS} placeholder="—" />
-      <SelectField label="Eq To" name="eqTo" defaultValue={h?.eqTo ?? ""} options={EQ_TO} placeholder="—" />
+      <SelectField label="Region" name="region" defaultValue={h?.region ?? ""} options={REGIONS} placeholder="-" />
+      <SelectField label="Eq To" name="eqTo" defaultValue={h?.eqTo ?? ""} options={EQ_TO} placeholder="-" />
     </div>
   );
 }
@@ -78,7 +78,7 @@ function SelectField({
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
-            {opt === "" ? (placeholder ?? "—") : opt.charAt(0).toUpperCase() + opt.slice(1)}
+            {opt === "" ? (placeholder ?? "-") : opt.charAt(0).toUpperCase() + opt.slice(1)}
           </option>
         ))}
       </select>

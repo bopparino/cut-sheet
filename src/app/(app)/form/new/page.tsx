@@ -8,10 +8,7 @@ export default function NewCutsheetPage() {
   return (
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
-        <div>
-          <p className="label-caps">New cutsheet</p>
-          <h1 className="text-xl font-bold tracking-tight">Untitled cutsheet</h1>
-        </div>
+        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">New cutsheet</h1>
         <button
           type="submit"
           form={FORM_ID}
@@ -30,14 +27,14 @@ export default function NewCutsheetPage() {
             placeholder="Untitled cutsheet"
             className="w-full max-w-xl rounded-lg bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/50 focus-visible:bg-accent/40"
           />
-          <section className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow)]">
+          <section className="rounded-xl border border-border bg-card p-5">
             <h2 className="mb-4 flex items-center gap-2 text-base font-bold">
               <span className="h-2 w-2 rounded-full bg-primary" /> Header
             </h2>
             <HeaderFields />
           </section>
           <p className="text-sm text-muted-foreground">
-            Fill in any header fields you have now — the rest of the sections become editable after
+            Fill in any header fields you have now - the rest of the sections become editable after
             the cutsheet is created.
           </p>
         </CutsheetForm>

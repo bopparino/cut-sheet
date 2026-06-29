@@ -30,9 +30,9 @@ import {
 } from "@/lib/schema";
 
 // Two-page Tabloid 11x17 pad master:
-//   Page 1 — blank cutsheet with header + 6 balanced qty/table columns +
+//   Page 1 - blank cutsheet with header + 6 balanced qty/table columns +
 //            anchored bottom strip (Wall/Grills/Filter/Floor Regs).
-//   Page 2 — fittings selection grid (4x6 cells, each with SL? + QTY +
+//   Page 2 - fittings selection grid (4x6 cells, each with SL? + QTY +
 //            label + drawing placeholder).
 //
 // Drawing section is removed from page 1 per direction; the second page
@@ -136,7 +136,7 @@ export default function BlankPrintPage() {
 }
 
 // ============================================================================
-// PAGE 1 — Cutsheet
+// PAGE 1 - Cutsheet
 // ============================================================================
 
 function Page1() {
@@ -463,7 +463,7 @@ function Col4() {
 }
 
 // Col 5: the "outside-of-house" wall-mounted box family is grouped together
-// at the top — Mid Atl Wall Caps, Bird Cage, Metal/Screen, Dryer Box —
+// at the top - Mid Atl Wall Caps, Bird Cage, Metal/Screen, Dryer Box -
 // followed by RND stock. Matches the shop's mental model of these items.
 function Col5() {
   return (
@@ -565,13 +565,13 @@ function FootCell({ title }: { title: string }) {
 
 
 // ============================================================================
-// PAGE 2 — Fittings grid (28 blank boxes)
+// PAGE 2 - Fittings grid (28 blank boxes)
 // ============================================================================
 //
 // 4×7 grid of empty cells. Each cell shows only an SL?: N/Y toggle and a
 // QTY field at the top; the rest of the cell is blank for the printed
 // artwork or hand-drawn sketch. No fitting names, no "drawing" placeholder
-// text — the printed pad gets the actual fitting illustrations laid in by
+// text - the printed pad gets the actual fitting illustrations laid in by
 // the print shop (or filled by hand on each pad).
 
 const FITTING_BOX_COUNT = 28;

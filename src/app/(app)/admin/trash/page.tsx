@@ -18,8 +18,8 @@ export default function TrashPage() {
   return (
     <div>
       <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
-        <p className="label-caps">Admin</p>
-        <h1 className="text-xl font-bold tracking-tight">Trash</h1>
+        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">Trash</h1>
+        <p className="font-mono-data mt-0.5 text-xs text-muted-foreground">Deleted cutsheets, restorable until purged</p>
       </header>
 
       <div className="px-8 py-7">
@@ -57,7 +57,7 @@ export default function TrashPage() {
                   return (
                     <tr key={row.id} className="transition-colors hover:bg-accent/30">
                       <td className="px-5 py-3.5 font-semibold">{title}</td>
-                      <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{h.lot || "—"}</td>
+                      <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{h.lot || "-"}</td>
                       <td className="font-mono-data px-5 py-3.5 text-muted-foreground">{formatDateTime(row.deleted_at)}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex justify-end">

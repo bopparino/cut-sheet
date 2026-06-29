@@ -2,7 +2,7 @@ import type { Cutsheet } from "@/lib/schema";
 
 // Shared building blocks for the editable cut-sheet replica (both pages). Each
 // printed box becomes an <input>/<select> carrying the exact FormData name the
-// save action and PDF pipeline read — binding is name-based, so layout is fully
+// save action and PDF pipeline read - binding is name-based, so layout is fully
 // decoupled from save/output. Server components: inputs use defaultValue and
 // the parent <form action> reads them via FormData.
 
@@ -10,8 +10,8 @@ export type WHRow = { qty: number; w: string; h: string };
 export type CDRow = { qty: number; w: string; h: string; l: string; sl: "Y" | "N" };
 
 // A single cell in a variant table: either an editable qty box bound to `name`,
-// or a blacked-out box (a size the shop never orders in that variant — e.g.
-// Flex R4 outside 4/6/8 — so there's nothing to fill).
+// or a blacked-out box (a size the shop never orders in that variant - e.g.
+// Flex R4 outside 4/6/8 - so there's nothing to fill).
 export type Cell = { name: string; value: number } | { blackout: true };
 
 const numClass =
@@ -53,7 +53,7 @@ export function QtyInputList<T extends string>({
   sizes,
   values,
   label,
-  // Light gray rule under each row — applied across all qty-list sections for a
+  // Light gray rule under each row - applied across all qty-list sections for a
   // cohesive ledger look (the thick-black-border W/H tables, the fitting grid,
   // and the register lists opt out by using different components).
   ruled = true,
@@ -98,7 +98,7 @@ export function SingletonInputRow({
 
 // General variant table: a Size column plus N labelled columns. Each row
 // supplies its own cells, so the (column,row)→schema-key mapping can be
-// anything — used for Round Coll/VD, Metal/Screen, Mid Atl, Flex Un/R4/R8, etc.
+// anything - used for Round Coll/VD, Metal/Screen, Mid Atl, Flex Un/R4/R8, etc.
 export function MultiQtyInputTable({
   colLabels,
   rows,
@@ -277,7 +277,7 @@ export function ReplicaHeader({
 }: {
   title: string;
   header: Cutsheet["header"];
-  // The header shows on both pages, but only ONE may submit — otherwise
+  // The header shows on both pages, but only ONE may submit - otherwise
   // FormData holds two values per field and the second page's edits are
   // silently dropped. Page 2 passes editable={false}: same look, read-only.
   editable?: boolean;
@@ -374,11 +374,11 @@ function SelectField({
       {editable ? (
         <select name={name} defaultValue={value} className="min-w-0 flex-1 border-b border-black bg-white text-[10px] outline-none focus:bg-yellow-100">
           {options.map((o) => (
-            <option key={o} value={o}>{o || "—"}</option>
+            <option key={o} value={o}>{o || "-"}</option>
           ))}
         </select>
       ) : (
-        <span className="min-w-0 flex-1 truncate border-b border-black text-[10px]">{value || "—"}</span>
+        <span className="min-w-0 flex-1 truncate border-b border-black text-[10px]">{value || "-"}</span>
       )}
     </div>
   );

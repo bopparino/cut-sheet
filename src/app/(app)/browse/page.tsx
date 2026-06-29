@@ -1,93 +1,39 @@
 import Link from "next/link";
-import { FileText, Search as SearchIcon, Plus } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { BrowseViewToggle } from "@/components/folders/BrowseViewToggle";
-import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
-import {
-  BrowseGrid,
-  type CutsheetItem,
-  type FolderItem,
-} from "@/components/folders/BrowseGrid";
+import { Search as SearchIcon, Plus, ChevronRight, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db";
-import { formatDateTime } from "@/lib/utils";
-import { listAllFolders, subtreeCutsheetCounts, withPaths } from "@/lib/folders";
+import { formatDateTime, relativeTime, formatShortDate, todayEastern } from "@/lib/utils";
+import { getBuilderRollup, type BuilderRow } from "@/lib/builders";
 
-type CutsheetRow = {
-  id: number;
-  data: string;
-  folder_id: number | null;
-  updated_at: string;
-};
-type FolderRow = { id: number; name: string };
+type CutsheetRow = { id: number; data: string; updated_at: string };
 
 export const dynamic = "force-dynamic";
 
-export default async function BrowsePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>;
-}) {
-  const sp = await searchParams;
-  const view: "grid" | "list" = sp.view === "list" ? "list" : "grid";
-
+export default async function BrowsePage() {
   const recent = db
     .prepare<[], CutsheetRow>(
-      `SELECT id, data, folder_id, updated_at FROM cutsheets
+      `SELECT id, data, updated_at FROM cutsheets
        WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 5`,
     )
     .all();
 
-  const folderRows = db
-    .prepare<[], FolderRow>(
-      `SELECT f.id, f.name FROM folders f
-       WHERE f.parent_id IS NULL ORDER BY f.name COLLATE NOCASE ASC`,
-    )
-    .all();
-  const counts = subtreeCutsheetCounts();
-
-  const unfiledRows = db
-    .prepare<[], CutsheetRow>(
-      `SELECT id, data, folder_id, updated_at FROM cutsheets
-       WHERE deleted_at IS NULL AND folder_id IS NULL
-       ORDER BY updated_at DESC LIMIT 50`,
-    )
-    .all();
-
-  const totalFolders =
-    db.prepare<[], { n: number }>("SELECT COUNT(*) AS n FROM folders").get()?.n ?? 0;
-  const totalCutsheets =
-    db
-      .prepare<[], { n: number }>(
-        "SELECT COUNT(*) AS n FROM cutsheets WHERE deleted_at IS NULL",
-      )
-      .get()?.n ?? 0;
-
-  const folders: FolderItem[] = folderRows.map((f) => ({
-    id: f.id,
-    name: f.name,
-    cutsheetCount: counts.get(f.id) ?? 0,
-  }));
-  const cutsheets: CutsheetItem[] = unfiledRows.map((r) => toCutsheetItem(r));
-
-  const folderOptions = withPaths(listAllFolders())
-    .map((f) => ({ id: f.id, path: f.path }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+  const { builders, totalBuilders, totalCutsheets, unfiledCount } = getBuilderRollup(todayEastern());
+  const filedCount = builders.filter((b) => !b.unfiled).length;
 
   return (
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight">Browse</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {totalFolders.toLocaleString()} folders · {totalCutsheets.toLocaleString()} cutsheets
+          <h1 className="text-2xl font-extrabold uppercase tracking-tight text-foreground">Browse</h1>
+          <p className="font-mono-data mt-0.5 text-xs text-muted-foreground">
+            {totalBuilders.toLocaleString()} builders · {totalCutsheets.toLocaleString()} cutsheets
           </p>
         </div>
         <form action="/search" className="relative ml-auto hidden max-w-md flex-1 sm:block">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             name="name"
-            placeholder="Search by name, builder, lot…"
-            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/30"
+            placeholder="Search name, builder, lot, then Enter"
+            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/25"
           />
         </form>
         <Link
@@ -98,21 +44,20 @@ export default async function BrowsePage({
         </Link>
       </header>
 
-      <div className="space-y-10 px-8 py-7">
-        <section className="space-y-3">
-          <SectionHeader title="Recent" />
+      <div className="space-y-8 px-8 py-7">
+        {/* Recent - compact strip, not floaty dashboard tiles */}
+        <section className="space-y-2.5">
+          <h2 className="label-caps">Recent</h2>
           {recent.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No cutsheets yet.{" "}
-                <Link href="/form/new" className="font-medium text-foreground underline">
-                  Create one
-                </Link>
-                .
-              </CardContent>
-            </Card>
+            <p className="rounded-lg border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              No cutsheets yet.{" "}
+              <Link href="/form/new" className="font-medium text-primary underline">
+                Create one
+              </Link>
+              .
+            </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               {recent.map((row) => (
                 <RecentTile key={row.id} row={row} />
               ))}
@@ -120,28 +65,50 @@ export default async function BrowsePage({
           )}
         </section>
 
+        {/* Builders - the organizing unit of the shop */}
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
-            <SectionHeader title="Folders" />
-            <div className="flex items-center gap-3">
-              <CreateFolderForm />
-              <BrowseViewToggle value={view} />
-            </div>
+          <div className="flex items-baseline gap-3 border-b border-border pb-2">
+            <h2 className="label-caps">Builders</h2>
+            <span className="font-mono-data text-[11px] text-muted-foreground">
+              {filedCount} active{unfiledCount > 0 ? " + 1 unfiled" : ""}
+            </span>
           </div>
 
-          {folders.length === 0 && cutsheets.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                Nothing here yet. Create a folder above or start a new cutsheet.
-              </CardContent>
-            </Card>
+          {unfiledCount > 0 && (
+            <Link
+              href="/search"
+              className="flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm"
+              style={{ background: "var(--warn-bg)", borderColor: "var(--warn-line)", color: "var(--warn-fg)" }}
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="font-medium">
+                {unfiledCount.toLocaleString()} unfiled import{unfiledCount === 1 ? "" : "s"} need sorting
+              </span>
+              <span className="label-caps ml-auto flex items-center gap-1">
+                Sort now <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          )}
+
+          {builders.length === 0 ? (
+            <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+              Nothing here yet. Start a new cutsheet and it will file under its builder.
+            </p>
           ) : (
-            <BrowseGrid
-              folders={folders}
-              cutsheets={cutsheets}
-              view={view}
-              folderOptions={folderOptions}
-            />
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+              {/* Column header */}
+              <div className="grid grid-cols-[minmax(0,1fr)_84px_84px_104px_72px_20px] items-center gap-4 border-b border-border bg-secondary/40 px-4 py-2">
+                <span className="label-caps">Builder</span>
+                <span className="label-caps text-right">Cutsheets</span>
+                <span className="label-caps text-right">Active lots</span>
+                <span className="label-caps text-right">Next delivery</span>
+                <span className="label-caps text-right">Updated</span>
+                <span />
+              </div>
+              {builders.map((b) => (
+                <BuilderRowLink key={b.unfiled ? "__unfiled" : b.name} b={b} />
+              ))}
+            </div>
           )}
         </section>
       </div>
@@ -149,43 +116,100 @@ export default async function BrowsePage({
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <h2 className="label-caps">{title}</h2>;
-}
-
-function toCutsheetItem(row: CutsheetRow): CutsheetItem {
+function RecentTile({ row }: { row: CutsheetRow }) {
   const parsed = JSON.parse(row.data) as {
     name?: string;
-    header?: { lot?: string; builder?: string; project?: string; deliveryDate?: string };
+    header?: { lot?: string; builder?: string; project?: string };
   };
   const h = parsed.header ?? {};
   const title =
     (parsed.name ?? "").trim() ||
     [h.builder, h.project].filter(Boolean).join(" · ") ||
     `Cutsheet #${row.id}`;
-  return { id: row.id, title, meta: h.lot ? `Lot ${h.lot}` : null, updatedAt: row.updated_at };
-}
-
-function RecentTile({ row }: { row: CutsheetRow }) {
-  const item = toCutsheetItem(row);
   return (
-    <Link href={`/form/${item.id}`} className="block transition-transform active:scale-[0.99]">
-      <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
-        <CardContent className="flex h-full flex-col gap-2 py-4">
-          <div className="flex items-start justify-between">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileText className="h-4 w-4" />
-            </span>
-            {item.meta && (
-              <span className="font-mono-data rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                {item.meta}
-              </span>
-            )}
-          </div>
-          <div className="line-clamp-2 text-sm font-semibold leading-snug">{item.title}</div>
-          <div className="mt-auto text-[10px] text-muted-foreground">Updated {formatDateTime(item.updatedAt)}</div>
-        </CardContent>
-      </Card>
+    <Link
+      href={`/form/${row.id}`}
+      className="group block rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:border-[var(--clay-line)] hover:bg-accent/40"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono-data text-[11px] text-muted-foreground">#{row.id}</span>
+        {h.lot ? <span className="chip chip-muted">Lot {h.lot}</span> : null}
+      </div>
+      <div className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">{title}</div>
+      <div className="font-mono-data mt-1.5 text-[10px] text-muted-foreground">{formatDateTime(row.updated_at)}</div>
     </Link>
   );
+}
+
+function BuilderRowLink({ b }: { b: BuilderRow }) {
+  const href = b.unfiled ? "/search" : `/search?builder=${encodeURIComponent(b.name)}`;
+  const mono = monogram(b.name);
+  return (
+    <Link
+      href={href}
+      className="grid grid-cols-[minmax(0,1fr)_84px_84px_104px_72px_20px] items-center gap-4 border-b border-border/60 px-4 py-3 transition-colors last:border-0 hover:bg-accent/40"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        {b.unfiled ? (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[11px] text-muted-foreground">
+            <AlertTriangle className="h-4 w-4" style={{ color: "var(--warn-fg)" }} />
+          </span>
+        ) : (
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md font-mono-data text-[11px] font-bold"
+            style={{ background: mono.bg, color: mono.fg }}
+          >
+            {mono.initials}
+          </span>
+        )}
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold text-foreground">{b.name}</span>
+          <span className="font-mono-data block truncate text-[11px] text-muted-foreground">
+            {b.unfiled
+              ? "needs sorting"
+              : `${b.communities} ${b.communities === 1 ? "community" : "communities"}`}
+          </span>
+        </span>
+      </span>
+      <span className="font-mono-data text-right text-sm font-semibold tabular-nums text-foreground">
+        {b.cutsheets.toLocaleString()}
+      </span>
+      <span className="font-mono-data text-right text-sm tabular-nums text-muted-foreground">
+        {b.activeLots || "-"}
+      </span>
+      <span className="font-mono-data text-right text-sm tabular-nums text-foreground">
+        {b.nextDelivery ? formatShortDate(b.nextDelivery) : "-"}
+      </span>
+      <span className="font-mono-data text-right text-[11px] tabular-nums text-muted-foreground">
+        {relativeTime(b.updatedAt) || "-"}
+      </span>
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </Link>
+  );
+}
+
+// Stable muted tint per builder so the eye can track a builder by color across
+// sessions. Color here is identity, not decoration.
+const TINTS = [
+  { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },
+  { bg: "rgba(13, 148, 136, 0.13)", fg: "#0F766E" },
+  { bg: "rgba(180, 83, 9, 0.14)", fg: "#B45309" },
+  { bg: "rgba(124, 58, 237, 0.12)", fg: "#7C3AED" },
+  { bg: "rgba(190, 18, 60, 0.11)", fg: "#BE123C" },
+  { bg: "rgba(71, 85, 105, 0.15)", fg: "#475569" },
+  { bg: "rgba(3, 105, 161, 0.12)", fg: "#0369A1" },
+];
+
+function monogram(name: string): { initials: string; bg: string; fg: string } {
+  const words = name.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  let initials: string;
+  if (words.length >= 2) {
+    const second = words.find((w) => w.length >= 2) ?? words[1];
+    initials = (words[0][0] + (second === words[0] ? words[1][0] : second[0])).toUpperCase();
+  } else {
+    initials = (words[0] ?? name).slice(0, 2).toUpperCase();
+  }
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return { initials: initials || "?", ...TINTS[hash % TINTS.length] };
 }

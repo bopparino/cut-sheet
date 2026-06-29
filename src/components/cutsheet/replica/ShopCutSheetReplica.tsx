@@ -111,7 +111,7 @@ export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
           </Section>
         </div>
       </div>
-      {/* The fitting drawing grid is intentionally omitted from the editor —
+      {/* The fitting drawing grid is intentionally omitted from the editor -
           it's a draw-on-paper section, so it stays only on the printed/filled
           PDF (see FilledCutSheet). Digital fitting sketches attach via the
           Photos / Documents uploads on the replica page. */}
