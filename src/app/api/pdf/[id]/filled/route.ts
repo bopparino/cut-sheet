@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Digitally-filled cut sheet → 11x17 Tabloid PDF. Renders /print/filled/[id]
 // (the new cut-sheet design populated with this cutsheet's values) the same
 // way /api/pdf/blank2 renders the blank master, so the filled copy prints
-// identically — just with the numbers in. Vector output, not an image.
+// identically - just with the numbers in. Vector output, not an image.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numeric = Number(id);

@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { deleteFolder } from "@/lib/actions";
 
-// Deleting a folder only removes the folder row — its cutsheets revert to
+// Deleting a folder only removes the folder row - its cutsheets revert to
 // unfiled because the FK is ON DELETE SET NULL. Dialog copy reflects that.
 export function DeleteFolderButton({
   folderId,

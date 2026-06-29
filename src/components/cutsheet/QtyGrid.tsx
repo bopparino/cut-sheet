@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type QtyGridProps<T extends string> = {
-  // FormData key prefix — each input is named `${prefix}.${size}`.
+  // FormData key prefix - each input is named `${prefix}.${size}`.
   prefix: string;
   sizes: readonly T[];
   values: Record<T, number>;
@@ -68,15 +68,15 @@ function LabeledQty({
 }) {
   // Stacked: label on top, input below, both filling the cell width. All
   // labels in a row sit at the same y-position, all inputs at the same
-  // y-position underneath them — no truncation, no jagged input column.
+  // y-position underneath them - no truncation, no jagged input column.
   // Cell width is uniform via the outer grid track, so labels also line up
   // horizontally across cells. `truncate` is a safety net for the rare
   // label that exceeds the track width at small breakpoints.
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 [&:has(input:not(:placeholder-shown))_label]:text-[var(--ink)]">
       <Label
         htmlFor={name}
-        className="truncate text-[11px] font-medium text-muted-foreground"
+        className="font-mono-data truncate text-[11px] font-medium text-[var(--text-3)]"
         title={label}
       >
         {label}
@@ -90,7 +90,7 @@ function LabeledQty({
         step={1}
         defaultValue={defaultValue === 0 ? "" : defaultValue}
         placeholder="0"
-        className="font-mono-data h-8 w-full text-right tabular-nums [&:not(:placeholder-shown)]:border-primary/50 [&:not(:placeholder-shown)]:bg-primary/5 [&:not(:placeholder-shown)]:font-semibold"
+        className="font-mono-data h-[34px] w-full text-right text-[13px] tabular-nums text-[var(--value-empty)] [&:not(:placeholder-shown)]:border-[var(--ink)] [&:not(:placeholder-shown)]:bg-[var(--fill)] [&:not(:placeholder-shown)]:font-semibold [&:not(:placeholder-shown)]:text-foreground"
       />
     </div>
   );

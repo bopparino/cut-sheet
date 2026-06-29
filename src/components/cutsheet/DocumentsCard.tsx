@@ -15,7 +15,7 @@ type Props = {
   className?: string;
 };
 
-// Mirror of PhotosCard but rendered as a filename list — docs don't have
+// Mirror of PhotosCard but rendered as a filename list - docs don't have
 // natural thumbnails. The /api/attachment route serves them inline with their
 // stored mime, so clicking the name opens PDFs in-tab and downloads
 // non-renderable formats (Word, Excel, etc.) the way the user expects.

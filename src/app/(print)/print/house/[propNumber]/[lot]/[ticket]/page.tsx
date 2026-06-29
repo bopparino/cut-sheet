@@ -5,7 +5,7 @@ import { TicketSheet } from "@/components/print/TicketSheet";
 
 type Row = { id: number; data: string; updated_at: string };
 
-// Combined pick-ticket for a whole house — concatenates the requested ticket
+// Combined pick-ticket for a whole house - concatenates the requested ticket
 // type for every cutsheet sharing the same propNumber + lot. Cutsheets are
 // ordered by zone then id so the printed output matches the natural reading
 // order of the house. Each ticket renders on its own PDF page via

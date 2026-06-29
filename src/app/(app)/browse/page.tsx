@@ -1,118 +1,87 @@
 import Link from "next/link";
-import { FileText, Search as SearchIcon, Plus } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { BrowseViewToggle } from "@/components/folders/BrowseViewToggle";
-import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
-import {
-  BrowseGrid,
-  type CutsheetItem,
-  type FolderItem,
-} from "@/components/folders/BrowseGrid";
+import { Search as SearchIcon, Plus, TriangleAlert } from "lucide-react";
 import { db } from "@/lib/db";
-import { formatDateTime } from "@/lib/utils";
-import { listAllFolders, subtreeCutsheetCounts, withPaths } from "@/lib/folders";
+import { relativeTime, todayEastern } from "@/lib/utils";
+import { getBuilderRollup } from "@/lib/builders";
+import { BuildersTable } from "@/components/folders/BuildersTable";
 
-type CutsheetRow = {
-  id: number;
-  data: string;
-  folder_id: number | null;
-  updated_at: string;
-};
-type FolderRow = { id: number; name: string };
+type CutsheetRow = { id: number; data: string; updated_at: string };
 
 export const dynamic = "force-dynamic";
 
-export default async function BrowsePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>;
-}) {
-  const sp = await searchParams;
-  const view: "grid" | "list" = sp.view === "list" ? "list" : "grid";
-
+export default async function BrowsePage() {
   const recent = db
     .prepare<[], CutsheetRow>(
-      `SELECT id, data, folder_id, updated_at FROM cutsheets
+      `SELECT id, data, updated_at FROM cutsheets
        WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 5`,
     )
     .all();
 
-  const folderRows = db
-    .prepare<[], FolderRow>(
-      `SELECT f.id, f.name FROM folders f
-       WHERE f.parent_id IS NULL ORDER BY f.name COLLATE NOCASE ASC`,
-    )
-    .all();
-  const counts = subtreeCutsheetCounts();
-
-  const unfiledRows = db
-    .prepare<[], CutsheetRow>(
-      `SELECT id, data, folder_id, updated_at FROM cutsheets
-       WHERE deleted_at IS NULL AND folder_id IS NULL
-       ORDER BY updated_at DESC LIMIT 50`,
-    )
-    .all();
-
-  const totalFolders =
-    db.prepare<[], { n: number }>("SELECT COUNT(*) AS n FROM folders").get()?.n ?? 0;
-  const totalCutsheets =
-    db
-      .prepare<[], { n: number }>(
-        "SELECT COUNT(*) AS n FROM cutsheets WHERE deleted_at IS NULL",
-      )
-      .get()?.n ?? 0;
-
-  const folders: FolderItem[] = folderRows.map((f) => ({
-    id: f.id,
-    name: f.name,
-    cutsheetCount: counts.get(f.id) ?? 0,
-  }));
-  const cutsheets: CutsheetItem[] = unfiledRows.map((r) => toCutsheetItem(r));
-
-  const folderOptions = withPaths(listAllFolders())
-    .map((f) => ({ id: f.id, path: f.path }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+  const { builders, totalBuilders, totalCutsheets, unfiledCount } = getBuilderRollup(todayEastern());
 
   return (
     <div>
-      <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/90 px-8 py-[18px] backdrop-blur">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight">Browse</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {totalFolders.toLocaleString()} folders · {totalCutsheets.toLocaleString()} cutsheets
+          <h1 className="text-[21px] font-bold tracking-[-0.02em] text-foreground">Browse</h1>
+          <p className="font-mono-data mt-0.5 text-[12px] text-[var(--text-3)]">
+            {totalBuilders.toLocaleString()} builders · {totalCutsheets.toLocaleString()} cutsheets
           </p>
         </div>
-        <form action="/search" className="relative ml-auto hidden max-w-md flex-1 sm:block">
-          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <form action="/search" className="relative ml-auto hidden max-w-xs flex-1 sm:block">
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-3)]" />
           <input
             name="name"
-            placeholder="Search by name, builder, lot…"
-            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/30"
+            placeholder="Find a builder"
+            className="h-9 w-full rounded-sm border border-input bg-card pl-9 pr-3 text-[13.5px] outline-none"
           />
         </form>
         <Link
           href="/form/new"
-          className="btn-glow inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground"
+          className="btn-glow inline-flex h-9 items-center gap-1.5 rounded-sm bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
         >
-          <Plus className="h-4 w-4" /> New Cutsheet
+          <Plus className="h-4 w-4" /> New cutsheet
         </Link>
       </header>
 
-      <div className="space-y-10 px-8 py-7">
+      <div className="space-y-7 px-8 py-7">
+        {unfiledCount > 0 && (
+          <Link
+            href="/search"
+            className="flex items-center gap-3 rounded-sm border px-4 py-[13px]"
+            style={{ background: "var(--warn-bg)", borderColor: "var(--warn-line)" }}
+          >
+            <TriangleAlert className="h-[18px] w-[18px] shrink-0" style={{ color: "var(--warn-fg)" }} />
+            <span className="min-w-0">
+              <span className="block text-[13.5px] font-semibold" style={{ color: "var(--warn-fg)" }}>
+                {unfiledCount.toLocaleString()} cutsheet{unfiledCount === 1 ? "" : "s"} need sorting
+              </span>
+              <span className="font-mono-data block text-[11.5px]" style={{ color: "var(--warn-sub)" }}>
+                Imported without a builder. File them so they roll up correctly.
+              </span>
+            </span>
+            <span
+              className="ml-auto rounded-sm border bg-card px-3 py-1.5 text-[12.5px] font-semibold"
+              style={{ borderColor: "var(--warn-line)", color: "var(--warn-fg)" }}
+            >
+              Review
+            </span>
+          </Link>
+        )}
+
+        {/* Recent */}
         <section className="space-y-3">
-          <SectionHeader title="Recent" />
+          <h2 className="label-caps">Recent</h2>
           {recent.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No cutsheets yet.{" "}
-                <Link href="/form/new" className="font-medium text-foreground underline">
-                  Create one
-                </Link>
-                .
-              </CardContent>
-            </Card>
+            <p className="rounded-sm border border-border bg-card px-4 py-6 text-center text-[13.5px] text-[var(--text-2)]">
+              No cutsheets yet.{" "}
+              <Link href="/form/new" className="font-semibold text-foreground underline">
+                Create one
+              </Link>
+              .
+            </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {recent.map((row) => (
                 <RecentTile key={row.id} row={row} />
               ))}
@@ -120,28 +89,20 @@ export default async function BrowsePage({
           )}
         </section>
 
+        {/* Builders */}
         <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
-            <SectionHeader title="Folders" />
-            <div className="flex items-center gap-3">
-              <CreateFolderForm />
-              <BrowseViewToggle value={view} />
-            </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="label-caps">Builders</h2>
+            <span className="font-mono-data text-[11px] text-[var(--text-3)]">
+              Click a builder to see communities
+            </span>
           </div>
-
-          {folders.length === 0 && cutsheets.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                Nothing here yet. Create a folder above or start a new cutsheet.
-              </CardContent>
-            </Card>
+          {builders.length === 0 ? (
+            <p className="rounded-sm border border-border bg-card px-4 py-8 text-center text-[13.5px] text-[var(--text-2)]">
+              Nothing here yet. Start a new cutsheet and it will file under its builder.
+            </p>
           ) : (
-            <BrowseGrid
-              folders={folders}
-              cutsheets={cutsheets}
-              view={view}
-              folderOptions={folderOptions}
-            />
+            <BuildersTable builders={builders} />
           )}
         </section>
       </div>
@@ -149,43 +110,33 @@ export default async function BrowsePage({
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <h2 className="label-caps">{title}</h2>;
-}
-
-function toCutsheetItem(row: CutsheetRow): CutsheetItem {
+function RecentTile({ row }: { row: CutsheetRow }) {
   const parsed = JSON.parse(row.data) as {
     name?: string;
-    header?: { lot?: string; builder?: string; project?: string; deliveryDate?: string };
+    header?: { lot?: string; builder?: string; project?: string };
   };
   const h = parsed.header ?? {};
   const title =
     (parsed.name ?? "").trim() ||
     [h.builder, h.project].filter(Boolean).join(" · ") ||
     `Cutsheet #${row.id}`;
-  return { id: row.id, title, meta: h.lot ? `Lot ${h.lot}` : null, updatedAt: row.updated_at };
-}
-
-function RecentTile({ row }: { row: CutsheetRow }) {
-  const item = toCutsheetItem(row);
   return (
-    <Link href={`/form/${item.id}`} className="block transition-transform active:scale-[0.99]">
-      <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
-        <CardContent className="flex h-full flex-col gap-2 py-4">
-          <div className="flex items-start justify-between">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileText className="h-4 w-4" />
-            </span>
-            {item.meta && (
-              <span className="font-mono-data rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                {item.meta}
-              </span>
-            )}
-          </div>
-          <div className="line-clamp-2 text-sm font-semibold leading-snug">{item.title}</div>
-          <div className="mt-auto text-[10px] text-muted-foreground">Updated {formatDateTime(item.updatedAt)}</div>
-        </CardContent>
-      </Card>
+    <Link
+      href={`/form/${row.id}`}
+      className="flex min-h-[118px] flex-col rounded-sm border border-border bg-card p-[14px] transition-colors hover:border-[#CDD2D7] hover:bg-[var(--tile-hover)]"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono-data text-[11px] text-[var(--text-3)]">#{row.id}</span>
+        {h.lot ? (
+          <span className="font-mono-data rounded-sm border border-border bg-[var(--fill)] px-1.5 py-px text-[10px] text-[var(--text-2)]">
+            Lot {h.lot}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">{title}</div>
+      <div className="font-mono-data mt-auto pt-2 text-[11px] text-[var(--text-3)]">
+        {relativeTime(row.updated_at)}
+      </div>
     </Link>
   );
 }

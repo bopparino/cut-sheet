@@ -4,12 +4,12 @@ import type { KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 type Props = {
-  // Optional — present on /form/[id] so the toolbar Save button can target
+  // Optional - present on /form/[id] so the toolbar Save button can target
   // this form via form="cutsheet-form". /form/new doesn't need it.
   formId?: string;
   // Bound Server Action (e.g. updateCutsheet.bind(null, id) or
   // createCutsheet). createCutsheet's redirect throws NEXT_REDIRECT, which
-  // we re-raise so Next.js can complete the navigation — the success toast
+  // we re-raise so Next.js can complete the navigation - the success toast
   // intentionally never fires in that case.
   action: (formData: FormData) => Promise<void>;
   children: React.ReactNode;
@@ -29,7 +29,7 @@ function isRedirectError(err: unknown): boolean {
 
 // Enter on text/number/date inputs advances focus to the next form control
 // instead of submitting. Tab still works as normal. Selects, textareas,
-// buttons, checkboxes, and radios are left alone — Enter has meaning there.
+// buttons, checkboxes, and radios are left alone - Enter has meaning there.
 function handleEnterAsTab(e: KeyboardEvent<HTMLFormElement>) {
   if (e.key !== "Enter") return;
   if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;

@@ -27,7 +27,7 @@ import {
 
 // Digitally-filled version of the new cut sheet. Mirrors /print/blank2's print
 // layout box-for-box (same 11x17 sizing, borders, columns) but each box shows
-// the saved value instead of being empty — so the filled PDF prints identically
+// the saved value instead of being empty - so the filled PDF prints identically
 // to the approved blank master, just populated. Rendered by /print/filled/[id]
 // and turned into a PDF by /api/pdf/[id]/filled.
 
@@ -85,7 +85,7 @@ function VBox({ v, black }: { v?: string; black?: boolean }) {
   );
 }
 
-// `ruled` matches blank2's 60" Duct — gray rules under each row to fill the
+// `ruled` matches blank2's 60" Duct - gray rules under each row to fill the
 // otherwise-sparse tall column.
 function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: boolean }) {
   return (
@@ -258,7 +258,7 @@ function Footer() {
   );
 }
 
-// ---------- Page 1 — Shop Cut Sheet -----------------------------------------
+// ---------- Page 1 - Shop Cut Sheet -----------------------------------------
 
 function ShopPage({ data: d }: { data: Cutsheet }) {
   return (
@@ -346,7 +346,7 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
   );
 }
 
-// ---------- Page 2 — Cut Sheet ----------------------------------------------
+// ---------- Page 2 - Cut Sheet ----------------------------------------------
 
 function CutPage({ data: d }: { data: Cutsheet }) {
   const fo = d.formOnly;

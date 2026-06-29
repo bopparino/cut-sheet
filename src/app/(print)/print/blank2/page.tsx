@@ -23,19 +23,19 @@ import {
   STRAIGHT_BOOT_BOXES_SIZES,
 } from "@/lib/schema";
 
-// Two-page Tabloid 11x17 pad master — "blank2" revision.
+// Two-page Tabloid 11x17 pad master - "blank2" revision.
 //
 // Same item set as /print/blank, re-organized to match the shop's updated
 // paper layout:
-//   Page 1 — "Shop Cut Sheet": the duct/box items the shop fabricates
+//   Page 1 - "Shop Cut Sheet": the duct/box items the shop fabricates
 //            (60" duct, custom/W-H tables, coll/VD, boot boxes, racks, pans)
 //            over a 6x3 grid of blank fitting boxes.
-//   Page 2 — "Cut Sheet": fittings/pipe/flex/registers, then the open
+//   Page 2 - "Cut Sheet": fittings/pipe/flex/registers, then the open
 //            Wall/Grills/Filter/Floor Regs strip.
 //
 // This page reuses the same primitives as /print/blank rather than sharing a
 // module: print fidelity is fragile and the original page is in production, so
-// blank2 stays self-contained — a tweak here can never regress the live form.
+// blank2 stays self-contained - a tweak here can never regress the live form.
 
 const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
@@ -179,7 +179,7 @@ function Section({
   );
 }
 
-// `ruled` draws a light gray rule under each row — used on tall, sparse lists
+// `ruled` draws a light gray rule under each row - used on tall, sparse lists
 // (60" Duct) so the column reads as ledger lines instead of empty white space.
 function QtyRow({ label, ruled }: { label: string; ruled?: boolean }) {
   return (
@@ -205,7 +205,7 @@ function QtyList({ items, ruled = true }: { items: readonly string[]; ruled?: bo
 function MultiQtyTable({
   cols,
   rows,
-  // Returns true for a (column, size) cell that should be filled black —
+  // Returns true for a (column, size) cell that should be filled black -
   // i.e. a size the shop never orders in that variant, so there's no box to
   // write a quantity in. Used by Flex R4 (only 4/6/8 are stocked).
   blackout,
@@ -333,7 +333,7 @@ function FootCell({ title }: { title: string }) {
 }
 
 // ============================================================================
-// PAGE 1 — Shop Cut Sheet
+// PAGE 1 - Shop Cut Sheet
 // ============================================================================
 
 function ShopPage() {
@@ -431,7 +431,7 @@ function FittingBox() {
 }
 
 // ============================================================================
-// PAGE 2 — Cut Sheet
+// PAGE 2 - Cut Sheet
 // ============================================================================
 
 function CutPage() {
@@ -450,7 +450,7 @@ function CutPage() {
             <QtyList items={DRYER_BOX_KEYS.map((k) => DRYER_BOX_LABELS[k])} />
           </Section>
           {/* Size rows + Metal / Screen variant boxes, matching Metal / Screen
-              below — replaces the four "4\" Metal / 6\" Metal / …" rows. */}
+              below - replaces the four "4\" Metal / 6\" Metal / …" rows. */}
           <Section title="Mid Atl. Wall Caps">
             <MultiQtyTable cols={["Metal", "Screen"]} rows={['4"', '6"']} />
           </Section>
@@ -486,7 +486,7 @@ function CutPage() {
         </div>
         <div>
           <Section title="Flex (Un / R4 / R8)">
-            {/* R4 is only stocked in 4"/6"/8" — every other size is blacked
+            {/* R4 is only stocked in 4"/6"/8" - every other size is blacked
                 out so no one writes a quantity the shop can't fill. */}
             <MultiQtyTable
               cols={["Un", "R4", "R8"]}
@@ -496,7 +496,7 @@ function CutPage() {
               }
             />
           </Section>
-          {/* Two loose insulation items share one box — no dedicated
+          {/* Two loose insulation items share one box - no dedicated
               single-item header each, but they stay on the Cut Sheet. */}
           <Section title="Foil Ins / Bubble Wrap">
             <QtyList items={["Foil Ins", "Bubble Wrap"]} />

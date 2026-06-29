@@ -8,7 +8,7 @@ export type FolderNode = {
 };
 
 export type FolderWithPath = FolderNode & {
-  // "Acme Builders / Lot 42" — names joined from root to this folder.
+  // "Acme Builders / Lot 42" - names joined from root to this folder.
   path: string;
   depth: number;
 };
@@ -39,7 +39,7 @@ export function withPaths(folders: FolderNode[]): FolderWithPath[] {
 }
 
 // Cutsheets per folder counting the entire subtree, not just direct children
-// — a letter folder like IMPORTS/K holds its sheets inside builder subfolders
+// - a letter folder like IMPORTS/K holds its sheets inside builder subfolders
 // and would otherwise display "0 cutsheets". One grouped query plus a JS
 // rollup over the parent chain; trivial at this scale.
 export function subtreeCutsheetCounts(): Map<number, number> {
@@ -63,7 +63,7 @@ export function subtreeCutsheetCounts(): Map<number, number> {
   return counts;
 }
 
-// Walks up from candidate looking for the source — used to reject moves that
+// Walks up from candidate looking for the source - used to reject moves that
 // would parent a folder under one of its own descendants (which would create
 // a cycle that ON DELETE CASCADE could not safely traverse).
 export function isDescendantOrSelf(

@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Renders /print/blank2 (the updated two-page pad revision) at 11" × 17"
-// Tabloid portrait. Mirrors /api/pdf/blank exactly — same paper, same tight
-// margins — so the new revision drops in alongside the old master without any
+// Tabloid portrait. Mirrors /api/pdf/blank exactly - same paper, same tight
+// margins - so the new revision drops in alongside the old master without any
 // printer-side changes. Output is a true vector PDF (Chromium renders the HTML
 // print page), so it stays crisp at any scale instead of pixelating like an
 // embedded image would.
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       "Content-Type": "application/pdf",
       "Content-Disposition": 'inline; filename="cutsheet-blank2-template.pdf"',
       // The master is regenerated from the print page on every hit, so never
-      // let a browser serve a stale copy — otherwise a revised pad keeps
+      // let a browser serve a stale copy - otherwise a revised pad keeps
       // showing the old layout until a hard refresh.
       "Cache-Control": "no-store, must-revalidate",
     },

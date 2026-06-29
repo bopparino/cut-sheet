@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { deleteCutsheet } from "@/lib/actions";
 
 // Wraps the Server Action delete in a shadcn AlertDialog. Copy is intentionally
-// stern — directors get one click, no undo. Behind the scenes deleteCutsheet
+// stern - directors get one click, no undo. Behind the scenes deleteCutsheet
 // is soft-delete and /admin/trash can resurrect, but they don't need to know
 // that. Common sense + a confirm dialog is the safety net.
 export function DeleteCutsheetButton({ cutsheetId }: { cutsheetId: number }) {

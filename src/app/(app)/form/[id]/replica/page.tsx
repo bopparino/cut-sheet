@@ -107,11 +107,6 @@ export default async function ShopReplicaPage({
       </header>
 
       <div className="space-y-5 px-6 py-7">
-        <p className="rounded-xl border border-[var(--status-proposed-text)]/25 bg-[var(--status-proposed-bg)] px-4 py-2.5 text-xs text-[var(--status-proposed-text)]">
-          Every box is a real field. Saving updates the Stock, Custom, Truck, and Filled PDFs. Use
-          Photos and Documents below for sketches and schedules.
-        </p>
-
         <CutsheetForm formId={FORM_ID} action={save} className="space-y-6">
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
             <ShopCutSheetReplica data={d} />
