@@ -254,10 +254,8 @@ export default async function EditCutsheetPage({ params }: { params: Promise<{ i
         <SectionRail items={rail} />
         <CutsheetForm formId={FORM_ID} action={update} className="min-w-0 flex-1 space-y-9">
           <Group id="g-header" title="Header">
+            {/* No card title here — the section header already reads "01 Header". */}
             <Card className="xl:col-span-2">
-              <CardHeader>
-                <CardTitle>Header</CardTitle>
-              </CardHeader>
               <CardContent>
                 <HeaderFields initial={d.header} />
               </CardContent>
