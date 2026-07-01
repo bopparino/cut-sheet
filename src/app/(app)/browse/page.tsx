@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Search as SearchIcon, Plus, TriangleAlert } from "lucide-react";
+import { Search as SearchIcon, Plus } from "lucide-react";
 import { db } from "@/lib/db";
-import { relativeTime, todayEastern } from "@/lib/utils";
+import { relativeTime } from "@/lib/utils";
 import { getBuilderRollup } from "@/lib/builders";
 import { BuildersTable } from "@/components/folders/BuildersTable";
 
@@ -17,7 +17,7 @@ export default async function BrowsePage() {
     )
     .all();
 
-  const { builders, totalBuilders, totalCutsheets, unfiledCount } = getBuilderRollup(todayEastern());
+  const { builders, totalBuilders, totalCutsheets } = getBuilderRollup();
 
   return (
     <div>
@@ -31,8 +31,8 @@ export default async function BrowsePage() {
         <form action="/search" className="relative ml-auto hidden max-w-xs flex-1 sm:block">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-3)]" />
           <input
-            name="name"
-            placeholder="Find a builder"
+            name="q"
+            aria-label="Search cutsheets"
             className="h-9 w-full rounded-sm border border-input bg-card pl-9 pr-3 text-[13.5px] outline-none"
           />
         </form>
@@ -45,30 +45,6 @@ export default async function BrowsePage() {
       </header>
 
       <div className="space-y-7 px-8 py-7">
-        {unfiledCount > 0 && (
-          <Link
-            href="/search"
-            className="flex items-center gap-3 rounded-sm border px-4 py-[13px]"
-            style={{ background: "var(--warn-bg)", borderColor: "var(--warn-line)" }}
-          >
-            <TriangleAlert className="h-[18px] w-[18px] shrink-0" style={{ color: "var(--warn-fg)" }} />
-            <span className="min-w-0">
-              <span className="block text-[13.5px] font-semibold" style={{ color: "var(--warn-fg)" }}>
-                {unfiledCount.toLocaleString()} cutsheet{unfiledCount === 1 ? "" : "s"} need sorting
-              </span>
-              <span className="font-mono-data block text-[11.5px]" style={{ color: "var(--warn-sub)" }}>
-                Imported without a builder. File them so they roll up correctly.
-              </span>
-            </span>
-            <span
-              className="ml-auto rounded-sm border bg-card px-3 py-1.5 text-[12.5px] font-semibold"
-              style={{ borderColor: "var(--warn-line)", color: "var(--warn-fg)" }}
-            >
-              Review
-            </span>
-          </Link>
-        )}
-
         {/* Recent */}
         <section className="space-y-3">
           <h2 className="label-caps">Recent</h2>
@@ -94,7 +70,7 @@ export default async function BrowsePage() {
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="label-caps">Builders</h2>
             <span className="font-mono-data text-[11px] text-[var(--text-3)]">
-              Click a builder to see communities
+              Click a builder to see its cutsheets
             </span>
           </div>
           {builders.length === 0 ? (

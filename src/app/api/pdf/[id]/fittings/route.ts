@@ -6,27 +6,25 @@ import { renderPdfFromUrl } from "@/lib/pdf";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Digitally-filled cut sheet → 11x17 Tabloid PDF. Renders /print/filled/[id]
-// (the new cut-sheet design populated with this cutsheet's values) the same
-// way /api/pdf/blank2 renders the blank master, so the filled copy prints
-// identically - just with the numbers in. Vector output, not an image.
+// Fitting drawings → Legal (8.5×14) PDF. Renders /print/fittings/[id] (the
+// tiled contact sheet) the same way the other ticket PDFs are produced. Static
+// `fittings` segment wins over the sibling /api/pdf/[id]/[ticket] dynamic route.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numeric = Number(id);
-  if (!Number.isInteger(numeric)) {
-    return new NextResponse("Invalid id", { status: 400 });
-  }
+  if (!Number.isInteger(numeric)) return new NextResponse("bad id", { status: 400 });
+
   const exists = db
     .prepare<[number], { id: number }>(
       "SELECT id FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
     )
     .get(numeric);
-  if (!exists) return new NextResponse("Not found", { status: 404 });
+  if (!exists) return new NextResponse("cutsheet not found", { status: 404 });
 
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
-  const printUrl = `${proto}://${host}/print/filled/${numeric}`;
+  const printUrl = `${proto}://${host}/print/fittings/${numeric}`;
 
   const pdf = await renderPdfFromUrl(printUrl, {
     format: "Legal",
@@ -37,7 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="cutsheet-${numeric}-filled.pdf"`,
+      "Content-Disposition": `inline; filename="cutsheet-${numeric}-fittings.pdf"`,
       "Cache-Control": "no-store, must-revalidate",
     },
   });

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   // so identical output whether printed via this endpoint or Cmd-P from
   // the browser. Format is a fallback if the page doesn't declare @page.
   const pdf = await renderPdfFromUrl(printUrl, {
-    format: "Tabloid",
+    format: "Legal",
     preferCSSPageSize: true,
     margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
   });

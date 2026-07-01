@@ -4,56 +4,58 @@ import { db } from "@/lib/db";
 // The shop organizes work by builder, not by alphabet. This rolls the flat
 // cutsheets table up into one row per builder, derived from each sheet's
 // header.builder field — no separate builder table to keep in sync. Each
-// builder also rolls up into its communities (header.project) so the Browse
-// table can expand to show them. Sheets with no builder land in a single
-// "Unfiled (Imports)" bucket that the Browse banner nudges the user to sort.
+// builder carries its own cutsheets as openable leaves so the Browse screen
+// can expand a builder straight to its sheets. Sheets with no builder land in
+// a single "Unfiled" bucket that sorts to the bottom.
 //
 // This is read-only derivation for display. It does not change how cutsheets
 // are stored, filed, or edited.
 
-export type CommunityRow = {
-  name: string;
-  cutsheets: number;
-  activeLots: number;
-  nextDelivery: string | null;
+export type CutsheetLeaf = {
+  id: number;
+  title: string;
+  lot: string;
+  deliveryDate: string;
+  updatedAt: string;
 };
 
 export type BuilderRow = {
   name: string;
   unfiled: boolean;
   cutsheets: number;
-  communities: CommunityRow[];
   activeLots: number;
-  nextDelivery: string | null; // YYYY-MM-DD, soonest upcoming delivery
   updatedAt: string; // most recent sheet's UTC timestamp
+  sheets: CutsheetLeaf[];
 };
 
 export type BuilderRollup = {
   builders: BuilderRow[];
   totalBuilders: number;
   totalCutsheets: number;
-  unfiledCount: number;
 };
 
 type Row = { id: number; data: string; updated_at: string };
-type CommAgg = { name: string; cutsheets: number; lots: Set<string>; nextDelivery: string | null };
 type Agg = {
   name: string;
   unfiled: boolean;
-  cutsheets: number;
-  communities: Map<string, CommAgg>;
   lots: Set<string>;
-  nextDelivery: string | null;
   updatedAt: string;
+  sheets: CutsheetLeaf[];
 };
 
-function earlierUpcoming(current: string | null, candidate: string, todayISO: string): string | null {
-  if (!candidate || candidate < todayISO) return current;
-  if (!current || candidate < current) return candidate;
-  return current;
+type Header = { builder?: string; project?: string; lot?: string; deliveryDate?: string };
+
+// Same display title the Recent tiles and search results use: explicit name,
+// else builder · project, else the numeric fallback.
+function deriveTitle(name: string, h: Header, id: number): string {
+  return (
+    (name ?? "").trim() ||
+    [h.builder, h.project].filter(Boolean).join(" · ") ||
+    `Cutsheet #${id}`
+  );
 }
 
-export function getBuilderRollup(todayISO: string): BuilderRollup {
+export function getBuilderRollup(): BuilderRollup {
   const rows = db
     .prepare<[], Row>("SELECT id, data, updated_at FROM cutsheets WHERE deleted_at IS NULL")
     .all();
@@ -61,12 +63,13 @@ export function getBuilderRollup(todayISO: string): BuilderRollup {
   const map = new Map<string, Agg>();
 
   for (const r of rows) {
-    let h: { builder?: string; project?: string; lot?: string; deliveryDate?: string } = {};
+    let parsed: { name?: string; header?: Header } = {};
     try {
-      h = (JSON.parse(r.data).header ?? {}) as typeof h;
+      parsed = JSON.parse(r.data) as typeof parsed;
     } catch {
       // Unparseable rows still count toward the unfiled bucket.
     }
+    const h = parsed.header ?? {};
     const builder = (h.builder ?? "").trim();
     const unfiled = builder === "";
     const key = unfiled ? " unfiled" : builder.toLowerCase();
@@ -74,59 +77,41 @@ export function getBuilderRollup(todayISO: string): BuilderRollup {
     let a = map.get(key);
     if (!a) {
       a = {
-        name: unfiled ? "Unfiled (Imports)" : builder,
+        name: unfiled ? "Unfiled" : builder,
         unfiled,
-        cutsheets: 0,
-        communities: new Map(),
         lots: new Set(),
-        nextDelivery: null,
         updatedAt: r.updated_at,
+        sheets: [],
       };
       map.set(key, a);
     }
 
-    a.cutsheets++;
     const lot = (h.lot ?? "").trim();
     if (lot) a.lots.add(lot.toLowerCase());
-    const del = (h.deliveryDate ?? "").trim();
-    a.nextDelivery = earlierUpcoming(a.nextDelivery, del, todayISO);
     if (r.updated_at > a.updatedAt) a.updatedAt = r.updated_at;
-
-    const project = (h.project ?? "").trim();
-    if (project && !unfiled) {
-      const ck = project.toLowerCase();
-      let c = a.communities.get(ck);
-      if (!c) {
-        c = { name: project, cutsheets: 0, lots: new Set(), nextDelivery: null };
-        a.communities.set(ck, c);
-      }
-      c.cutsheets++;
-      if (lot) c.lots.add(lot.toLowerCase());
-      c.nextDelivery = earlierUpcoming(c.nextDelivery, del, todayISO);
-    }
+    a.sheets.push({
+      id: r.id,
+      title: deriveTitle(parsed.name ?? "", h, r.id),
+      lot,
+      deliveryDate: (h.deliveryDate ?? "").trim(),
+      updatedAt: r.updated_at,
+    });
   }
 
   const builders: BuilderRow[] = [...map.values()].map((a) => ({
     name: a.name,
     unfiled: a.unfiled,
-    cutsheets: a.cutsheets,
+    cutsheets: a.sheets.length,
     activeLots: a.lots.size,
-    nextDelivery: a.nextDelivery,
     updatedAt: a.updatedAt,
-    communities: [...a.communities.values()]
-      .map((c) => ({
-        name: c.name,
-        cutsheets: c.cutsheets,
-        activeLots: c.lots.size,
-        nextDelivery: c.nextDelivery,
-      }))
-      .sort((x, y) => y.cutsheets - x.cutsheets || x.name.localeCompare(y.name)),
+    // Most recently touched sheet first within each builder.
+    sheets: a.sheets.sort((x, y) => (x.updatedAt < y.updatedAt ? 1 : -1)),
   }));
 
-  // Busiest builders first; the unfiled bucket always sinks to the bottom.
+  // Alphabetical by builder; the unfiled bucket always sinks to the bottom.
   builders.sort((x, y) => {
     if (x.unfiled !== y.unfiled) return x.unfiled ? 1 : -1;
-    return y.cutsheets - x.cutsheets || x.name.localeCompare(y.name);
+    return x.name.localeCompare(y.name);
   });
 
   const filed = builders.filter((b) => !b.unfiled);
@@ -134,6 +119,5 @@ export function getBuilderRollup(todayISO: string): BuilderRollup {
     builders,
     totalBuilders: filed.length,
     totalCutsheets: rows.length,
-    unfiledCount: builders.find((b) => b.unfiled)?.cutsheets ?? 0,
   };
 }

@@ -258,9 +258,20 @@ export function MiscInputList({
   );
 }
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// `gapTop` breaks the contiguous bordered stack: it adds a margin above the
+// section and restores its own top border, so the section reads as a separated
+// box rather than butting against the one above.
+export function Section({
+  title,
+  children,
+  gapTop,
+}: {
+  title: string;
+  children: React.ReactNode;
+  gapTop?: boolean;
+}) {
   return (
-    <div className="border border-black border-t-0 first:border-t">
+    <div className={`border border-black ${gapTop ? "mt-2" : "border-t-0 first:border-t"}`}>
       <div className="border-b border-black bg-neutral-50 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide">
         {title}
       </div>

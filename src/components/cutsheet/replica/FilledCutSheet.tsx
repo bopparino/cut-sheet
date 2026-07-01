@@ -24,6 +24,7 @@ import {
   STRAIGHT_BOOT_BOXES_SIZES,
   type Cutsheet,
 } from "@/lib/schema";
+import { LegalScalePage, LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/LegalScalePage";
 
 // Digitally-filled version of the new cut sheet. Mirrors /print/blank2's print
 // layout box-for-box (same 11x17 sizing, borders, columns) but each box shows
@@ -31,7 +32,7 @@ import {
 // to the approved blank master, just populated. Rendered by /print/filled/[id]
 // and turned into a PDF by /api/pdf/[id]/filled.
 
-const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
+const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)} x 120"` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
 const num = (n: number) => (n > 0 ? String(n) : "");
 
@@ -60,15 +61,16 @@ const MID_ATL_ROWS = [
   { label: '4"', metal: "buildersEdgeMetal4", screen: "buildersEdgeScreen4" },
   { label: '6"', metal: "buildersEdgeMetal6", screen: "buildersEdgeScreen6" },
 ] as const;
-const R4_STOCKED = new Set(['4"', '6"', '8"']);
-
 export function FilledCutSheet({ data }: { data: Cutsheet }) {
   return (
     <>
-      <style>{`@page { size: 11in 17in; margin: 0.25in; }`}</style>
-      <ShopPage data={data} />
-      <div className="break-before-page" />
-      <CutPage data={data} />
+      <style>{LEGAL_PAGE_CSS}</style>
+      <LegalScalePage>
+        <ShopPage data={data} />
+      </LegalScalePage>
+      <LegalScalePage>
+        <CutPage data={data} />
+      </LegalScalePage>
     </>
   );
 }
@@ -187,9 +189,9 @@ function WHFilled({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, gapTop }: { title: string; children: React.ReactNode; gapTop?: boolean }) {
   return (
-    <div className="border border-black border-t-0 first:border-t">
+    <div className={`border border-black ${gapTop ? "mt-2" : "border-t-0 first:border-t"}`}>
       <div className="border-b border-black px-1.5 py-0.5 text-[8.5pt] font-bold uppercase tracking-wide">{title}</div>
       <div className="p-0.5">{children}</div>
     </div>
@@ -265,14 +267,13 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
     <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
+        {/* Col 1 */}
         <div>
           <Section title='60" Duct'>
             <VList items={DUCT60_SIZES.map((s) => ({ label: duct60Label(s), v: num(d.stock.duct60[s]) }))} ruled />
           </Section>
-          <Section title="S D / Misc">
-            <VList items={(["drive24", "slips26", "mastic", "brushes"] as const).map((k) => ({ label: SD_MISC_LABELS[k], v: num(d.stock.sdMisc[k]) }))} />
-          </Section>
         </div>
+        {/* Col 2 */}
         <div>
           <Section title="Custom Duct">
             <WHFilled rows={d.custom.customDuct} min={12} withL />
@@ -291,6 +292,7 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
             <WHFilled rows={d.custom.canvasConn} min={5} />
           </Section>
         </div>
+        {/* Col 3 */}
         <div>
           <Section title="End Caps">
             <WHFilled rows={d.custom.endCaps} min={7} />
@@ -307,31 +309,38 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
               }))}
             />
           </Section>
-        </div>
-        <div>
-          <Section title="Straight Boot Boxes">
-            <VList items={STRAIGHT_BOOT_BOXES_SIZES.map((s) => ({ label: s, v: num(d.formOnly.straightBootBoxes[s]) }))} />
-          </Section>
-          <Section title="Simpson STP">
+          <Section title="Simpson STP" gapTop>
             <VList items={SIMPSON_STP_KEYS.map((k) => ({ label: SIMPSON_STP_LABELS[k], v: num(d.formOnly.simpsonStp[k]) }))} />
           </Section>
-          <Section title="Filter Racks">
-            <VList items={FILTER_RACKS_KEYS.map((k) => ({ label: FILTER_RACKS_LABELS[k], v: num(d.formOnly.filterRacks[k]) }))} />
-          </Section>
-          <Section title="Drain Pans">
-            <VList items={DRAIN_PANS_KEYS.map((k) => ({ label: k, v: num(d.formOnly.drainPans[k]) }))} />
+          <Section title="S D / Misc">
+            <VList items={(["drive24", "slips26", "mastic", "brushes"] as const).map((k) => ({ label: SD_MISC_LABELS[k], v: num(d.stock.sdMisc[k]) }))} />
           </Section>
           <Section title="Panning">
             <VRow label="Panning Metal (36x36)" v={num(d.formOnly.panningMetal36x36)} />
           </Section>
+        </div>
+        {/* Col 4 */}
+        <div>
+          <Section title="Plenum Package">
+            <PlenumChecks value={d.header.plenumPackage} />
+          </Section>
+          <Section title="Return Plenum">
+            <VList items={[{ label: "14x24 S.L.", v: num(d.formOnly.returnPlenum["14x24SL"]) }, { label: "18x24 S.L.", v: num(d.formOnly.returnPlenum["18x24SL"]) }]} />
+          </Section>
           <Section title="Furnace Feet">
             <VRow label="Furnace Feet" v={num(d.formOnly.returnPlenum.furnaceFeet)} />
+          </Section>
+          <Section title="Drain Pans">
+            <VList items={DRAIN_PANS_KEYS.map((k) => ({ label: k, v: num(d.formOnly.drainPans[k]) }))} />
+          </Section>
+          <Section title="Filter Racks">
+            <VList items={FILTER_RACKS_KEYS.map((k) => ({ label: FILTER_RACKS_LABELS[k], v: num(d.formOnly.filterRacks[k]) }))} />
           </Section>
         </div>
       </div>
       {/* Drawing grid stays blank for hand sketches on the printed copy. */}
-      <div className="grid flex-1 grid-cols-6 grid-rows-3 border-l border-t border-black">
-        {Array.from({ length: 18 }).map((_, i) => (
+      <div className="grid flex-1 grid-cols-7 grid-rows-3 border-l border-t border-black">
+        {Array.from({ length: 21 }).map((_, i) => (
           <div key={i} className="flex flex-col border border-l-0 border-t-0 border-black">
             <div className="flex items-center justify-between gap-1 border-b border-black px-1 py-0.5 text-[7pt] uppercase">
               <span>SL? □N □Y</span>
@@ -348,29 +357,97 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
 
 // ---------- Page 2 - Cut Sheet ----------------------------------------------
 
+function PlenumChecks({ value }: { value: string }) {
+  return (
+    <div className="space-y-1 text-[7.5pt]">
+      {([["small", "Small", "· 18x22x18"], ["large", "Large", "· 24x22x18"], ["none", "None", ""]] as const).map(([v, label, detail]) => (
+        <div key={v} className="flex items-center gap-1.5">
+          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center border border-black text-[10pt] leading-none">
+            {value === v ? "✓" : ""}
+          </span>
+          <span className="font-bold">{label}</span>
+          {detail && <span className="text-[7pt]">{detail}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CutPage({ data: d }: { data: Cutsheet }) {
   const fo = d.formOnly;
   return (
     <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
+        {/* Col 1 */}
         <div>
-          <Section title="Plenum Package">
-            <div className="space-y-0.5 text-[7.5pt]">
-              {([["small", "Small", "· 18x22x18 · 18x22x24 · 18x22 C.C."], ["large", "Large", "· 24x22x18 · 24x22x24 · 24x22 C.C."], ["none", "None", ""]] as const).map(([v, label, detail]) => (
-                <div key={v} className="flex items-baseline gap-1.5">
-                  <span className="mt-px inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center border border-black text-[7pt] leading-none">
-                    {d.header.plenumPackage === v ? "✓" : ""}
-                  </span>
-                  <span className="font-bold">{label}</span>
-                  {detail && <span className="text-[7pt]">{detail}</span>}
-                </div>
-              ))}
-            </div>
+          <Section title="Boots (Ell / End / Strt)">
+            <VMultiTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
           </Section>
-          <Section title="Return Plenum">
-            <VList items={[{ label: "14x24 S.L.", v: num(fo.returnPlenum["14x24SL"]) }, { label: "18x24 S.L.", v: num(fo.returnPlenum["18x24SL"]) }]} />
+          <Section title="Oval Stack Heads">
+            <VList items={OVAL_S_HEADS_SIZES.map((s) => ({ label: s, v: num(fo.ovalSHeads[s]) }))} />
           </Section>
+          <Section title="Straight Ceiling Boot">
+            <VList items={STRAIGHT_BOOT_BOXES_SIZES.map((s) => ({ label: s, v: num(fo.straightBootBoxes[s]) }))} />
+          </Section>
+          <Section title="Round Pipe">
+            <VList items={RND_PIPE_SIZES.map((s) => ({ label: s, v: num(d.truck.rndPipe[s]) }))} />
+          </Section>
+          <Section title="Elbows">
+            <VMultiTable cols={["Qty"]} rows={RND_ELL_SIZES.map((s) => ({ label: `${s}"`, cells: [{ v: num(fo.rndEll[s]) }] }))} />
+          </Section>
+        </div>
+        {/* Col 2 */}
+        <div>
+          <Section title="Air Tights">
+            <VList items={FLEX_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.airTights[s]) }))} />
+          </Section>
+          <Section title="Saddle Tap">
+            <VList items={SADDLE_TAP_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.saddleTap[s]) }))} />
+          </Section>
+          <Section title="Oval Pipe">
+            <VList items={OV_PIPE_SIZES.map((s) => ({ label: `${s}"`, v: num(d.truck.ovPipe[s]) }))} />
+          </Section>
+          <Section title="Oval to Round">
+            <VList items={OVAL_TO_RND_SIZES.map((s) => ({ label: s, v: num(fo.ovalToRnd[s]) }))} />
+          </Section>
+          <Section title="Oval Ells">
+            <VList items={OVAL_ELL_SIZES.map((s) => ({ label: s.replace("F", '" F'), v: num(fo.ovalEll[s]) }))} />
+          </Section>
+          <Section title='Flex (Un / R4 / R8) x 18"'>
+            <VMultiTable
+              cols={["Un", "R4", "R8"]}
+              rows={FLEX_SIZES.map((s) => ({
+                label: `${s}"`,
+                cells: [
+                  { v: num(fo.uninsulatedFlex[s]) },
+                  { v: num(fo.insulatedFlexR4[s]) },
+                  { v: num(fo.insulatedFlexR8[s]) },
+                ],
+              }))}
+            />
+          </Section>
+        </div>
+        {/* Col 3 */}
+        <div>
+          <Section title="Gal Reducer">
+            <VList items={GAL_REDR_SIZES.map((s) => ({ label: s, v: num(fo.galRedr[s]) }))} />
+          </Section>
+          <Section title="B-Vent">
+            <VList items={B_VENT_KEYS.map((k) => ({ label: B_VENT_LABELS[k], v: num(fo.bVent[k]) }))} />
+          </Section>
+          <Section title="Flex B-Vent">
+            <VList items={FLEX_B_VENT_KEYS.map((k) => ({ label: FLEX_B_VENT_LABELS[k], v: num(fo.flexBVent[k]) }))} />
+          </Section>
+          <Section title="Foil Ins / Bubble Wrap" gapTop>
+            <VList items={[{ label: "Foil Ins R-8", v: num(fo.sdMiscExtras.foilIns) }, { label: "Bubble Wrap", v: num(fo.sdMiscExtras.bubbleWrap) }]} />
+          </Section>
+          <Section title="Con Regs" gapTop>
+            <VRow label="8x6" v={num(fo.condRegs8x6)} />
+          </Section>
+        </div>
+        {/* Col 4 */}
+        <div>
           <Section title="Dryer Box">
             <VList items={DRYER_BOX_KEYS.map((k) => ({ label: DRYER_BOX_LABELS[k], v: num(fo.dryerBox[k]) }))} />
           </Section>
@@ -383,75 +460,14 @@ function CutPage({ data: d }: { data: Cutsheet }) {
           <Section title="Metal / Screen">
             <VMultiTable cols={["Metal", "Screen"]} rows={METAL_SCREEN_ROWS.map((r) => ({ label: r.label, cells: [{ v: num(fo.metalScreen[r.metal]) }, { v: num(fo.metalScreen[r.screen]) }] }))} />
           </Section>
-        </div>
-        <div>
-          <Section title="Elbows">
-            <VMultiTable cols={["Qty"]} rows={RND_ELL_SIZES.map((s) => ({ label: `${s}"`, cells: [{ v: num(fo.rndEll[s]) }] }))} />
-          </Section>
-          <Section title="Boots (Ell / End / Strt)">
-            <VMultiTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
-          </Section>
-          <Section title="Air Tights">
-            <VList items={FLEX_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.airTights[s]) }))} />
-          </Section>
-          <Section title="Saddle Tap">
-            <VList items={SADDLE_TAP_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.saddleTap[s]) }))} />
+          <Section title="Fans / G-Necks / Roof">
+            <VList items={FANS_KEYS.map((k) => ({ label: FANS_LABELS[k], v: num(fo.fans[k]) }))} />
           </Section>
           <Section title="Blue Flashing">
             <VList items={BLUE_FLASHING_KEYS.map((k) => ({ label: BLUE_FLASHING_LABELS[k], v: num(fo.blueFlashing[k]) }))} />
           </Section>
-          <Section title="Con Regs">
-            <VRow label="8x6" v={num(fo.condRegs8x6)} />
-          </Section>
-        </div>
-        <div>
-          <Section title="Flex (Un / R4 / R8)">
-            <VMultiTable
-              cols={["Un", "R4", "R8"]}
-              rows={FLEX_SIZES.map((s) => ({
-                label: `${s}"`,
-                cells: [
-                  { v: num(fo.uninsulatedFlex[s]) },
-                  R4_STOCKED.has(`${s}"`) ? { v: num(fo.insulatedFlexR4[s]) } : { black: true as const },
-                  { v: num(fo.insulatedFlexR8[s]) },
-                ],
-              }))}
-            />
-          </Section>
-          <Section title="Foil Ins / Bubble Wrap">
-            <VList items={[{ label: "Foil Ins", v: num(fo.sdMiscExtras.foilIns) }, { label: "Bubble Wrap", v: num(fo.sdMiscExtras.bubbleWrap) }]} />
-          </Section>
-          <Section title="Fans / G-Necks / Roof">
-            <VList items={FANS_KEYS.map((k) => ({ label: FANS_LABELS[k], v: num(fo.fans[k]) }))} />
-          </Section>
           <Section title="Fresh Air Dampers">
             <VList items={FRESH_AIR_DAMPER_SIZES.map((s) => ({ label: s, v: num(fo.freshAirDampers[s]) }))} />
-          </Section>
-          <Section title="Gal Redr">
-            <VList items={GAL_REDR_SIZES.map((s) => ({ label: s, v: num(fo.galRedr[s]) }))} />
-          </Section>
-        </div>
-        <div>
-          <Section title="RND Pipe">
-            <VList items={RND_PIPE_SIZES.map((s) => ({ label: s, v: num(d.truck.rndPipe[s]) }))} />
-          </Section>
-          <Section title="OV Pipe">
-            <VList items={OV_PIPE_SIZES.map((s) => ({ label: `${s}"`, v: num(d.truck.ovPipe[s]) }))} />
-          </Section>
-          <Section title="Oval S. Heads">
-            <VList items={OVAL_S_HEADS_SIZES.map((s) => ({ label: s, v: num(fo.ovalSHeads[s]) }))} />
-          </Section>
-          <Section title="Oval to Rnd">
-            <VList items={OVAL_TO_RND_SIZES.map((s) => ({ label: s, v: num(fo.ovalToRnd[s]) }))} />
-          </Section>
-          <Section title="Oval Ells">
-            <VList items={OVAL_ELL_SIZES.map((s) => ({ label: s.replace("F", '" F'), v: num(fo.ovalEll[s]) }))} />
-          </Section>
-          <Section title="B-Vent">
-            <VList items={B_VENT_KEYS.map((k) => ({ label: B_VENT_LABELS[k], v: num(fo.bVent[k]) }))} />
-          </Section>
-          <Section title="Flex B-Vent">
-            <VList items={FLEX_B_VENT_KEYS.map((k) => ({ label: FLEX_B_VENT_LABELS[k], v: num(fo.flexBVent[k]) }))} />
           </Section>
         </div>
       </div>

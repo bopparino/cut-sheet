@@ -46,7 +46,10 @@ export async function renderPdfFromUrl(
       throw new Error(`Print page ${url} responded ${res ? res.status() : "with no response"}`);
     }
     const pdf = await page.pdf({
-      format: options.format ?? "Letter",
+      // Default to US Legal (8.5×14) — the shop's printers are loaded with
+      // Legal. Per-ticket print pages are content-width 7.5in so they reflow
+      // onto Legal cleanly.
+      format: options.format ?? "Legal",
       printBackground: true,
       preferCSSPageSize: options.preferCSSPageSize ?? false,
       margin:

@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Printer } from "lucide-react";
 import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetReplica";
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
-import { PhotosCard } from "@/components/cutsheet/PhotosCard";
-import { DocumentsCard } from "@/components/cutsheet/DocumentsCard";
+import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
 import { updateCutSheetReplica } from "@/lib/actions";
@@ -39,15 +38,9 @@ export default async function ShopReplicaPage({
   if (!parsed.success) notFound();
   const d = parsed.data;
 
-  const photos = db
-    .prepare<[number], { id: number; filename: string }>(
-      `SELECT id, filename FROM attachments WHERE cutsheet_id = ? AND kind = 'image'
-       ORDER BY created_at ASC, id ASC`,
-    )
-    .all(numeric);
-  const documents = db
-    .prepare<[number], { id: number; filename: string; size: number; mime: string }>(
-      `SELECT id, filename, size, mime FROM attachments WHERE cutsheet_id = ? AND kind = 'document'
+  const attachments = db
+    .prepare<[number], AttachmentItem>(
+      `SELECT id, filename, mime, size, kind FROM attachments WHERE cutsheet_id = ?
        ORDER BY created_at ASC, id ASC`,
     )
     .all(numeric);
@@ -59,10 +52,10 @@ export default async function ShopReplicaPage({
     <div key={row.id}>
       <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background/85 px-6 py-3 backdrop-blur">
         <Link
-          href={`/form/${row.id}`}
+          href="/browse"
           className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
-          <ChevronLeft className="h-4 w-4" /> Card form
+          <ChevronLeft className="h-4 w-4" /> Browse
         </Link>
         <div className="min-w-0 flex-1">
           <input
@@ -79,6 +72,27 @@ export default async function ShopReplicaPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <Link
+            href={`/print/combined/${row.id}`}
+            target="_blank"
+            className="btn-glow inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
+          >
+            <Printer className="h-4 w-4" /> Send to Shop
+          </Link>
+          <Link
+            href={`/print/combined/${row.id}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary"
+          >
+            <Printer className="h-4 w-4" /> Print Here
+          </Link>
+          <span className="mx-0.5 h-5 w-px bg-border" />
+          <Link
+            href={`/form/${row.id}/card`}
+            className="rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            Card
+          </Link>
           <Link
             href={`/api/pdf/${row.id}/filled`}
             target="_blank"
@@ -116,10 +130,7 @@ export default async function ShopReplicaPage({
           </div>
         </CutsheetForm>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <PhotosCard cutsheetId={numeric} photos={photos} />
-          <DocumentsCard cutsheetId={numeric} documents={documents} />
-        </div>
+        <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
       </div>
     </div>
   );

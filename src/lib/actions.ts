@@ -264,16 +264,6 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
 
   const current = CutsheetSchema.parse(JSON.parse(row.data));
 
-  // Flex R4: only 4/6/8 have inputs (the rest are blacked out on the sheet).
-  // Overlay just those onto current so unstocked sizes keep their stored value.
-  const r4read = readNumberMap(formData, "insulatedFlexR4", FLEX_SIZES);
-  const insulatedFlexR4 = {
-    ...current.formOnly.insulatedFlexR4,
-    "4": r4read["4"],
-    "6": r4read["6"],
-    "8": r4read["8"],
-  };
-
   const next: Cutsheet = {
     ...current,
     name: String(formData.get("name") ?? "").trim(),
@@ -324,7 +314,8 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
         foilIns: readSingleNumber(formData, "sdMiscExtras.foilIns"),
       },
       uninsulatedFlex: readNumberMap(formData, "uninsulatedFlex", FLEX_SIZES),
-      insulatedFlexR4,
+      // Flex R4 is now fillable in every size on the sheet, so read all of them.
+      insulatedFlexR4: readNumberMap(formData, "insulatedFlexR4", FLEX_SIZES),
       insulatedFlexR8: readNumberMap(formData, "insulatedFlexR8", FLEX_SIZES),
       saddleTap: readNumberMap(formData, "saddleTap", SADDLE_TAP_SIZES),
       airTights: readNumberMap(formData, "airTights", FLEX_SIZES),
@@ -378,63 +369,43 @@ export async function permanentlyDeleteCutsheet(id: number) {
 
 // ----- Attachments ------------------------------------------------------------
 
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
-const ALLOWED_IMAGE_MIMES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-]);
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+const isImageMime = (m: string) => /^image\//.test(m);
 
+function revalidateAttachments(cutsheetId: number) {
+  revalidatePath(`/form/${cutsheetId}`);
+  revalidatePath(`/form/${cutsheetId}/replica`);
+  revalidatePath(`/form/${cutsheetId}/card`);
+}
+
+// One attachment upload for any file type. Images (used for the 15-20 fittings
+// drawn per cutsheet) are stored with kind = 'image' so the fittings page can
+// pick them up and tile them; everything else (PDF, Word, Excel, etc.) is
+// stored as kind = 'document'. We don't enforce a MIME allowlist - browsers
+// report Office docs inconsistently - and bound only by size.
 export async function uploadAttachment(cutsheetId: number, formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File)) throw new Error("No file provided");
-  if (!ALLOWED_IMAGE_MIMES.has(file.type)) {
-    throw new Error(`Unsupported file type: ${file.type || "unknown"}`);
-  }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     throw new Error(
       `File too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB limit`,
     );
   }
 
+  const kind = isImageMime(file.type) ? "image" : "document";
   const buffer = Buffer.from(await file.arrayBuffer());
   db.prepare(
     `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(cutsheetId, "image", file.name, file.type, file.size, buffer);
-  revalidatePath(`/form/${cutsheetId}`);
-}
-
-// Documents are anything that isn't an image - PDF / Word / Excel / etc.
-// We don't enforce a strict MIME allowlist because browsers report Office
-// docs inconsistently; instead we reject only image MIMEs (those belong in
-// PhotosCard) and bound by size.
-export async function uploadDocument(cutsheetId: number, formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("No document provided");
-  if (ALLOWED_IMAGE_MIMES.has(file.type)) {
-    throw new Error("Use the Photos section for image uploads");
-  }
-  if (file.size > MAX_DOCUMENT_BYTES) {
-    throw new Error(
-      `Document too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB limit`,
-    );
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  db.prepare(
-    `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
-     VALUES (?, 'document', ?, ?, ?, ?)`,
   ).run(
     cutsheetId,
-    file.name || "document",
+    kind,
+    file.name || "file",
     file.type || "application/octet-stream",
     file.size,
     buffer,
   );
-  revalidatePath(`/form/${cutsheetId}`);
+  revalidateAttachments(cutsheetId);
 }
 
 export async function deleteAttachment(cutsheetId: number, attachmentId: number) {
@@ -442,7 +413,7 @@ export async function deleteAttachment(cutsheetId: number, attachmentId: number)
     attachmentId,
     cutsheetId,
   );
-  revalidatePath(`/form/${cutsheetId}`);
+  revalidateAttachments(cutsheetId);
 }
 
 // ----- Folders ----------------------------------------------------------------

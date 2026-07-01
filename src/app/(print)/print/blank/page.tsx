@@ -28,8 +28,9 @@ import {
   STRAIGHT_BOOT_BOXES_SIZES,
   TTO_SIZES,
 } from "@/lib/schema";
+import { LegalScalePage, LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/LegalScalePage";
 
-// Two-page Tabloid 11x17 pad master:
+// Two-page pad master, scaled to print on US Legal (8.5x14):
 //   Page 1 - blank cutsheet with header + 6 balanced qty/table columns +
 //            anchored bottom strip (Wall/Grills/Filter/Floor Regs).
 //   Page 2 - fittings selection grid (4x6 cells, each with SL? + QTY +
@@ -127,10 +128,13 @@ const FLEX_B_VENT_LABELS: Record<(typeof FLEX_B_VENT_KEYS)[number], string> = {
 export default function BlankPrintPage() {
   return (
     <>
-      <style>{`@page { size: 11in 17in; margin: 0.25in; }`}</style>
-      <Page1 />
-      <div className="break-before-page" />
-      <Page2 />
+      <style>{LEGAL_PAGE_CSS}</style>
+      <LegalScalePage>
+        <Page1 />
+      </LegalScalePage>
+      <LegalScalePage>
+        <Page2 />
+      </LegalScalePage>
     </>
   );
 }

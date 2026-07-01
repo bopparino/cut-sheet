@@ -5,7 +5,6 @@ import {
   RND_SIZES,
   SD_MISC_KEYS,
   SIMPSON_STP_KEYS,
-  STRAIGHT_BOOT_BOXES_SIZES,
   type Cutsheet,
 } from "@/lib/schema";
 import {
@@ -23,7 +22,7 @@ import {
 // /print/blank2's ShopPage, but every printed box is an <input> carrying the
 // exact FormData name updateCutSheetReplica (and the PDF pipeline) reads.
 
-const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
+const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)} x 120"` : s);
 
 const SD_MISC_LABELS: Record<(typeof SD_MISC_KEYS)[number], string> = {
   drive24: '24" Drive',
@@ -43,6 +42,7 @@ const SIMPSON_STP_LABELS: Record<(typeof SIMPSON_STP_KEYS)[number], string> = {
 
 export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
   const d = data;
+  const fo = d.formOnly;
   return (
     <div className="mx-auto flex w-[10.5in] flex-col bg-white font-sans text-[9px] leading-tight text-black">
       <ReplicaHeader title="Shop Cut Sheet" header={d.header} />
@@ -51,9 +51,6 @@ export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
         <div>
           <Section title='60" Duct'>
             <QtyInputList prefix="duct60" sizes={DUCT60_SIZES} values={d.stock.duct60} label={duct60Label} ruled />
-          </Section>
-          <Section title="S D / Misc">
-            <QtyInputList prefix="sdMisc" sizes={SD_MISC_KEYS} values={d.stock.sdMisc} label={(k) => SD_MISC_LABELS[k]} />
           </Section>
         </div>
         {/* Col 2 */}
@@ -88,33 +85,59 @@ export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
               }))}
             />
           </Section>
+          <Section title="Simpson STP" gapTop>
+            <QtyInputList prefix="simpsonStp" sizes={SIMPSON_STP_KEYS} values={fo.simpsonStp} label={(k) => SIMPSON_STP_LABELS[k]} />
+          </Section>
+          <Section title="S D / Misc">
+            <QtyInputList prefix="sdMisc" sizes={SD_MISC_KEYS} values={d.stock.sdMisc} label={(k) => SD_MISC_LABELS[k]} />
+          </Section>
+          <Section title="Panning">
+            <SingletonInputRow label="Panning Metal (36x36)" name="panningMetal36x36" value={fo.panningMetal36x36} />
+          </Section>
         </div>
         {/* Col 4 */}
         <div>
-          <Section title="Straight Boot Boxes">
-            <QtyInputList prefix="straightBootBoxes" sizes={STRAIGHT_BOOT_BOXES_SIZES} values={d.formOnly.straightBootBoxes} />
+          <Section title="Plenum Package">
+            <PlenumRadios value={d.header.plenumPackage} />
           </Section>
-          <Section title="Simpson STP">
-            <QtyInputList prefix="simpsonStp" sizes={SIMPSON_STP_KEYS} values={d.formOnly.simpsonStp} label={(k) => SIMPSON_STP_LABELS[k]} />
-          </Section>
-          <Section title="Filter Racks">
-            <QtyInputList prefix="filterRacks" sizes={FILTER_RACKS_KEYS} values={d.formOnly.filterRacks} label={(k) => FILTER_RACKS_LABELS[k]} />
-          </Section>
-          <Section title="Drain Pans">
-            <QtyInputList prefix="drainPans" sizes={DRAIN_PANS_KEYS} values={d.formOnly.drainPans} />
-          </Section>
-          <Section title="Panning">
-            <SingletonInputRow label="Panning Metal (36x36)" name="panningMetal36x36" value={d.formOnly.panningMetal36x36} />
+          <Section title="Return Plenum">
+            <SingletonInputRow label="14x24 S.L." name="returnPlenum.14x24SL" value={fo.returnPlenum["14x24SL"]} />
+            <SingletonInputRow label="18x24 S.L." name="returnPlenum.18x24SL" value={fo.returnPlenum["18x24SL"]} />
           </Section>
           <Section title="Furnace Feet">
-            <SingletonInputRow label="Furnace Feet" name="returnPlenum.furnaceFeet" value={d.formOnly.returnPlenum.furnaceFeet} />
+            <SingletonInputRow label="Furnace Feet" name="returnPlenum.furnaceFeet" value={fo.returnPlenum.furnaceFeet} />
+          </Section>
+          <Section title="Drain Pans">
+            <QtyInputList prefix="drainPans" sizes={DRAIN_PANS_KEYS} values={fo.drainPans} />
+          </Section>
+          <Section title="Filter Racks">
+            <QtyInputList prefix="filterRacks" sizes={FILTER_RACKS_KEYS} values={fo.filterRacks} label={(k) => FILTER_RACKS_LABELS[k]} />
           </Section>
         </div>
       </div>
       {/* The fitting drawing grid is intentionally omitted from the editor -
           it's a draw-on-paper section, so it stays only on the printed/filled
           PDF (see FilledCutSheet). Digital fitting sketches attach via the
-          Photos / Documents uploads on the replica page. */}
+          Attachments upload on the replica page. */}
+    </div>
+  );
+}
+
+function PlenumRadios({ value }: { value: string }) {
+  const opts = [
+    { v: "small", label: "Small", detail: "· 18x22x18" },
+    { v: "large", label: "Large", detail: "· 24x22x18" },
+    { v: "none", label: "None", detail: "" },
+  ];
+  return (
+    <div className="space-y-1.5">
+      {opts.map((o) => (
+        <label key={o.v} className="flex items-center gap-2">
+          <input type="radio" name="plenumPackage" value={o.v} defaultChecked={value === o.v} className="h-4 w-4 accent-black" />
+          <span className="font-bold">{o.label}</span>
+          {o.detail && <span className="text-[8px]">{o.detail}</span>}
+        </label>
+      ))}
     </div>
   );
 }
