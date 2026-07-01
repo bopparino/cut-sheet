@@ -4,18 +4,28 @@ import type { CutsheetHeader } from "@/lib/schema";
 
 type Props = {
   initial?: CutsheetHeader;
+  // Existing builder names for the builder autocomplete (datalist).
+  builders?: string[];
 };
 
 const REGIONS = ["", "MD", "VA", "WV"] as const;
 const EQ_TO = ["", "Job", "Whs", "Hold"] as const;
+const BUILDER_LIST_ID = "header-builder-options";
 
 // Server component: renders header fields with defaultValue from `initial`.
 // The parent <form action> Server Action picks them up via FormData.
-export function HeaderFields({ initial }: Props) {
+export function HeaderFields({ initial, builders }: Props) {
   const h = initial;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Field label="Builder" name="builder" defaultValue={h?.builder} />
+      {builders && builders.length > 0 && (
+        <datalist id={BUILDER_LIST_ID}>
+          {builders.map((b) => (
+            <option key={b} value={b} />
+          ))}
+        </datalist>
+      )}
+      <Field label="Builder" name="builder" defaultValue={h?.builder} list={builders?.length ? BUILDER_LIST_ID : undefined} />
       <Field label="Project" name="project" defaultValue={h?.project} />
       <Field label="House Type" name="houseType" defaultValue={h?.houseType} />
       <Field label="Lot" name="lot" defaultValue={h?.lot} />
@@ -40,16 +50,18 @@ function Field({
   name,
   defaultValue,
   type = "text",
+  list,
 }: {
   label: string;
   name: string;
   defaultValue?: string;
   type?: string;
+  list?: string;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="label-caps">{label}</Label>
-      <Input id={name} name={name} type={type} defaultValue={defaultValue ?? ""} />
+      <Input id={name} name={name} type={type} defaultValue={defaultValue ?? ""} list={list} />
     </div>
   );
 }

@@ -37,7 +37,15 @@ export default async function SearchPage({
       LOWER(json_extract(data, '$.name')) LIKE @q ESCAPE '\\'
       OR LOWER(json_extract(data, '$.header.builder')) LIKE @q ESCAPE '\\'
       OR LOWER(json_extract(data, '$.header.project')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.houseType')) LIKE @q ESCAPE '\\'
       OR LOWER(json_extract(data, '$.header.lot')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.propNumber')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.projectCode')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.foreman')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.block')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.section')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.zone')) LIKE @q ESCAPE '\\'
+      OR LOWER(json_extract(data, '$.header.option')) LIKE @q ESCAPE '\\'
     )`);
   }
   if (filters.deliveryFrom) {
@@ -66,7 +74,7 @@ export default async function SearchPage({
         <div className="min-w-0">
           <h1 className="text-[21px] font-bold tracking-[-0.02em] text-foreground">Search</h1>
           <p className="font-mono-data mt-0.5 text-[12px] text-[var(--text-3)]">
-            Search by name, builder, project, or lot
+            Search by name, builder, project, house type, lot, prop #, and more
           </p>
         </div>
         <Link

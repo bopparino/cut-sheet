@@ -5,8 +5,10 @@ import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetReplica";
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
+import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
+import { listBuilderNames } from "@/lib/builders";
 import { updateCutSheetReplica } from "@/lib/actions";
 import { formatDateTime } from "@/lib/utils";
 
@@ -40,11 +42,18 @@ export default async function ShopReplicaPage({
 
   const attachments = db
     .prepare<[number], AttachmentItem>(
-      `SELECT id, filename, mime, size, kind FROM attachments WHERE cutsheet_id = ?
+      `SELECT id, filename, mime, size, kind FROM attachments WHERE cutsheet_id = ? AND kind != 'plan'
+       ORDER BY created_at ASC, id ASC`,
+    )
+    .all(numeric);
+  const plans = db
+    .prepare<[number], PlanItem>(
+      `SELECT id, filename, size FROM attachments WHERE cutsheet_id = ? AND kind = 'plan'
        ORDER BY created_at ASC, id ASC`,
     )
     .all(numeric);
 
+  const builders = listBuilderNames();
   const save = updateCutSheetReplica.bind(null, numeric);
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
 
@@ -73,26 +82,19 @@ export default async function ShopReplicaPage({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Link
-            href={`/print/combined/${row.id}`}
+            href={`/api/pdf/${row.id}/packet`}
             target="_blank"
             className="btn-glow inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
           >
             <Printer className="h-4 w-4" /> Send to Shop
           </Link>
           <Link
-            href={`/print/combined/${row.id}`}
-            target="_blank"
+            href={`/api/pdf/${row.id}/packet?download=1`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary"
           >
             <Printer className="h-4 w-4" /> Print Here
           </Link>
           <span className="mx-0.5 h-5 w-px bg-border" />
-          <Link
-            href={`/form/${row.id}/card`}
-            className="rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            Card
-          </Link>
           <Link
             href={`/api/pdf/${row.id}/filled`}
             target="_blank"
@@ -123,7 +125,7 @@ export default async function ShopReplicaPage({
       <div className="space-y-5 px-6 py-7">
         <CutsheetForm formId={FORM_ID} action={save} className="space-y-6">
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
-            <ShopCutSheetReplica data={d} />
+            <ShopCutSheetReplica data={d} builders={builders} />
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
             <CutSheetReplica data={d} />
@@ -131,6 +133,7 @@ export default async function ShopReplicaPage({
         </CutsheetForm>
 
         <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
+        <PlansCard cutsheetId={numeric} plans={plans} />
       </div>
     </div>
   );

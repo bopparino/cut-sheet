@@ -40,12 +40,12 @@ const SIMPSON_STP_LABELS: Record<(typeof SIMPSON_STP_KEYS)[number], string> = {
   stp24: 'Simpson STP 24"',
 };
 
-export function ShopCutSheetReplica({ data }: { data: Cutsheet }) {
+export function ShopCutSheetReplica({ data, builders }: { data: Cutsheet; builders?: string[] }) {
   const d = data;
   const fo = d.formOnly;
   return (
     <div className="mx-auto flex w-[10.5in] flex-col bg-white font-sans text-[9px] leading-tight text-black">
-      <ReplicaHeader title="Shop Cut Sheet" header={d.header} />
+      <ReplicaHeader title="Shop Cut Sheet" header={d.header} builders={builders} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
         <div>

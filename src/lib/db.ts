@@ -47,7 +47,7 @@ function migrate(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS attachments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE,
-      kind TEXT NOT NULL CHECK (kind IN ('drawing', 'image', 'document')),
+      kind TEXT NOT NULL CHECK (kind IN ('drawing', 'image', 'document', 'plan')),
       filename TEXT NOT NULL,
       mime TEXT NOT NULL,
       size INTEGER NOT NULL,
@@ -140,6 +140,35 @@ function migrate(db: Database.Database): void {
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id)");
     db.pragma("user_version = 4");
+  }
+
+  if (version < 5) {
+    // Plans: house-plan PDFs get their own attachment kind so they can be
+    // uploaded/listed separately and appended to the print packet at 11x17.
+    // SQLite can't alter a CHECK in place - rebuild the table only if the
+    // stored DDL doesn't already allow 'plan'.
+    const tableInfo = db
+      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='attachments'")
+      .get() as { sql: string } | undefined;
+    if (tableInfo && !tableInfo.sql.includes("'plan'")) {
+      db.exec(`
+        CREATE TABLE attachments_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          cutsheet_id INTEGER NOT NULL REFERENCES cutsheets(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL CHECK (kind IN ('drawing', 'image', 'document', 'plan')),
+          filename TEXT NOT NULL,
+          mime TEXT NOT NULL,
+          size INTEGER NOT NULL,
+          blob BLOB NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO attachments_new SELECT * FROM attachments;
+        DROP TABLE attachments;
+        ALTER TABLE attachments_new RENAME TO attachments;
+        CREATE INDEX IF NOT EXISTS idx_attachments_cutsheet ON attachments(cutsheet_id);
+      `);
+    }
+    db.pragma("user_version = 5");
   }
 }
 

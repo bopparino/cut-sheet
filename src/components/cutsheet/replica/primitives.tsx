@@ -281,10 +281,13 @@ export function Section({
 }
 
 // Shared header (same field grid for both pages; only the title differs).
+const REPLICA_BUILDER_LIST_ID = "replica-builder-options";
+
 export function ReplicaHeader({
   title,
   header,
   editable = true,
+  builders,
 }: {
   title: string;
   header: Cutsheet["header"];
@@ -292,15 +295,25 @@ export function ReplicaHeader({
   // FormData holds two values per field and the second page's edits are
   // silently dropped. Page 2 passes editable={false}: same look, read-only.
   editable?: boolean;
+  // Existing builder names for the builder autocomplete (editable header only).
+  builders?: string[];
 }) {
+  const builderList = editable && builders && builders.length > 0 ? REPLICA_BUILDER_LIST_ID : undefined;
   return (
     <header className="border-2 border-black">
+      {builderList && (
+        <datalist id={REPLICA_BUILDER_LIST_ID}>
+          {builders!.map((b) => (
+            <option key={b} value={b} />
+          ))}
+        </datalist>
+      )}
       <div className="flex items-center justify-between border-b border-black px-2 py-1">
         <span className="text-base font-bold uppercase tracking-wide">{title}</span>
         <span className="text-[10px]">Pad #__________</span>
       </div>
       <HRow>
-        <HF label="Builder" name="builder" value={header.builder} flex={4} editable={editable} />
+        <HF label="Builder" name="builder" value={header.builder} flex={4} editable={editable} list={builderList} />
         <HF label="Date" name="date" value={header.date} flex={1.3} type="date" editable={editable} />
         <HF label="Delivery Date" name="deliveryDate" value={header.deliveryDate} flex={1.5} type="date" editable={editable} />
       </HRow>
@@ -337,6 +350,7 @@ function HF({
   flex,
   type = "text",
   editable,
+  list,
 }: {
   label: string;
   name: string;
@@ -344,6 +358,7 @@ function HF({
   flex: number;
   type?: string;
   editable: boolean;
+  list?: string;
 }) {
   return (
     <div className="flex items-center gap-1 border-r border-black px-1.5 py-1 last:border-r-0" style={{ flex }}>
@@ -353,6 +368,7 @@ function HF({
           type={type}
           name={name}
           defaultValue={value}
+          list={list}
           className="min-w-0 flex-1 border-b border-black bg-white text-[10px] outline-none focus:bg-yellow-100"
         />
       ) : (

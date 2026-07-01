@@ -410,6 +410,30 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
   revalidateAttachments(cutsheetId);
 }
 
+const MAX_PLAN_BYTES = 50 * 1024 * 1024; // plans can be multi-page PDFs
+
+// House plans: PDF only (1-8 pages each), stored as kind='plan'. They're
+// normalized to 11x17 and appended to the print packet, and listed in their
+// own Plans section separate from fitting/photo attachments.
+export async function uploadPlan(cutsheetId: number, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("No file provided");
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) throw new Error("Plans must be PDF files");
+  if (file.size > MAX_PLAN_BYTES) {
+    throw new Error(
+      `Plan too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_PLAN_BYTES / 1024 / 1024} MB limit`,
+    );
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  db.prepare(
+    `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
+     VALUES (?, 'plan', ?, ?, ?, ?)`,
+  ).run(cutsheetId, file.name || "plan.pdf", "application/pdf", file.size, buffer);
+  revalidateAttachments(cutsheetId);
+}
+
 export async function deleteAttachment(cutsheetId: number, attachmentId: number) {
   db.prepare("DELETE FROM attachments WHERE id = ? AND cutsheet_id = ?").run(
     attachmentId,

@@ -27,6 +27,7 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
     h.builder,
     h.project,
     [h.lot, h.block, h.section].filter(Boolean).join(" / ") ? `Lot ${[h.lot, h.block, h.section].filter(Boolean).join(" / ")}` : "",
+    h.propNumber ? `Prop# ${h.propNumber}` : "",
     h.zone ? `Zone ${h.zone}` : "",
   ].filter(Boolean);
 

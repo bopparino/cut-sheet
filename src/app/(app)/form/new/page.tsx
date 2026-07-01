@@ -1,10 +1,14 @@
 import { HeaderFields } from "@/components/cutsheet/HeaderFields";
 import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { createCutsheet } from "@/lib/actions";
+import { listBuilderNames } from "@/lib/builders";
 
 const FORM_ID = "new-cutsheet-form";
 
+export const dynamic = "force-dynamic";
+
 export default function NewCutsheetPage() {
+  const builders = listBuilderNames();
   return (
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/85 px-8 py-4 backdrop-blur">
@@ -31,7 +35,7 @@ export default function NewCutsheetPage() {
             <h2 className="mb-4 flex items-center gap-2 text-base font-bold">
               <span className="h-2 w-2 rounded-full bg-primary" /> Header
             </h2>
-            <HeaderFields />
+            <HeaderFields builders={builders} />
           </section>
           <p className="text-sm text-muted-foreground">
             Fill in any header fields you have now - the rest of the sections become editable after

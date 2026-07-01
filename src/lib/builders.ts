@@ -55,6 +55,23 @@ function deriveTitle(name: string, h: Header, id: number): string {
   );
 }
 
+// Distinct, non-empty builder names across all live cutsheets, alphabetical.
+// Feeds the builder autocomplete (datalist) on the new-cutsheet and replica
+// header inputs.
+export function listBuilderNames(): string[] {
+  const rows = db
+    .prepare<[], { b: string }>(
+      `SELECT DISTINCT TRIM(json_extract(data, '$.header.builder')) AS b
+       FROM cutsheets
+       WHERE deleted_at IS NULL
+         AND json_extract(data, '$.header.builder') IS NOT NULL
+         AND TRIM(json_extract(data, '$.header.builder')) != ''
+       ORDER BY b COLLATE NOCASE ASC`,
+    )
+    .all();
+  return rows.map((r) => r.b);
+}
+
 export function getBuilderRollup(): BuilderRollup {
   const rows = db
     .prepare<[], Row>("SELECT id, data, updated_at FROM cutsheets WHERE deleted_at IS NULL")
