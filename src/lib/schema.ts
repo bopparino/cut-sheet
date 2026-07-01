@@ -92,7 +92,9 @@ const HeaderSchema = z.object({
   propNumber: text,
   zone: text,
   eqTo: z.enum(["Job", "Whs", "Hold", ""]).default(""),
-  plenumPackage: z.enum(["small", "large", "none"]).default("none"),
+  // "" is the unset state (nothing chosen yet) so a blank cutsheet shows no
+  // plenum selection. "none" is a deliberate "no plenum package" choice.
+  plenumPackage: z.enum(["small", "large", "none", ""]).default(""),
 });
 
 // ---------- Form-only items (persisted but not on any PDF) ----------

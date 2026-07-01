@@ -61,7 +61,9 @@ function readHeaderFromFormData(formData: FormData): CutsheetHeader {
     propNumber: str("propNumber"),
     zone: str("zone"),
     eqTo: str("eqTo") as CutsheetHeader["eqTo"],
-    plenumPackage: (str("plenumPackage") || "none") as CutsheetHeader["plenumPackage"],
+    // No coercion to "none" - an unselected plenum stays "" (blank) so a new
+    // cutsheet doesn't auto-pick None.
+    plenumPackage: str("plenumPackage") as CutsheetHeader["plenumPackage"],
   };
 }
 

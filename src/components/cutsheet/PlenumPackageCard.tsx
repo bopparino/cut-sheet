@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-type Plenum = "small" | "large" | "none";
+// "" is the unset state (nothing checked); only the three real choices render.
+type Plenum = "small" | "large" | "none" | "";
 
-const OPTIONS: { value: Plenum; label: string; contents: string }[] = [
+const OPTIONS: { value: Exclude<Plenum, "">; label: string; contents: string }[] = [
   { value: "none", label: "None", contents: "No plenum package." },
   {
     value: "small",
