@@ -32,7 +32,7 @@ import { LegalScalePage, LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/Le
 // to the approved blank master, just populated. Rendered by /print/filled/[id]
 // and turned into a PDF by /api/pdf/[id]/filled.
 
-const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)} x 120"` : s);
+const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
 const num = (n: number) => (n > 0 ? String(n) : "");
 

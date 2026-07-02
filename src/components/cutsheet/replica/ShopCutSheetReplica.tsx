@@ -22,7 +22,7 @@ import {
 // /print/blank2's ShopPage, but every printed box is an <input> carrying the
 // exact FormData name updateCutSheetReplica (and the PDF pipeline) reads.
 
-const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)} x 120"` : s);
+const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 
 const SD_MISC_LABELS: Record<(typeof SD_MISC_KEYS)[number], string> = {
   drive24: '24" Drive',

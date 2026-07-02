@@ -38,7 +38,7 @@ import { LegalScalePage, LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/Le
 // module: print fidelity is fragile and the original page is in production, so
 // blank2 stays self-contained - a tweak here can never regress the live form.
 
-const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)} x 120"` : s);
+const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
 
 const SIMPSON_STP_LABELS: Record<(typeof SIMPSON_STP_KEYS)[number], string> = {
