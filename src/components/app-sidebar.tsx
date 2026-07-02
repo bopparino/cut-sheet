@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Search, FilePlus2, Trash2 } from "lucide-react";
+import { LayoutGrid, Search, FilePlus2, Trash2, Settings, ShieldCheck } from "lucide-react";
+
+type SidebarUser = { displayName: string; username: string; role: "user" | "admin" };
 
 const WORKSPACE = [
   { href: "/browse", label: "Browse", icon: LayoutGrid, match: (p: string) => p === "/" || p.startsWith("/browse") },
@@ -11,8 +13,9 @@ const WORKSPACE = [
   { href: "/form/new", label: "New cutsheet", icon: FilePlus2, match: (p: string) => p.startsWith("/form") },
 ];
 
-export function AppSidebar({ trashCount }: { trashCount: number }) {
+export function AppSidebar({ trashCount, user }: { trashCount: number; user: SidebarUser }) {
   const pathname = usePathname() ?? "/";
+  const isAdmin = user.role === "admin";
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card px-3 py-[18px]">
       <Link href="/browse" className="mb-6 flex items-center gap-2.5 px-2">
@@ -34,6 +37,14 @@ export function AppSidebar({ trashCount }: { trashCount: number }) {
 
       <p className="label-caps px-2 pb-2 pt-[22px] tracking-[0.14em]">Admin</p>
       <nav className="flex flex-col gap-0.5">
+        {isAdmin && (
+          <NavLink
+            href="/admin"
+            label="Users & audit"
+            icon={ShieldCheck}
+            active={pathname === "/admin"}
+          />
+        )}
         <NavLink
           href="/admin/trash"
           label="Trash"
@@ -44,9 +55,18 @@ export function AppSidebar({ trashCount }: { trashCount: number }) {
       </nav>
 
       <div className="flex-1" />
-      <div className="flex items-baseline gap-1.5 px-2">
-        <span className="label-caps">Cut Sheet</span>
-        <span className="font-mono-data text-[10px] text-[var(--text-ghost)]">v1.0</span>
+
+      <div className="border-t border-border pt-2">
+        <NavLink
+          href="/settings"
+          label={user.displayName || user.username}
+          icon={Settings}
+          active={pathname.startsWith("/settings")}
+        />
+        <div className="flex items-baseline gap-1.5 px-2 pt-2">
+          <span className="label-caps">Cut Sheet</span>
+          <span className="font-mono-data text-[10px] text-[var(--text-ghost)]">v1.5</span>
+        </div>
       </div>
     </aside>
   );
@@ -75,7 +95,7 @@ function NavLink({
       }`}
     >
       <Icon className="h-[17px] w-[17px] shrink-0" />
-      <span className="flex-1">{label}</span>
+      <span className="flex-1 truncate">{label}</span>
       {badge != null && (
         <span className="font-mono-data rounded-sm border border-border bg-[var(--fill-2)] px-1.5 py-px text-[10.5px] font-semibold text-[var(--text-3)]">
           {badge}

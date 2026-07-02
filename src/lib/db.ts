@@ -2,6 +2,7 @@ import "server-only";
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { hashPassword } from "@/lib/password";
 
 const DEFAULT_PATH = "./data/cutsheets.db";
 
@@ -169,6 +170,57 @@ function migrate(db: Database.Database): void {
       `);
     }
     db.pragma("user_version = 5");
+  }
+
+  if (version < 6) {
+    // Accounts: the app moves behind a login. Users, opaque server-side
+    // sessions, a print (send-to-shop) audit log, and created/updated
+    // attribution on cutsheets. Seed the first admin if there are no users.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        display_name TEXT NOT NULL DEFAULT '',
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        expires_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+      CREATE TABLE IF NOT EXISTS print_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cutsheet_id INTEGER REFERENCES cutsheets(id) ON DELETE SET NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        kind TEXT NOT NULL DEFAULT 'send_to_shop',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    const cols = db.prepare("PRAGMA table_info(cutsheets)").all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === "created_by")) {
+      db.exec("ALTER TABLE cutsheets ADD COLUMN created_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    }
+    if (!cols.some((c) => c.name === "updated_by")) {
+      db.exec("ALTER TABLE cutsheets ADD COLUMN updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
+    }
+
+    const userCount = (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n;
+    if (userCount === 0) {
+      const username = process.env.ADMIN_USERNAME || "acantrell";
+      const password = process.env.ADMIN_PASSWORD || "AllMight02@";
+      db.prepare(
+        "INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, 'admin')",
+      ).run(username, username, hashPassword(password));
+    }
+
+    db.pragma("user_version = 6");
   }
 }
 

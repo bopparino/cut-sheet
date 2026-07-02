@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import {
   BIRD_CAGE_SIZES,
   BLUE_FLASHING_KEYS,
@@ -137,9 +138,10 @@ export async function createCutsheet(formData: FormData) {
     header: readHeaderFromFormData(formData),
   };
   const parsed = CutsheetSchema.parse(next);
+  const me = await getCurrentUser();
   const result = db
-    .prepare("INSERT INTO cutsheets (data) VALUES (?)")
-    .run(JSON.stringify(parsed));
+    .prepare("INSERT INTO cutsheets (data, created_by, updated_by) VALUES (?, ?, ?)")
+    .run(JSON.stringify(parsed), me?.id ?? null, me?.id ?? null);
   revalidatePath("/search");
   redirect(`/form/${Number(result.lastInsertRowid)}`);
 }
@@ -158,9 +160,10 @@ export async function cloneCutsheet(id: number) {
   const parsed = CutsheetSchema.parse(JSON.parse(row.data));
   if (parsed.name) parsed.name = `${parsed.name} (Copy)`;
 
+  const me = await getCurrentUser();
   const result = db
-    .prepare("INSERT INTO cutsheets (data) VALUES (?)")
-    .run(JSON.stringify(parsed));
+    .prepare("INSERT INTO cutsheets (data, created_by, updated_by) VALUES (?, ?, ?)")
+    .run(JSON.stringify(parsed), me?.id ?? null, me?.id ?? null);
   revalidatePath("/search");
   redirect(`/form/${Number(result.lastInsertRowid)}`);
 }
@@ -242,9 +245,10 @@ export async function updateCutsheet(id: number, formData: FormData) {
     },
   };
   const parsed = CutsheetSchema.parse(next);
+  const me = await getCurrentUser();
   db.prepare(
-    "UPDATE cutsheets SET data = ?, folder_id = ?, updated_at = datetime('now') WHERE id = ?",
-  ).run(JSON.stringify(parsed), folderId, id);
+    "UPDATE cutsheets SET data = ?, folder_id = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
+  ).run(JSON.stringify(parsed), folderId, me?.id ?? null, id);
   revalidatePath(`/form/${id}`);
   revalidatePath("/search");
   revalidatePath("/browse");
@@ -333,11 +337,12 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
     },
   };
   const parsed = CutsheetSchema.parse(next);
+  const me = await getCurrentUser();
   // Folder is managed on the card form, not here - leave folder_id untouched so
   // a replica save never unfiles the cutsheet (the replica has no folder input).
   db.prepare(
-    "UPDATE cutsheets SET data = ?, updated_at = datetime('now') WHERE id = ?",
-  ).run(JSON.stringify(parsed), id);
+    "UPDATE cutsheets SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
+  ).run(JSON.stringify(parsed), me?.id ?? null, id);
   revalidatePath(`/form/${id}`);
   revalidatePath(`/form/${id}/replica`);
   revalidatePath("/search");

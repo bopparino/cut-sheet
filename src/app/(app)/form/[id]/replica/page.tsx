@@ -6,11 +6,13 @@ import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetR
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
+import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
+import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
 import { listBuilderNames } from "@/lib/builders";
 import { updateCutSheetReplica } from "@/lib/actions";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, relativeTime } from "@/lib/utils";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
@@ -54,6 +56,33 @@ export default async function ShopReplicaPage({
     .all(numeric);
 
   const builders = listBuilderNames();
+
+  // Attribution: who created / last edited this sheet, and who last sent it.
+  const attribution = db
+    .prepare<[number], { createdBy: string | null; updatedBy: string | null }>(
+      `SELECT cb.display_name AS createdBy, ub.display_name AS updatedBy
+       FROM cutsheets c
+       LEFT JOIN users cb ON cb.id = c.created_by
+       LEFT JOIN users ub ON ub.id = c.updated_by
+       WHERE c.id = ?`,
+    )
+    .get(numeric);
+  const lastSent = db
+    .prepare<[number], { name: string | null; at: string }>(
+      `SELECT u.display_name AS name, pe.created_at AS at
+       FROM print_events pe LEFT JOIN users u ON u.id = pe.user_id
+       WHERE pe.cutsheet_id = ? AND pe.kind = 'send_to_shop'
+       ORDER BY pe.created_at DESC LIMIT 1`,
+    )
+    .get(numeric);
+  const attributionLine = [
+    attribution?.createdBy ? `Created by ${attribution.createdBy}` : null,
+    attribution?.updatedBy ? `Edited by ${attribution.updatedBy}` : null,
+    lastSent?.name ? `Last sent by ${lastSent.name} ${relativeTime(lastSent.at)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const save = updateCutSheetReplica.bind(null, numeric);
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
 
@@ -79,6 +108,9 @@ export default async function ShopReplicaPage({
           <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-muted-foreground">
             Replica view · Pages 1–2 · #{row.id} · Updated {formatDateTime(row.updated_at)}
           </p>
+          {attributionLine && (
+            <p className="font-mono-data mt-0.5 px-0.5 text-[11px] text-[var(--text-3)]">{attributionLine}</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Link
@@ -94,6 +126,9 @@ export default async function ShopReplicaPage({
           >
             <Printer className="h-4 w-4" /> Print Here
           </Link>
+          <span className="mx-0.5 h-5 w-px bg-border" />
+          <CloneCutsheetButton cutsheetId={numeric} />
+          <DeleteCutsheetButton cutsheetId={numeric} />
           <span className="mx-0.5 h-5 w-px bg-border" />
           <Link
             href={`/api/pdf/${row.id}/filled`}

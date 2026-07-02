@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { PDFDocument } from "pdf-lib";
 import { db } from "@/lib/db";
 import { renderPdfFromUrl } from "@/lib/pdf";
+import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,6 +84,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const bytes = await out.save();
+
+  // Audit: record who generated the shop packet (Send to Shop / Print Here).
+  const me = await getCurrentUser();
+  db.prepare("INSERT INTO print_events (cutsheet_id, user_id, kind) VALUES (?, ?, 'send_to_shop')").run(
+    numeric,
+    me?.id ?? null,
+  );
+
   const download = new URL(req.url).searchParams.get("download") === "1";
   return new NextResponse(new Uint8Array(bytes), {
     status: 200,
