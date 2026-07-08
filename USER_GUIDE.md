@@ -131,7 +131,9 @@ Here is the new routine:
 1. Click **+ Add Fittings**. The whole catalog of fitting drawings opens right there.
 2. Tap the drawing you need. It gets added to your list. Tap it again if the house needs another one of the same kind — a little counter on the drawing keeps track.
 3. Click **Done Picking** when you have them all.
-4. On each fitting in your list, fill in the quantity and the measurements (W, H, L, and so on — each fitting shows its own size boxes). There is a notes box on every line for anything extra, like "drive both ends".
+4. On each fitting in your list, fill in the quantity and type the measurements the same way you would write them on the drawing — "11x18", "14x15 to 12x12, 24 long", whatever the shop needs to read. There is also a notes box on every line for anything extra, like "drive both ends".
+
+The fittings do not have names — nobody's fittings do, every shop guy calls them something different — so they are just numbered. Go by the drawing, same as always.
 
 It saves by itself as you type — you will see a little "Saving…" appear and disappear. No Save button needed for fittings.
 

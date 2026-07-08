@@ -1,14 +1,17 @@
 // The fittings catalog. One entry per drawing on the master fittings sheet
-// (public/fittings-template.png) - the same sheet Kimmy used to screenshot
-// from in MS Paint. Instead of slicing the sheet into 28 files, each entry
-// carries its crop box as fractions of the full image; the UI and the print
-// page both render the crop with CSS (see fittingCropStyle below), so
-// recalibrating a fitting = editing four numbers here.
+// (public/fittings-template.png, converted from the shop's "FITTING PAGE -
+// FINAL.bmp") - the same sheet Kimmy used to screenshot from in MS Paint.
+// Instead of slicing the sheet into files, each entry carries its crop box as
+// fractions of the full image; the UI and the print page both render the crop
+// with CSS (see fittingCropStyle below), so recalibrating a fitting = editing
+// four numbers here.
 //
-// NAMES AND DIM LABELS ARE A STARTING VOCABULARY. They were derived from the
-// drawings, not from the shop's own terms - rename freely (labels are display
-// only; `id` and dim `key`s are what saved cutsheets reference, so leave those
-// stable once real data exists).
+// Names are "Fitting N" on purpose: there is no industry-standard name for
+// these - every shop guy calls them something different - so the drawing IS
+// the name. Measurements are one free-text field per pick (same as writing
+// them on the drawing in Paint). If per-side fields are ever wanted, give a
+// fitting its own dims list; the card and the print page render whatever is
+// declared here.
 
 import type { CSSProperties } from "react";
 
@@ -23,50 +26,55 @@ export type FittingDef = {
   dims: FittingDim[];
 };
 
-const W = { key: "w", label: "W" };
-const H = { key: "h", label: "H" };
-const L = { key: "l", label: "L" };
-const WHL = [W, H, L];
+const SIZE: FittingDim[] = [{ key: "size", label: "Measurements" }];
 
 // Template's pixel aspect (width / height); used to keep crops undistorted.
-export const TEMPLATE_ASPECT = 13788 / 10592;
+export const TEMPLATE_ASPECT = 1038 / 825;
 
-export const FITTINGS: FittingDef[] = [
+const BOXES: [number, number, number, number][] = [
   // ---- Row 1 ----
-  { id: "db-hood", label: "DB Hood", box: { x: 0.075, y: 0.08, w: 0.115, h: 0.15 }, dims: WHL },
-  { id: "sq-ell", label: "Square Ell", box: { x: 0.225, y: 0.10, w: 0.105, h: 0.14 }, dims: WHL },
-  { id: "ell-45", label: "45° Ell", box: { x: 0.39, y: 0.11, w: 0.12, h: 0.13 }, dims: WHL },
-  { id: "cas-box", label: "CAS Box", box: { x: 0.555, y: 0.12, w: 0.125, h: 0.12 }, dims: WHL },
-  { id: "cas-open", label: "CAS Open Top", box: { x: 0.71, y: 0.105, w: 0.125, h: 0.13 }, dims: WHL },
+  [0.045, 0.04, 0.105, 0.09],   // 1 DB hood
+  [0.19, 0.035, 0.14, 0.135],   // 2 square ell
+  [0.395, 0.055, 0.16, 0.15],   // 3 45° ell
+  [0.61, 0.06, 0.135, 0.11],    // 4 CAS box
+  [0.80, 0.045, 0.13, 0.11],    // 5 CAS open top
   // ---- Row 2 ----
-  { id: "db-cone", label: "DB Cone", box: { x: 0.09, y: 0.245, w: 0.10, h: 0.13 }, dims: WHL },
-  { id: "tee-notch", label: "Notched Tee", box: { x: 0.215, y: 0.26, w: 0.125, h: 0.13 }, dims: [W, H, L, { key: "t", label: "Tap" }] },
-  { id: "transition", label: "Transition", box: { x: 0.385, y: 0.26, w: 0.13, h: 0.12 }, dims: [{ key: "in", label: "In" }, { key: "out", label: "Out" }, L] },
-  { id: "rnd-to-sq", label: "Round to Square", box: { x: 0.545, y: 0.265, w: 0.11, h: 0.14 }, dims: [{ key: "rnd", label: "Round" }, { key: "sq", label: "Square" }, L] },
-  { id: "transfer-grill", label: "Transfer Grill", box: { x: 0.69, y: 0.245, w: 0.15, h: 0.14 }, dims: [W, H] },
+  [0.07, 0.205, 0.10, 0.12],    // 6 DB cone
+  [0.215, 0.215, 0.15, 0.14],   // 7 notched tee
+  [0.41, 0.21, 0.165, 0.125],   // 8 transition
+  [0.61, 0.215, 0.16, 0.175],   // 9 round to square
+  [0.81, 0.235, 0.135, 0.105],  // 10 transfer grill
   // ---- Row 3 ----
-  { id: "vd", label: "Volume Damper (VD)", box: { x: 0.07, y: 0.39, w: 0.12, h: 0.15 }, dims: [W, H] },
-  { id: "offset", label: "Offset", box: { x: 0.23, y: 0.41, w: 0.115, h: 0.135 }, dims: [W, H, L, { key: "off", label: "Offset" }] },
-  { id: "channel", label: "Channel", box: { x: 0.385, y: 0.41, w: 0.145, h: 0.12 }, dims: WHL },
-  { id: "stand", label: "Stand", box: { x: 0.54, y: 0.41, w: 0.165, h: 0.14 }, dims: WHL },
-  { id: "curb", label: "Curb", box: { x: 0.70, y: 0.42, w: 0.15, h: 0.11 }, dims: WHL },
+  [0.05, 0.385, 0.115, 0.125],  // 11 volume damper (VD)
+  [0.225, 0.40, 0.135, 0.13],   // 12 offset
+  [0.43, 0.42, 0.145, 0.075],   // 13 channel
+  [0.60, 0.39, 0.165, 0.11],    // 14 stand
+  [0.81, 0.415, 0.13, 0.075],   // 15 curb
   // ---- Row 4 ----
-  { id: "clips", label: "Clips", box: { x: 0.065, y: 0.555, w: 0.12, h: 0.145 }, dims: [W, L] },
-  { id: "open-square", label: "Open Square", box: { x: 0.235, y: 0.575, w: 0.14, h: 0.17 }, dims: WHL },
-  { id: "riser-collar", label: "Riser + Collar", box: { x: 0.385, y: 0.54, w: 0.13, h: 0.135 }, dims: [W, H, L, { key: "c", label: "Collar" }] },
-  { id: "v-box", label: "V Box", box: { x: 0.545, y: 0.555, w: 0.125, h: 0.135 }, dims: WHL },
-  { id: "z-cleat", label: "Z Cleat", box: { x: 0.685, y: 0.545, w: 0.14, h: 0.14 }, dims: [W, L] },
+  [0.075, 0.565, 0.095, 0.115], // 16 clips
+  [0.27, 0.56, 0.105, 0.185],   // 17 open square
+  [0.43, 0.555, 0.15, 0.09],    // 18 riser + collar
+  [0.655, 0.57, 0.09, 0.085],   // 19 V box
+  [0.82, 0.54, 0.13, 0.135],    // 20 Z cleat
   // ---- Row 5 ----
-  { id: "custom-l-box", label: "Custom L Box", box: { x: 0.05, y: 0.715, w: 0.135, h: 0.205 }, dims: [{ key: "a", label: "A" }, { key: "b", label: "B" }, { key: "c", label: "C" }, { key: "d", label: "D" }, { key: "w", label: "W" }, { key: "dp", label: "Depth" }] },
-  { id: "hanging-square", label: "Hanging Square", box: { x: 0.225, y: 0.675, w: 0.135, h: 0.185 }, dims: WHL },
-  { id: "cl-hopper", label: "CL Hopper", box: { x: 0.375, y: 0.685, w: 0.155, h: 0.135 }, dims: [{ key: "top", label: "Top" }, { key: "bot", label: "Bottom" }, H] },
-  { id: "sleeve", label: "Sleeve", box: { x: 0.55, y: 0.70, w: 0.15, h: 0.17 }, dims: WHL },
-  { id: "cl-trapezoid", label: "CL Trapezoid", box: { x: 0.695, y: 0.71, w: 0.17, h: 0.15 }, dims: [{ key: "top", label: "Top" }, { key: "bot", label: "Bottom" }, H] },
+  [0.04, 0.73, 0.17, 0.18],   // 21 L box
+  [0.275, 0.70, 0.11, 0.125],   // 22 hanging square
+  [0.445, 0.70, 0.13, 0.12],    // 23 CL hopper
+  [0.655, 0.72, 0.13, 0.125],   // 24 sleeve
+  [0.83, 0.73, 0.13, 0.11],     // 25 CL trapezoid
   // ---- Row 6 ----
-  { id: "end-channel", label: "End Channel", box: { x: 0.325, y: 0.83, w: 0.135, h: 0.14 }, dims: WHL },
-  { id: "angle-a", label: "Angle (narrow)", box: { x: 0.495, y: 0.84, w: 0.065, h: 0.13 }, dims: [W, L] },
-  { id: "angle-b", label: "Angle (wide)", box: { x: 0.56, y: 0.84, w: 0.075, h: 0.13 }, dims: [W, L] },
+  [0.36, 0.85, 0.14, 0.125],    // 26 end channel
+  [0.555, 0.85, 0.055, 0.115],  // 27 angle (narrow)
+  [0.625, 0.855, 0.06, 0.11],   // 28 angle (wide)
+  [0.75, 0.895, 0.105, 0.075],  // 29 plate with hole
 ];
+
+export const FITTINGS: FittingDef[] = BOXES.map(([x, y, w, h], i) => ({
+  id: `f${i + 1}`,
+  label: `Fitting ${i + 1}`,
+  box: { x, y, w, h },
+  dims: SIZE,
+}));
 
 export const FITTING_MAP = new Map(FITTINGS.map((f) => [f.id, f]));
 

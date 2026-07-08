@@ -48,7 +48,9 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
               .filter((d) => (row.dims[d.key] ?? "").trim())
               .map((d) => (
                 <span key={d.key}>
-                  <span className="text-[8pt] text-neutral-500">{d.label} </span>
+                  {/* A lone "Measurements" label is noise on paper - the bold
+                      value speaks for itself. Per-side labels (W/H/L) print. */}
+                  {def.dims.length > 1 && <span className="text-[8pt] text-neutral-500">{d.label} </span>}
                   <span className="font-bold">{row.dims[d.key]}</span>
                 </span>
               ))}

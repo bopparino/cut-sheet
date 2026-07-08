@@ -151,7 +151,8 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                         type="text"
                         value={row.dims[dim.key] ?? ""}
                         onChange={(e) => update(i, { dims: { ...row.dims, [dim.key]: e.target.value } })}
-                        className="h-8 w-20 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+                        placeholder={def.dims.length === 1 ? "e.g. 11x18 → 14x15, 24 long" : undefined}
+                        className={`h-8 rounded-md border border-input bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground/60 ${def.dims.length === 1 ? "w-56" : "w-20"}`}
                       />
                     </label>
                   ))}
