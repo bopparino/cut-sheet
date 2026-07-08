@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { imageToPdf } from "@/lib/pdf";
 import {
   BIRD_CAGE_SIZES,
   BLUE_FLASHING_KEYS,
@@ -417,25 +418,52 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
 
 const MAX_PLAN_BYTES = 50 * 1024 * 1024; // plans can be multi-page PDFs
 
-// House plans: PDF only (1-8 pages each), stored as kind='plan'. They're
-// normalized to 11x17 and appended to the print packet, and listed in their
-// own Plans section separate from fitting/photo attachments.
+// Image plans convert to a single-page PDF at upload time, so everything
+// downstream - the packet merge, the 11x17 normalization, the attachment
+// viewer - only ever sees plan PDFs. BMP is the format the shop actually
+// produces; PNG/JPG ride along since the conversion path is identical.
+const PLAN_IMAGE_MIMES: Record<string, string> = {
+  ".bmp": "image/bmp",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+};
+
+// House plans (1-8 pages each), stored as kind='plan'. They're normalized to
+// 11x17 and appended to the print packet, and listed in their own Plans
+// section separate from fitting/photo attachments.
 export async function uploadPlan(cutsheetId: number, formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File)) throw new Error("No file provided");
-  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-  if (!isPdf) throw new Error("Plans must be PDF files");
+  const name = file.name.toLowerCase();
+  const ext = name.slice(name.lastIndexOf("."));
+  const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
+  // Windows reports BMP as image/bmp or image/x-ms-bmp depending on the app
+  // that produced it, so go by extension first and normalize the MIME.
+  const imageMime =
+    PLAN_IMAGE_MIMES[ext] ??
+    (/^image\/(bmp|x-ms-bmp|png|jpeg)$/.test(file.type) ? file.type.replace("x-ms-bmp", "bmp") : null);
+  if (!isPdf && !imageMime) throw new Error("Plans must be PDF, BMP, PNG, or JPG files");
   if (file.size > MAX_PLAN_BYTES) {
     throw new Error(
       `Plan too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_PLAN_BYTES / 1024 / 1024} MB limit`,
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+  let filename = file.name || "plan.pdf";
+  if (!isPdf) {
+    try {
+      buffer = await imageToPdf(buffer, imageMime!);
+    } catch {
+      throw new Error(`${file.name} could not be read as an image - is the file corrupt?`);
+    }
+    filename = filename.replace(/\.[^.]+$/, "") + ".pdf";
+  }
   db.prepare(
     `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
      VALUES (?, 'plan', ?, ?, ?, ?)`,
-  ).run(cutsheetId, file.name || "plan.pdf", "application/pdf", file.size, buffer);
+  ).run(cutsheetId, filename, "application/pdf", buffer.byteLength, buffer);
   revalidateAttachments(cutsheetId);
 }
 

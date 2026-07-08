@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import puppeteer, { type Browser } from "puppeteer";
+import { PDFDocument } from "pdf-lib";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -73,6 +74,48 @@ export async function renderPdfFromUrl(
         },
     });
     return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
+}
+
+// Wrap an uploaded image in a single-page PDF (page size = pixel size at
+// 72dpi; the packet route rescales to 11x17 anyway). PNG/JPEG embed directly
+// via pdf-lib; anything else (BMP is the one the shop actually uses) is
+// re-encoded to PNG first, using the already-running Chromium as the decoder
+// so we don't grow a native image dependency just for BMP.
+export async function imageToPdf(buffer: Buffer, mime: string): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  const img =
+    mime === "image/jpeg"
+      ? await doc.embedJpg(buffer)
+      : await doc.embedPng(mime === "image/png" ? buffer : await rasterizeToPng(buffer, mime));
+  const page = doc.addPage([img.width, img.height]);
+  page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+  return Buffer.from(await doc.save());
+}
+
+async function rasterizeToPng(buffer: Buffer, mime: string): Promise<Buffer> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+    const pngDataUrl = await page.evaluate(async (src: string) => {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("image failed to decode"));
+        img.src = src;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      return canvas.toDataURL("image/png");
+    }, dataUrl);
+    const prefix = "data:image/png;base64,";
+    if (!pngDataUrl.startsWith(prefix)) throw new Error("PNG re-encode failed");
+    return Buffer.from(pngDataUrl.slice(prefix.length), "base64");
   } finally {
     await page.close();
   }

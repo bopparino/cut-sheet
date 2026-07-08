@@ -19,10 +19,10 @@ type Props = {
   className?: string;
 };
 
-// House plans: PDF-only uploads (1-8 pages each). Stored as kind='plan' and
-// appended to the print packet normalized to 11x17. Kept separate from the
-// Attachments (fittings/photos/docs) section so the two upload paths and
-// print destinations stay distinct.
+// House plans: PDF or image uploads (BMP/PNG/JPG convert to PDF server-side).
+// Stored as kind='plan' and appended to the print packet normalized to 11x17.
+// Kept separate from the Attachments (fittings/photos/docs) section so the two
+// upload paths and print destinations stay distinct.
 export function PlansCard({ cutsheetId, plans, className }: Props) {
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +72,7 @@ export function PlansCard({ cutsheetId, plans, className }: Props) {
             <input
               ref={inputRef}
               type="file"
-              accept="application/pdf,.pdf"
+              accept="application/pdf,.pdf,image/bmp,.bmp,image/png,.png,image/jpeg,.jpg,.jpeg"
               multiple
               onChange={(e) => upload(e.target.files)}
               disabled={isPending}
@@ -85,7 +85,7 @@ export function PlansCard({ cutsheetId, plans, className }: Props) {
       <CardContent>
         {plans.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No plans yet. Add house-plan PDFs — they print on 11×17 in the shop packet.
+            No plans yet. Add house plans (PDF, BMP, PNG, or JPG) — they print on 11×17 in the shop packet.
           </p>
         ) : (
           <ul className="divide-y rounded-md border">
@@ -114,7 +114,7 @@ export function PlansCard({ cutsheetId, plans, className }: Props) {
             ))}
           </ul>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">PDF only · 50 MB max each · printed on 11×17</p>
+        <p className="mt-3 text-xs text-muted-foreground">PDF, BMP, PNG, or JPG · 50 MB max each · printed on 11×17</p>
       </CardContent>
     </Card>
   );
