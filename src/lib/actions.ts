@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { imageToPdf } from "@/lib/pdf";
+import { FITTING_MAP } from "@/lib/fittings";
 import {
   BIRD_CAGE_SIZES,
   BLUE_FLASHING_KEYS,
@@ -38,6 +40,7 @@ import {
   STRAIGHT_BOOT_BOXES_SIZES,
   STRT_BOOTS_SIZES,
   TTO_SIZES,
+  FittingRowSchema,
   emptyCutsheet,
   type Cutsheet,
   type CutsheetHeader,
@@ -347,6 +350,30 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
   revalidatePath(`/form/${id}`);
   revalidatePath(`/form/${id}/replica`);
   revalidatePath("/search");
+}
+
+// Fittings save their own slice of the payload (the FittingsCard lives outside
+// the big replica form, like Attachments/Plans), so a form save can never wipe
+// them - both update actions preserve `fittings` via the `...current` spread.
+export async function saveFittings(id: number, rows: unknown) {
+  const fittings = z.array(FittingRowSchema).parse(rows);
+  for (const f of fittings) {
+    if (!FITTING_MAP.has(f.type)) throw new Error(`Unknown fitting type "${f.type}"`);
+  }
+  const row = db
+    .prepare<[number], { data: string }>(
+      "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    )
+    .get(id);
+  if (!row) throw new Error(`Cutsheet ${id} not found`);
+  const current = CutsheetSchema.parse(JSON.parse(row.data));
+  const next: Cutsheet = { ...current, fittings };
+  const me = await getCurrentUser();
+  db.prepare(
+    "UPDATE cutsheets SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
+  ).run(JSON.stringify(next), me?.id ?? null, id);
+  revalidatePath(`/form/${id}`);
+  revalidatePath(`/form/${id}/replica`);
 }
 
 // Soft-delete: cutsheet stays in the DB with deleted_at set, so /admin/trash

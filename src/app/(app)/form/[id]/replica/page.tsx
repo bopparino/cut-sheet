@@ -5,6 +5,7 @@ import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetReplica";
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
+import { FittingsCard } from "@/components/cutsheet/FittingsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
 import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
@@ -167,6 +168,7 @@ export default async function ShopReplicaPage({
           </div>
         </CutsheetForm>
 
+        <FittingsCard cutsheetId={numeric} fittings={d.fittings} />
         <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
         <PlansCard cutsheetId={numeric} plans={plans} />
       </div>

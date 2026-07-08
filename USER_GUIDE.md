@@ -122,18 +122,24 @@ Here is the part to remember: **nothing is saved until you click Save.** If you 
 
 ---
 
-## 7. Attachments: fitting drawings and files
+## 7. Fittings: pick, size, done
 
-Below the two forms is the **Attachments** section. This is where the fitting drawings go, along with any other files you want to keep with the cut sheet.
+Below the two forms is the **Fittings** section. This replaces the old Paint routine — no more screenshotting the fittings sheet, pasting into Paint, and typing sizes onto the picture.
 
-Here is the normal routine for fittings:
+Here is the new routine:
 
-1. You draw a fitting in Paint (or whatever you use) and save the picture on your computer.
-2. In the app, click **+ Add files** in the Attachments section.
-3. Pick your picture. It uploads and shows up as a small thumbnail.
-4. Do this for each fitting. There is no limit. Fifteen to twenty per house is completely normal.
+1. Click **+ Add Fittings**. The whole catalog of fitting drawings opens right there.
+2. Tap the drawing you need. It gets added to your list. Tap it again if the house needs another one of the same kind — a little counter on the drawing keeps track.
+3. Click **Done Picking** when you have them all.
+4. On each fitting in your list, fill in the quantity and the measurements (W, H, L, and so on — each fitting shows its own size boxes). There is a notes box on every line for anything extra, like "drive both ends".
 
-You can add any kind of file here, not just pictures. Photos, PDFs, notes, whatever. But the pictures you add are special: they get printed on the **fittings page** that goes to the shop, so the crew can see every fitting drawing. Anything that is not a picture is just kept on file with the cut sheet.
+It saves by itself as you type — you will see a little "Saving…" appear and disappear. No Save button needed for fittings.
+
+When you print for the shop, every fitting you picked comes out on the fittings page: the drawing, the quantity nice and big, and the measurements in bold underneath.
+
+### Attachments: pictures and files
+
+The **Attachments** section still works like it always has: click **+ Add files** and pick any picture or file. Pictures land on the fittings page after the picked fittings, so hand-drawn one-offs still print for the crew. Anything that is not a picture is just kept on file with the cut sheet.
 
 To remove a file, hover over it and click the small X.
 
@@ -141,11 +147,11 @@ To remove a file, hover over it and click the small X.
 
 ## 8. Plans: the house blueprints
 
-Right below Attachments is the **Plans** section. This is only for house plans, the blueprint PDFs.
+Right below Attachments is the **Plans** section. This is only for house plans, the blueprints.
 
-Click **+ Add Plans**, pick the PDF, and it uploads. A single plan can be one page or several pages, and that is fine. When you print for the shop, the plans come out on the big 11 by 17 paper.
+Click **+ Add Plans**, pick the file, and it uploads. A single plan can be one page or several pages, and that is fine. When you print for the shop, the plans come out on the big 11 by 17 paper.
 
-Plans must be PDF files. If you have plans as something else, save or export them as a PDF first.
+Plans can be PDF files or pictures (BMP, PNG, or JPG). A picture gets turned into a PDF for you the moment it uploads, so it prints on 11 by 17 like everything else.
 
 ---
 
@@ -213,9 +219,9 @@ Almost certainly not. You cannot hurt the data by clicking around. The worst tha
 
 - **Cut sheet:** one house. The full list of what the shop builds for it.
 - **Ticket:** one printed pick list for a role. Stock, Custom, or Truck.
-- **Fitting:** a shaped piece of duct. You draw these and attach the drawings.
+- **Fitting:** a shaped piece of duct. You pick these from the catalog and fill in the sizes.
 - **Plenum:** the box on the furnace. Small, Large, or None.
-- **Plans:** the house blueprints, kept as PDFs, printed on 11 by 17.
+- **Plans:** the house blueprints (PDF or picture files), printed on 11 by 17.
 - **Packet:** everything for one house, printed together in one job.
 - **Builder:** the company building the house. Cut sheets are grouped by builder.
 - **Lot:** the lot number of the house in its community.

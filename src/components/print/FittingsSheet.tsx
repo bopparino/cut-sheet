@@ -1,5 +1,7 @@
 import type { Cutsheet } from "@/lib/schema";
 import { LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/LegalScalePage";
+import { FITTING_MAP } from "@/lib/fittings";
+import { FittingThumb } from "@/components/cutsheet/FittingThumb";
 
 export type FittingImage = { id: number; filename: string };
 
@@ -14,14 +16,63 @@ type Props = {
 
 const PER_PAGE = 6; // 2 columns × 3 rows on a Legal page
 
-// Printable contact sheet of the fitting drawings (MS Paint exports) attached
-// to a cutsheet. The warehouse builds 15-20 fittings per house off these, so
-// they tile onto Legal (8.5×14) pages, paginated, with a ticket-style header on
-// the first page. Images render via the /api/attachment/[id] blob route.
+// Printable contact sheet of the cutsheet's fittings. Two sources tile onto
+// the same Legal (8.5×14) grid: fittings picked from the catalog (drawing +
+// qty + per-side measurements, replacing the MS Paint ritual) come first,
+// then any legacy attached images (via the /api/attachment/[id] blob route).
+// The warehouse builds 15-20 fittings per house off this sheet.
 export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }: Props) {
   const h = cutsheet.header;
   const name = cutsheet.name.trim();
-  const pages = chunk(images, PER_PAGE);
+
+  const picked = cutsheet.fittings
+    .map((row) => ({ row, def: FITTING_MAP.get(row.type) }))
+    .filter((x): x is { row: (typeof cutsheet.fittings)[number]; def: NonNullable<ReturnType<typeof FITTING_MAP.get>> } => Boolean(x.def));
+
+  const figures: React.ReactNode[] = [
+    ...picked.map(({ row, def }, i) => (
+      <figure key={`f${i}`} className="flex h-[3.4in] flex-col overflow-hidden rounded border border-black">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-white p-1">
+          <span className="absolute left-2 top-1 text-[14pt] font-bold">
+            {row.qty > 0 ? `× ${row.qty}` : ""}
+          </span>
+          <FittingThumb def={def} className="h-full w-full" />
+        </div>
+        <figcaption className="shrink-0 border-t border-neutral-300 px-2 py-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[9pt] font-bold uppercase">{def.label}</span>
+            {row.notes && <span className="truncate text-[8pt] text-neutral-600">{row.notes}</span>}
+          </div>
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11pt] leading-tight">
+            {def.dims
+              .filter((d) => (row.dims[d.key] ?? "").trim())
+              .map((d) => (
+                <span key={d.key}>
+                  <span className="text-[8pt] text-neutral-500">{d.label} </span>
+                  <span className="font-bold">{row.dims[d.key]}</span>
+                </span>
+              ))}
+          </div>
+        </figcaption>
+      </figure>
+    )),
+    ...images.map((img) => (
+      <figure key={`i${img.id}`} className="flex h-[3.4in] flex-col overflow-hidden rounded border border-black">
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/attachment/${img.id}`}
+            alt={img.filename}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
+        <figcaption className="shrink-0 truncate border-t border-neutral-300 px-2 py-1 text-[8pt] text-neutral-600">
+          {img.filename}
+        </figcaption>
+      </figure>
+    )),
+  ];
+  const pages = chunk(figures, PER_PAGE);
 
   const meta = [
     h.builder,
@@ -35,40 +86,21 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
     <div className="font-sans text-black">
       {!embedded && <style>{LEGAL_PAGE_CSS}</style>}
 
-      {images.length === 0 ? (
+      {figures.length === 0 ? (
         <section className="px-2 py-2">
           <Header name={name} cutsheetId={cutsheetId} meta={meta} />
           <p className="py-10 text-center text-sm text-neutral-500">
-            No fitting drawings attached.
+            No fittings picked or attached.
           </p>
         </section>
       ) : (
-        pages.map((pageImages, pageIndex) => (
+        pages.map((pageFigures, pageIndex) => (
           <section
             key={pageIndex}
             className={`px-2 ${pageIndex > 0 ? "break-before-page" : ""}`}
           >
             {pageIndex === 0 && <Header name={name} cutsheetId={cutsheetId} meta={meta} />}
-            <div className="grid grid-cols-2 gap-3">
-              {pageImages.map((img) => (
-                <figure
-                  key={img.id}
-                  className="flex h-[3.4in] flex-col overflow-hidden rounded border border-black"
-                >
-                  <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/attachment/${img.id}`}
-                      alt={img.filename}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <figcaption className="shrink-0 truncate border-t border-neutral-300 px-2 py-1 text-[8pt] text-neutral-600">
-                    {img.filename}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+            <div className="grid grid-cols-2 gap-3">{pageFigures}</div>
             <div className="mt-2 text-right text-[8pt] text-neutral-500">
               Fittings · Page {pageIndex + 1} of {pages.length} · Cutsheet #{cutsheetId}
             </div>

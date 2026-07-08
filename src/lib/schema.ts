@@ -242,6 +242,19 @@ const CustomLineSchema = z.object({
   qty: z.number().int().min(0).default(1),
 });
 
+// ---------- Fittings (picked from the catalog in src/lib/fittings.ts) ----------
+// Replaces the MS Paint copy/paste ritual: `type` is a catalog id, `dims` holds
+// the per-side measurements keyed by the catalog's dim keys (values are free
+// text so "16x8", "3 1/2", and "24 long" all work). Rows print on the fittings
+// sheet; qty 0 rows still print (a picked fitting is a picked fitting).
+export const FittingRowSchema = z.object({
+  type: z.string().min(1),
+  qty: z.number().int().min(0).default(1),
+  dims: z.record(z.string()).default({}),
+  notes: text,
+});
+export type FittingRow = z.infer<typeof FittingRowSchema>;
+
 // ---------- Attachments (drawings + image uploads) ----------
 // The DB table is the source of truth for blobs (server/src/routes/attachments.ts);
 // this array on the cutsheet is a metadata cache so the UI can render thumbnails
@@ -268,6 +281,7 @@ export const CutsheetSchema = z.object({
   truck: TruckSchema,
   formOnly: FormOnlySchema,
   customLines: z.array(CustomLineSchema).default([]),
+  fittings: z.array(FittingRowSchema).default([]),
   attachments: z.array(AttachmentSchema).default([]),
 });
 
@@ -331,6 +345,7 @@ export function emptyCutsheet(): Cutsheet {
       flexBVent: {},
     },
     customLines: [],
+    fittings: [],
     attachments: [],
   });
 }
