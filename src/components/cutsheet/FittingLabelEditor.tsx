@@ -127,7 +127,7 @@ export function FittingLabelEditor({ def, labels, onChange, onClose }: Props) {
                     top: `${l.y * 100}%`,
                     width: `${Math.max(draft.length + 2, 6)}ch`,
                   }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 rounded border border-primary bg-white px-1 py-0.5 text-sm font-bold text-black shadow outline-none"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 rounded border border-primary bg-white px-1 py-0.5 text-base font-bold text-black shadow outline-none"
                   placeholder="size"
                 />
               ) : (
@@ -135,7 +135,7 @@ export function FittingLabelEditor({ def, labels, onChange, onClose }: Props) {
                   key={i}
                   onPointerDown={startDrag(i)}
                   style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%` }}
-                  className="group absolute -translate-x-1/2 -translate-y-1/2 cursor-move select-none whitespace-nowrap rounded bg-white/85 px-1 py-0.5 text-sm font-bold text-black ring-1 ring-transparent hover:ring-primary"
+                  className="group absolute -translate-x-1/2 -translate-y-1/2 cursor-move select-none whitespace-nowrap rounded bg-white/85 px-1 py-0.5 text-base font-bold text-black ring-1 ring-transparent hover:ring-primary"
                 >
                   {l.text}
                   <button

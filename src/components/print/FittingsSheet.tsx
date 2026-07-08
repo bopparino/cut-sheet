@@ -45,7 +45,7 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
                 <span
                   key={j}
                   style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap bg-white/85 px-0.5 text-[10pt] font-bold leading-none text-black"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap bg-white/85 px-0.5 text-[13pt] font-bold leading-none text-black"
                 >
                   {l.text}
                 </span>
