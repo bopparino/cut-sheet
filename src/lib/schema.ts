@@ -243,14 +243,22 @@ const CustomLineSchema = z.object({
 });
 
 // ---------- Fittings (picked from the catalog in src/lib/fittings.ts) ----------
-// Replaces the MS Paint copy/paste ritual: `type` is a catalog id, `dims` holds
-// the per-side measurements keyed by the catalog's dim keys (values are free
-// text so "16x8", "3 1/2", and "24 long" all work). Rows print on the fittings
-// sheet; qty 0 rows still print (a picked fitting is a picked fitting).
+// Replaces the MS Paint copy/paste ritual: `type` is a catalog id, `labels`
+// are the measurements, each click-placed at a position ON the drawing (x/y
+// are fractions of the drawing box) - the position is the information: it says
+// WHICH side the number belongs to, like Kimmie's Paint text tool did. Rows
+// print on the fittings sheet; qty 0 rows still print.
+export const FittingLabelSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  text: z.string(),
+});
+export type FittingLabel = z.infer<typeof FittingLabelSchema>;
+
 export const FittingRowSchema = z.object({
   type: z.string().min(1),
   qty: z.number().int().min(0).default(1),
-  dims: z.record(z.string()).default({}),
+  labels: z.array(FittingLabelSchema).default([]),
   notes: text,
 });
 export type FittingRow = z.infer<typeof FittingRowSchema>;

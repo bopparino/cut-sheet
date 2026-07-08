@@ -8,14 +8,10 @@
 //
 // Names are "Fitting N" on purpose: there is no industry-standard name for
 // these - every shop guy calls them something different - so the drawing IS
-// the name. Measurements are one free-text field per pick (same as writing
-// them on the drawing in Paint). If per-side fields are ever wanted, give a
-// fitting its own dims list; the card and the print page render whatever is
-// declared here.
+// the name. Measurements are click-placed labels stored on each picked row
+// (see FittingLabelSchema) - the catalog only supplies the artwork.
 
 import type { CSSProperties } from "react";
-
-export type FittingDim = { key: string; label: string };
 
 export type FittingDef = {
   id: string;
@@ -23,10 +19,7 @@ export type FittingDef = {
   // Crop box on fittings-template.png, all values fractions [0..1] of the
   // full image (x/y = top-left corner).
   box: { x: number; y: number; w: number; h: number };
-  dims: FittingDim[];
 };
-
-const SIZE: FittingDim[] = [{ key: "size", label: "Measurements" }];
 
 // Template's pixel aspect (width / height); used to keep crops undistorted.
 export const TEMPLATE_ASPECT = 1038 / 825;
@@ -73,7 +66,6 @@ export const FITTINGS: FittingDef[] = BOXES.map(([x, y, w, h], i) => ({
   id: `f${i + 1}`,
   label: `Fitting ${i + 1}`,
   box: { x, y, w, h },
-  dims: SIZE,
 }));
 
 export const FITTING_MAP = new Map(FITTINGS.map((f) => [f.id, f]));

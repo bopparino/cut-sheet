@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FittingLabelEditor } from "@/components/cutsheet/FittingLabelEditor";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
 import { FITTINGS, FITTING_MAP } from "@/lib/fittings";
 import { saveFittings } from "@/lib/actions";
@@ -17,12 +18,14 @@ type Props = {
 };
 
 // The fittings picker: replaces the MS Paint select-copy-paste-annotate ritual.
-// Tap drawings in the catalog to add them, fill in qty + per-side measurements,
-// and they print on the fittings sheet. Saves itself (debounced) like the
+// Tap drawings in the catalog to add them, then click a picked drawing to open
+// it large and place measurements directly on the correct sides (the digitized
+// Paint text tool - see FittingLabelEditor). Saves itself (debounced) like the
 // attachment cards - it lives outside the big replica form on purpose.
 export function FittingsCard({ cutsheetId, fittings, className }: Props) {
   const [rows, setRows] = useState<FittingRow[]>(fittings);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [editorFor, setEditorFor] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,7 +61,7 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
   );
 
   const add = (type: string) => {
-    persist([...rows, { type, qty: 1, dims: {}, notes: "" }]);
+    persist([...rows, { type, qty: 1, labels: [], notes: "" }]);
   };
   const update = (i: number, patch: Partial<FittingRow>) => {
     persist(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -130,8 +133,15 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
               if (!def) return null;
               return (
                 <li key={i} className="flex flex-wrap items-center gap-3 px-3 py-2">
-                  <FittingThumb def={def} className="h-14 w-20 shrink-0 rounded border" />
-                  <div className="w-32 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditorFor(i)}
+                    className="shrink-0 rounded border transition-shadow hover:ring-2 hover:ring-primary"
+                    aria-label={`Place measurements on ${def.label}`}
+                  >
+                    <FittingThumb def={def} className="h-14 w-20 rounded" />
+                  </button>
+                  <div className="w-24 shrink-0">
                     <div className="text-sm font-semibold">{def.label}</div>
                   </div>
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -144,18 +154,16 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                       className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
                     />
                   </label>
-                  {def.dims.map((dim) => (
-                    <label key={dim.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      {dim.label}
-                      <input
-                        type="text"
-                        value={row.dims[dim.key] ?? ""}
-                        onChange={(e) => update(i, { dims: { ...row.dims, [dim.key]: e.target.value } })}
-                        placeholder={def.dims.length === 1 ? "e.g. 11x18 → 14x15, 24 long" : undefined}
-                        className={`h-8 rounded-md border border-input bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground/60 ${def.dims.length === 1 ? "w-56" : "w-20"}`}
-                      />
-                    </label>
-                  ))}
+                  <Button
+                    size="sm"
+                    variant={row.labels.length > 0 ? "secondary" : "outline"}
+                    onClick={() => setEditorFor(i)}
+                  >
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    {row.labels.length > 0
+                      ? `${row.labels.length} size${row.labels.length === 1 ? "" : "s"} placed`
+                      : "Place sizes"}
+                  </Button>
                   <input
                     type="text"
                     value={row.notes}
@@ -177,6 +185,14 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
           </ul>
         )}
       </CardContent>
+      {editorFor !== null && rows[editorFor] && FITTING_MAP.get(rows[editorFor].type) && (
+        <FittingLabelEditor
+          def={FITTING_MAP.get(rows[editorFor].type)!}
+          labels={rows[editorFor].labels}
+          onChange={(labels) => update(editorFor, { labels })}
+          onClose={() => setEditorFor(null)}
+        />
+      )}
     </Card>
   );
 }

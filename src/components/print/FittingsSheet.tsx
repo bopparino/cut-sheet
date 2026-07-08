@@ -33,27 +33,29 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
     ...picked.map(({ row, def }, i) => (
       <figure key={`f${i}`} className="flex h-[3.4in] flex-col overflow-hidden rounded border border-black">
         <div className="relative flex min-h-0 flex-1 items-center justify-center bg-white p-1">
-          <span className="absolute left-2 top-1 text-[14pt] font-bold">
+          <span className="absolute left-2 top-1 z-10 text-[14pt] font-bold">
             {row.qty > 0 ? `× ${row.qty}` : ""}
           </span>
-          <FittingThumb def={def} className="h-full w-full" />
+          {/* Measurements print exactly where they were placed on the drawing
+              in the editor - the position says which side the number is for. */}
+          <FittingThumb def={def} className="h-full w-full">
+            {row.labels
+              .filter((l) => l.text.trim())
+              .map((l, j) => (
+                <span
+                  key={j}
+                  style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap bg-white/85 px-0.5 text-[10pt] font-bold leading-none text-black"
+                >
+                  {l.text}
+                </span>
+              ))}
+          </FittingThumb>
         </div>
         <figcaption className="shrink-0 border-t border-neutral-300 px-2 py-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[9pt] font-bold uppercase">{def.label}</span>
-            {row.notes && <span className="truncate text-[8pt] text-neutral-600">{row.notes}</span>}
-          </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11pt] leading-tight">
-            {def.dims
-              .filter((d) => (row.dims[d.key] ?? "").trim())
-              .map((d) => (
-                <span key={d.key}>
-                  {/* A lone "Measurements" label is noise on paper - the bold
-                      value speaks for itself. Per-side labels (W/H/L) print. */}
-                  {def.dims.length > 1 && <span className="text-[8pt] text-neutral-500">{d.label} </span>}
-                  <span className="font-bold">{row.dims[d.key]}</span>
-                </span>
-              ))}
+            {row.notes && <span className="truncate text-[9pt] text-neutral-700">{row.notes}</span>}
           </div>
         </figcaption>
       </figure>

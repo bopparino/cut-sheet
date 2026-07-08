@@ -131,7 +131,10 @@ Here is the new routine:
 1. Click **+ Add Fittings**. The whole catalog of fitting drawings opens right there.
 2. Tap the drawing you need. It gets added to your list. Tap it again if the house needs another one of the same kind — a little counter on the drawing keeps track.
 3. Click **Done Picking** when you have them all.
-4. On each fitting in your list, fill in the quantity and type the measurements the same way you would write them on the drawing — "11x18", "14x15 to 12x12, 24 long", whatever the shop needs to read. There is also a notes box on every line for anything extra, like "drive both ends".
+4. On each fitting in your list, fill in the quantity. Then click the little drawing (or the **Place sizes** button) — the drawing opens up big, just like pasting it into Paint. Click the side you want to size and type the number right there, exactly where you used to put it with the text tool. Click somewhere else for the next number. You can drag a number to nudge it, click it to change it, and add as many as the fitting needs — even the duct boards with eight or more.
+5. Click **Done** to close the drawing. There is also a notes box on every line for anything extra, like "drive both ends".
+
+What prints is exactly what you see: the numbers sit on the same sides of the drawing you put them on.
 
 The fittings do not have names — nobody's fittings do, every shop guy calls them something different — so they are just numbered. Go by the drawing, same as always.
 
