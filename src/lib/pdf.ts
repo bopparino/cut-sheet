@@ -1,4 +1,5 @@
 import "server-only";
+import { headers } from "next/headers";
 import puppeteer, { type Browser } from "puppeteer";
 
 declare global {
@@ -38,7 +39,19 @@ export async function renderPdfFromUrl(
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
+    // Puppeteer's loopback request is a fresh browser with no session, but the
+    // /print/* pages sit behind the auth middleware like everything else. Every
+    // caller of this function is a route handler serving an already-authed
+    // user, so forward that user's Cookie header - the print page then renders
+    // under the same session as the person who clicked the button.
+    const cookie = (await headers()).get("cookie");
+    if (cookie) await page.setExtraHTTPHeaders({ cookie });
     const res = await page.goto(url, { waitUntil: "networkidle0" });
+    // If auth (or anything else) redirected us off the print page, fail loudly
+    // instead of printing whatever page we landed on (e.g. /login).
+    if (new URL(page.url()).pathname !== new URL(url).pathname) {
+      throw new Error(`Print page ${url} redirected to ${page.url()}`);
+    }
     // The existence checks in the API routes catch most bad inputs, but a
     // schema-invalid row still notFound()s in the print page - without this
     // guard the user downloads Next's 404 page as a PDF with HTTP 200.
