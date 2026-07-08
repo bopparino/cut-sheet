@@ -237,10 +237,8 @@ function RegisterColumn({ title, prefix, initial }: { title: string; prefix: str
       <div className="border-b border-black bg-neutral-50 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide">
         {title}
       </div>
-      {/* A few quick lines only - full register schedules are easier attached
-          as an image/document than typed into a long list. */}
       <div className="p-1">
-        <MiscInputList prefix={prefix} rows={3} initial={initial} />
+        <MiscInputList prefix={prefix} rows={10} initial={initial} />
       </div>
     </div>
   );
