@@ -112,7 +112,7 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                         {n}
                       </span>
                     )}
-                    <FittingThumb def={def} className="h-16 w-full rounded" />
+                    <FittingThumb def={def} className="aspect-square w-full rounded" />
                     <span className="text-[10px] leading-tight text-muted-foreground">{def.label}</span>
                   </button>
                 );
@@ -139,7 +139,7 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                     className="shrink-0 rounded border transition-shadow hover:ring-2 hover:ring-primary"
                     aria-label={`Place measurements on ${def.label}`}
                   >
-                    <FittingThumb def={def} className="h-14 w-20 rounded" />
+                    <FittingThumb def={def} className="h-16 w-16 rounded" />
                   </button>
                   <div className="w-24 shrink-0">
                     <div className="text-sm font-semibold">{def.label}</div>
