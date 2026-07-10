@@ -83,7 +83,34 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   }
 
-  const bytes = await out.save();
+  // ?paper=legal: flatten the whole packet onto 8.5x14 (matching orientation,
+  // scaled to fit, centered). Browser print dialogs can't switch trays per
+  // page - they force one paper size for the whole document - so this is the
+  // variant the in-app Print button uses. The multi-size default stays for
+  // print paths that CAN tray-switch (Acrobat's "choose paper source by PDF
+  // page size", or a print-server queue configured the same way).
+  const wantsLegal = new URL(req.url).searchParams.get("paper") === "legal";
+  let final = out;
+  if (wantsLegal) {
+    const LGL = 72 * 8.5;
+    const LGL_LONG = 72 * 14;
+    const multi = await out.save();
+    const norm = await PDFDocument.create();
+    const pages = await norm.embedPdf(multi, out.getPageIndices());
+    for (const ep of pages) {
+      const landscape = ep.width > ep.height;
+      const pageW = landscape ? LGL_LONG : LGL;
+      const pageH = landscape ? LGL : LGL_LONG;
+      const page = norm.addPage([pageW, pageH]);
+      const scale = Math.min(pageW / ep.width, pageH / ep.height);
+      const w = ep.width * scale;
+      const hgt = ep.height * scale;
+      page.drawPage(ep, { x: (pageW - w) / 2, y: (pageH - hgt) / 2, width: w, height: hgt });
+    }
+    final = norm;
+  }
+
+  const bytes = await final.save();
 
   // Audit: record who generated the shop packet (Send to Shop / Print Here).
   const me = await getCurrentUser();

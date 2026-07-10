@@ -9,6 +9,7 @@ import { FittingsCard } from "@/components/cutsheet/FittingsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
 import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
+import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
 import { db } from "@/lib/db";
 import { CutsheetSchema } from "@/lib/schema";
 import { listBuilderNames } from "@/lib/builders";
@@ -121,12 +122,7 @@ export default async function ShopReplicaPage({
           >
             <Printer className="h-4 w-4" /> Send to Shop
           </Link>
-          <Link
-            href={`/api/pdf/${row.id}/packet?download=1`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary"
-          >
-            <Printer className="h-4 w-4" /> Print Here
-          </Link>
+          <PrintPacketButton cutsheetId={row.id} />
           <span className="mx-0.5 h-5 w-px bg-border" />
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />

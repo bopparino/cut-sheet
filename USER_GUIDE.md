@@ -175,13 +175,13 @@ This is the one click that does it all. It gathers everything for that house int
 - the **fittings** page with your drawings, on 8.5 by 14 paper
 - any **plans** you added, on 11 by 17 paper
 
-Each part comes out on its correct paper size, all in one print job, just like the old program did. When you click Send to Shop, that PDF opens in a new tab. Then you print it the normal way (your print button, or hold Ctrl and press P on Windows, or Command and P on a Mac), and you pick the shop printer. The printer pulls each page from the right paper tray on its own.
+When you click Send to Shop, that PDF opens in a new tab so you can look it over or save a copy. Heads up: if you print this one from the browser, everything comes out on one paper size — browsers cannot switch paper trays page by page. Tray switching by page size only works when this PDF is printed through Adobe Acrobat (with "Choose paper source by PDF page size" checked in its print box) or through a print server set up the same way.
 
 It can take a few seconds to build, especially if there are a lot of plan pages. That is normal. A full packet can be anywhere from a handful of pages to close to twenty when the plans are large, and that is just how it is.
 
-### Print Here
+### Print
 
-This makes the exact same PDF, but instead of opening it to print, it **downloads it to your computer**. Use this when you want to keep a copy, email it, or print it on a printer near your desk instead of the shop.
+This builds the same packet with every page sized to **8.5 by 14 (legal)** — the plans get scaled down to fit — and opens your **print box** directly. No downloads folder involved. Pick the printer, make sure the paper is set to Legal, and print. Because every page is the same size, it prints correctly from any browser.
 
 ### Printing just one document
 
@@ -204,7 +204,7 @@ Yes. Click the Save button after you make changes. Nothing is kept until you do.
 Use the Search screen and type anything you remember: a lot number, a prop number, the builder, the model name. If a builder's name is spelled two different ways, its sheets end up split into two groups, so watch the spelling and use the builder suggestions when you type.
 
 **Which printer do I pick?**
-For shop work, pick the shop printer in the print box. For a copy at your desk, use Print Here and pick your own printer.
+For shop work, pick the shop printer in the print box. For a copy at your desk, use the Print button and pick your own printer.
 
 **How many fittings can I add?**
 As many as you need. The fittings page adds more pages by itself as you add more drawings.

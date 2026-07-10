@@ -11,14 +11,23 @@ import type { CSSProperties, ReactNode } from "react";
 // 0.762, and a 16.5in-tall source page scales to ~12.6in, inside the 13.5in
 // printable height.
 
-export const LEGAL_PAGE_CSS = "@page { size: 8.5in 14in; margin: 0.25in; }";
+// Page breaks go BEFORE each page after the first (sibling selector), never
+// after the last. The old `break-after` + `last:break-after-auto` approach
+// broke in production: Next injects <script> tags at the end of <body>, so
+// the final sheet is never :last-child, the trailing break fired, and every
+// PDF grew a blank page.
+export const LEGAL_PAGE_CSS =
+  "@page { size: 8.5in 14in; margin: 0.25in; } .legal-page + .legal-page { break-before: page; }";
 
 const SCALE = 0.762;
 const SOURCE_WIDTH_IN = 10.5;
 
 const PAGE_STYLE: CSSProperties = {
   width: "8in",
-  height: "13.5in",
+  // A hair under the 13.5in printable height: at exactly printable height,
+  // Chromium's fragmentation spills a zero-content sliver onto an extra blank
+  // page. Content only fills ~12.6in, so the shave clips nothing.
+  height: "13.45in",
   overflow: "hidden",
 };
 const INNER_STYLE: CSSProperties = {
@@ -29,7 +38,7 @@ const INNER_STYLE: CSSProperties = {
 
 export function LegalScalePage({ children }: { children: ReactNode }) {
   return (
-    <div style={PAGE_STYLE} className="break-after-page last:break-after-auto">
+    <div style={PAGE_STYLE} className="legal-page">
       <div style={INNER_STYLE}>{children}</div>
     </div>
   );
