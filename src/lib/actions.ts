@@ -41,9 +41,15 @@ import {
   STRT_BOOTS_SIZES,
   TTO_SIZES,
   FittingRowSchema,
+  TRIM_FANS,
+  TRIM_FLOOR_REG,
+  TRIM_GRILL,
+  TRIM_REGISTERS,
   emptyCutsheet,
   type Cutsheet,
   type CutsheetHeader,
+  type TrimExtraRow,
+  type TrimRow,
 } from "@/lib/schema";
 
 // ----- Generic FormData readers ----------------------------------------------
@@ -88,6 +94,40 @@ function readNumberMap<T extends string>(
     result[size] = raw == null ? 0 : Math.max(0, Math.floor(Number(raw) || 0));
   }
   return result;
+}
+
+function readTrimMap<T extends string>(
+  formData: FormData,
+  prefix: string,
+  items: readonly T[],
+): Record<T, TrimRow> {
+  const result = {} as Record<T, TrimRow>;
+  for (const item of items) {
+    result[item] = {
+      zone1: readSingleNumber(formData, `${prefix}.${item}.zone1`),
+      zone2: readSingleNumber(formData, `${prefix}.${item}.zone2`),
+      zone3: readSingleNumber(formData, `${prefix}.${item}.zone3`),
+      base: readSingleNumber(formData, `${prefix}.${item}.base`),
+    };
+  }
+  return result;
+}
+
+// Extra trim rows: blank labels are dropped (they're just unused blank lines).
+function readTrimExtras(formData: FormData, prefix: string): TrimExtraRow[] {
+  const out: TrimExtraRow[] = [];
+  for (let i = 0; formData.has(`${prefix}.${i}.label`); i++) {
+    const label = String(formData.get(`${prefix}.${i}.label`) ?? "").trim();
+    if (!label) continue;
+    out.push({
+      label,
+      zone1: readSingleNumber(formData, `${prefix}.${i}.zone1`),
+      zone2: readSingleNumber(formData, `${prefix}.${i}.zone2`),
+      zone3: readSingleNumber(formData, `${prefix}.${i}.zone3`),
+      base: readSingleNumber(formData, `${prefix}.${i}.base`),
+    });
+  }
+  return out;
 }
 
 function readStringRows(formData: FormData, prefix: string): string[] {
@@ -338,6 +378,16 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
       filterGrills: readStringRows(formData, "filterGrills"),
       floorRegs: readStringRows(formData, "floorRegs"),
       // tto + plenumContents aren't on the new sheet - preserved via spread.
+    },
+    trimPull: {
+      registers: readTrimMap(formData, "trim.registers", TRIM_REGISTERS),
+      registersExtra: readTrimExtras(formData, "trim.registersExtra"),
+      grill: readTrimMap(formData, "trim.grill", TRIM_GRILL),
+      grillExtra: readTrimExtras(formData, "trim.grillExtra"),
+      floorReg: readTrimMap(formData, "trim.floorReg", TRIM_FLOOR_REG),
+      floorRegExtra: readTrimExtras(formData, "trim.floorRegExtra"),
+      fans: readTrimMap(formData, "trim.fans", TRIM_FANS),
+      fansExtra: readTrimExtras(formData, "trim.fansExtra"),
     },
   };
   const parsed = CutsheetSchema.parse(next);

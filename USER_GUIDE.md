@@ -120,6 +120,10 @@ When you finish, or any time you want to lock in your changes, click the black *
 
 Here is the part to remember: **nothing is saved until you click Save.** If you type a bunch of numbers and then leave the page without clicking Save, that typing is gone. It works like a paper form you have not filed yet. So when in doubt, click Save. There is no harm in saving often.
 
+### The Trim Pull Sheet
+
+Below the two cut-sheet forms there is a third form, the **Trim Pull Sheet** — registers, grills, floor regs, and fans, split by zone plus basement. Type the counts in the zone boxes; the TOTAL column fills itself in when the sheet prints. Each section also has a few blank rows at the bottom for anything not pre-printed — type the item name and its counts. The Trim Pull Sheet saves with the same Save button and prints in the Foreman Packet.
+
 ---
 
 ## 7. Fittings: pick, size, done
@@ -164,24 +168,26 @@ Plans can be PDF files or pictures (BMP, PNG, or JPG). A picture gets turned int
 
 This is the payoff. When a cut sheet is filled in, you send it to the shop.
 
-At the top of the cut sheet you have two main buttons.
+At the top of the cut sheet you have two print buttons. Both build a PDF where **every page is 8.5 by 14 (legal)** and open your **print box** directly — no downloads folder involved. Pick the printer (shop, Seaford, or your desk), make sure the paper is set to Legal the first time, and print.
 
-### Send to Shop
+### Print Shop Packet
 
-This is the one click that does it all. It gathers everything for that house into one PDF:
+Everything the shop needs to build the house:
 
-- the full **Cut Sheet**, on 8.5 by 14 paper (legal)
-- the three pick **tickets** (Stock, Custom, Truck), on 8.5 by 11 paper (letter)
-- the **fittings** page with your drawings, on 8.5 by 14 paper
-- any **plans** you added, on 11 by 17 paper
+- the **Shop Cut Sheet** and **Cut Sheet**
+- the three pick **tickets** (Stock, Custom, Truck)
+- the **fittings** page with your drawings and sizes
 
-When you click Send to Shop, that PDF opens in a new tab so you can look it over or save a copy. Heads up: if you print this one from the browser, everything comes out on one paper size — browsers cannot switch paper trays page by page. Tray switching by page size only works when this PDF is printed through Adobe Acrobat (with "Choose paper source by PDF page size" checked in its print box) or through a print server set up the same way.
+### Print Foreman Packet
 
-It can take a few seconds to build, especially if there are a lot of plan pages. That is normal. A full packet can be anywhere from a handful of pages to close to twenty when the plans are large, and that is just how it is.
+Everything the foreman needs in the field:
 
-### Print
+- the **Shop Cut Sheet** and **Cut Sheet**
+- the **Trim Pull Sheet**
+- the **fittings** page
+- any **plans** you added (scaled to fit legal paper)
 
-This builds the same packet with every page sized to **8.5 by 14 (legal)** — the plans get scaled down to fit — and opens your **print box** directly. No downloads folder involved. Pick the printer, make sure the paper is set to Legal, and print. Because every page is the same size, it prints correctly from any browser.
+Either packet can take a few seconds to build, especially with a lot of plan pages. That is normal.
 
 ### Printing just one document
 
@@ -204,7 +210,7 @@ Yes. Click the Save button after you make changes. Nothing is kept until you do.
 Use the Search screen and type anything you remember: a lot number, a prop number, the builder, the model name. If a builder's name is spelled two different ways, its sheets end up split into two groups, so watch the spelling and use the builder suggestions when you type.
 
 **Which printer do I pick?**
-For shop work, pick the shop printer in the print box. For a copy at your desk, use the Print button and pick your own printer.
+Pick it in the print box: the shop printer for shop packets, the Seaford or Clinton printer for foreman packets headed to those offices, or your own printer for a desk copy.
 
 **How many fittings can I add?**
 As many as you need. The fittings page adds more pages by itself as you add more drawings.

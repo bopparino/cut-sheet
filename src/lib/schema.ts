@@ -235,6 +235,55 @@ const FormOnlySchema = z.object({
   floorRegs: z.array(z.string()).default([]),
 });
 
+// ---------- Trim Pull Sheet ----------
+// Kimmie's trim pull sheet: per-item quantities split across three zones plus
+// basement, with a computed TOTAL on the printed page. Item keys mirror the
+// paper sheet's labels. Each section also carries free "extra" rows for
+// anything not pre-printed on the sheet.
+export const TRIM_REGISTERS = [
+  "8x6 WALL", "10x6 WALL", "12x6 WALL", "12x8 WALL", "12x4 WALL", "10x4 WALL",
+] as const;
+export const TRIM_GRILL = [
+  "12x6 RAG", "8x12 RAG", "12x12 RAG", "14x14 RAG", "16x16 RAG", "18x18 RAG",
+  "20x20 RAG", "24x24 RAG", "12x12 FG", "14x14 FG", "16x16 FG", "18x18 FG",
+  "20x20 FG", "12x24 FG", "12x2 TOEKICK",
+] as const;
+export const TRIM_FLOOR_REG = ["10x4", "12x4", "14x4"] as const;
+export const TRIM_FANS = ["AE80", "744", "PTE511RK", "PTEL511RK", "PANASONIC"] as const;
+
+const TrimRowSchema = z
+  .object({ zone1: qty, zone2: qty, zone3: qty, base: qty })
+  .default({});
+const trimMapOf = <T extends string>(items: readonly T[]) =>
+  z
+    .object(Object.fromEntries(items.map((i) => [i, TrimRowSchema])) as Record<T, typeof TrimRowSchema>)
+    // {} parses fine (every row self-defaults); TS just can't prove it for the
+    // generic mapped shape, hence the cast.
+    .default({} as never);
+const TrimExtraRowSchema = z.object({
+  label: z.string().min(1),
+  zone1: qty,
+  zone2: qty,
+  zone3: qty,
+  base: qty,
+});
+
+export const TrimPullSchema = z
+  .object({
+    registers: trimMapOf(TRIM_REGISTERS),
+    registersExtra: z.array(TrimExtraRowSchema).default([]),
+    grill: trimMapOf(TRIM_GRILL),
+    grillExtra: z.array(TrimExtraRowSchema).default([]),
+    floorReg: trimMapOf(TRIM_FLOOR_REG),
+    floorRegExtra: z.array(TrimExtraRowSchema).default([]),
+    fans: trimMapOf(TRIM_FANS),
+    fansExtra: z.array(TrimExtraRowSchema).default([]),
+  })
+  .default({});
+export type TrimPull = z.infer<typeof TrimPullSchema>;
+export type TrimRow = z.infer<typeof TrimRowSchema>;
+export type TrimExtraRow = z.infer<typeof TrimExtraRowSchema>;
+
 // ---------- Custom add-lines (per PDF) ----------
 const CustomLineSchema = z.object({
   ticket: z.enum(["stock", "custom", "truck"]),
@@ -290,6 +339,7 @@ export const CutsheetSchema = z.object({
   formOnly: FormOnlySchema,
   customLines: z.array(CustomLineSchema).default([]),
   fittings: z.array(FittingRowSchema).default([]),
+  trimPull: TrimPullSchema,
   attachments: z.array(AttachmentSchema).default([]),
 });
 

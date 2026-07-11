@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Printer } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetReplica";
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
+import { TrimPullReplica } from "@/components/cutsheet/replica/TrimPullReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
 import { FittingsCard } from "@/components/cutsheet/FittingsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
@@ -73,7 +74,7 @@ export default async function ShopReplicaPage({
     .prepare<[number], { name: string | null; at: string }>(
       `SELECT u.display_name AS name, pe.created_at AS at
        FROM print_events pe LEFT JOIN users u ON u.id = pe.user_id
-       WHERE pe.cutsheet_id = ? AND pe.kind = 'send_to_shop'
+       WHERE pe.cutsheet_id = ? AND pe.kind IN ('send_to_shop', 'shop_packet', 'foreman_packet')
        ORDER BY pe.created_at DESC LIMIT 1`,
     )
     .get(numeric);
@@ -115,14 +116,8 @@ export default async function ShopReplicaPage({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Link
-            href={`/api/pdf/${row.id}/packet`}
-            target="_blank"
-            className="btn-glow inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
-          >
-            <Printer className="h-4 w-4" /> Send to Shop
-          </Link>
-          <PrintPacketButton cutsheetId={row.id} />
+          <PrintPacketButton cutsheetId={row.id} kind="shop" label="Print Shop Packet" primary />
+          <PrintPacketButton cutsheetId={row.id} kind="foreman" label="Print Foreman Packet" />
           <span className="mx-0.5 h-5 w-px bg-border" />
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
@@ -161,6 +156,9 @@ export default async function ShopReplicaPage({
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
             <CutSheetReplica data={d} />
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
+            <TrimPullReplica data={d} />
           </div>
         </CutsheetForm>
 

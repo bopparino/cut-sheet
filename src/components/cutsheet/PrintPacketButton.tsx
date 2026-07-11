@@ -4,13 +4,20 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Printer } from "lucide-react";
 
-// Opens the browser's print dialog on the packet PDF instead of downloading
-// it (Kimmie was cleaning packet files out of Downloads after every print).
-// The PDF is fetched as a blob and printed from a hidden iframe - works in
-// Edge and Chrome. Uses the ?paper=legal packet: browser print dialogs force
-// one paper size for the whole document, so the flattened 8.5x14 variant is
-// the one that prints correctly here.
-export function PrintPacketButton({ cutsheetId }: { cutsheetId: number }) {
+type Props = {
+  cutsheetId: number;
+  kind: "foreman" | "shop";
+  label: string;
+  primary?: boolean;
+};
+
+// Opens the browser's print dialog on a packet PDF instead of downloading it
+// (Kimmie was cleaning packet files out of Downloads after every print). The
+// PDF is fetched as a blob and printed from a hidden iframe - works in Edge
+// and Chrome. Every packet page is Legal (8.5x14), so it prints correctly
+// from any browser on any printer with Legal loaded; the user just picks the
+// destination printer (Clinton / Seaford / desk) in the dialog.
+export function PrintPacketButton({ cutsheetId, kind, label, primary = false }: Props) {
   const [busy, setBusy] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -18,7 +25,7 @@ export function PrintPacketButton({ cutsheetId }: { cutsheetId: number }) {
   const print = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/pdf/${cutsheetId}/packet?paper=legal`);
+      const res = await fetch(`/api/pdf/${cutsheetId}/packet?kind=${kind}`);
       if (!res.ok) throw new Error(`Could not build the packet (${res.status})`);
       const blob = await res.blob();
 
@@ -59,9 +66,13 @@ export function PrintPacketButton({ cutsheetId }: { cutsheetId: number }) {
       type="button"
       onClick={print}
       disabled={busy}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary disabled:opacity-60"
+      className={
+        primary
+          ? "btn-glow inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          : "inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary disabled:opacity-60"
+      }
     >
-      <Printer className="h-4 w-4" /> {busy ? "Preparing…" : "Print"}
+      <Printer className="h-4 w-4" /> {busy ? "Preparing…" : label}
     </button>
   );
 }
