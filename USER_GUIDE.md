@@ -189,10 +189,6 @@ Everything the foreman needs in the field:
 
 Either packet can take a few seconds to build, especially with a lot of plan pages. That is normal.
 
-### Printing just one document
-
-Sometimes you only need one piece. Along the top you will also see buttons for **Filled PDF**, **Stock**, **Custom**, and **Truck**. Click any of these to open just that single document by itself.
-
 ---
 
 ## 10. Removing a cut sheet, and the Trash

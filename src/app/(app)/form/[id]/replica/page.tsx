@@ -122,23 +122,9 @@ export default async function ShopReplicaPage({
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
           <span className="mx-0.5 h-5 w-px bg-border" />
-          <Link
-            href={`/api/pdf/${row.id}/filled`}
-            target="_blank"
-            className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-sm font-semibold text-primary hover:bg-primary/15"
-          >
-            Filled PDF
-          </Link>
-          {(["stock", "custom", "truck"] as const).map((t) => (
-            <Link
-              key={t}
-              href={`/api/pdf/${row.id}/${t}`}
-              target="_blank"
-              className="rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              {{ stock: "Stock", custom: "Custom", truck: "Truck" }[t]}
-            </Link>
-          ))}
+          {/* Single-document PDFs (filled/stock/custom/truck) lost their
+              header buttons - the two packets cover the real workflows. The
+              /api/pdf endpoints stay live for direct-URL one-offs. */}
           <button
             type="submit"
             form={FORM_ID}
