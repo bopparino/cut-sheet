@@ -29,7 +29,6 @@ export async function GET(req: Request) {
     // Must match the @page CSS margin — Chromium builds disagree on which
     // wins when the pdf() option and CSS differ (prod clipped page tops).
     margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
-    margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
   });
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
