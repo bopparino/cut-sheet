@@ -8,7 +8,15 @@ import { getCurrentUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LEGAL = { format: "Legal" as const, preferCSSPageSize: true };
+// Margin MUST equal the @page margin in LEGAL_PAGE_CSS (0.25in): when the
+// pdf() margin option and the CSS margin disagree, which one wins depends on
+// the Chromium build — prod's system Chromium shifted every page up ~0.15in
+// (0.4in default − 0.25in CSS) and clipped the top of the cut sheets.
+const LEGAL = {
+  format: "Legal" as const,
+  preferCSSPageSize: true,
+  margin: { top: "0.25in", right: "0.25in", bottom: "0.25in", left: "0.25in" },
+};
 const LGL = 72 * 8.5;
 const LGL_LONG = 72 * 14;
 
