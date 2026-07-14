@@ -145,7 +145,7 @@ export default function BlankPrintPage() {
 
 function Page1() {
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader />
       <div className="grid grid-cols-6">
         <Col1 />
@@ -582,7 +582,7 @@ const FITTING_BOX_COUNT = 28;
 
 function Page2() {
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <header className="border-2 border-black px-2 py-1">
         <div className="flex items-center justify-between">
           <span className="text-[14pt] font-bold uppercase tracking-wide">
@@ -604,16 +604,10 @@ function FittingBox() {
   return (
     <div className="flex flex-col border border-black border-l-0 border-t-0">
       <div className="flex items-center justify-between gap-1 border-b border-black px-1.5 py-0.5">
-        <div className="flex items-center gap-1.5 text-[7.5pt] font-medium uppercase tracking-wide">
-          <span>SL?</span>
-          <label className="flex items-center gap-0.5">
-            <span className="inline-block h-2 w-2 border border-black" />
-            <span>N</span>
-          </label>
-          <label className="flex items-center gap-0.5">
-            <span className="inline-block h-2 w-2 border border-black" />
-            <span>Y</span>
-          </label>
+        <div className="flex items-baseline gap-1 text-[7.5pt] font-medium uppercase tracking-wide">
+          {/* One open box beats N/Y micro-checkboxes on paper — write N or Y. */}
+          <span>SL</span>
+          <span className="inline-block h-[10pt] w-[24pt] border border-black" />
         </div>
         <div className="flex items-baseline gap-1 text-[7.5pt] font-medium uppercase tracking-wide">
           <span>Qty</span>

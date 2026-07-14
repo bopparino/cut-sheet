@@ -8,8 +8,9 @@ import type { CSSProperties, ReactNode } from "react";
 //
 // Geometry: @page is 8.5×14 with 0.25in margins → 8.0in × 13.5in printable.
 // The source layout fills ~10.5in wide (11in − 0.25in margins). 8.0 / 10.5 =
-// 0.762, and a 16.5in-tall source page scales to ~12.6in, inside the 13.5in
-// printable height.
+// 0.762. Source pages declare min-h-[17.65in] — the full height budget
+// (13.45in page box ÷ 0.762) — so their flex spacers ground footers at the
+// true bottom of the Legal sheet instead of leaving a dead strip.
 
 // Page breaks go BEFORE each page after the first (sibling selector), never
 // after the last. The old `break-after` + `last:break-after-auto` approach

@@ -344,7 +344,7 @@ function FootCell({ title }: { title: string }) {
 
 function ShopPage() {
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -405,7 +405,7 @@ function ShopPage() {
           </Section>
         </div>
       </div>
-      <div className="grid flex-1 grid-cols-7 grid-rows-3 border-l border-t border-black">
+      <div className="grid flex-1 grid-cols-6 grid-rows-3 border-l border-t border-black">
         {Array.from({ length: SHOP_FITTING_BOX_COUNT }).map((_, i) => (
           <FittingBox key={i} />
         ))}
@@ -415,8 +415,9 @@ function ShopPage() {
   );
 }
 
-// 7 across × 3 down blank fitting boxes anchored to the bottom of page 1.
-const SHOP_FITTING_BOX_COUNT = 21;
+// 6 across × 3 down blank fitting boxes anchored to the bottom of page 1
+// (was 7×3; widened per shop feedback so hand sketches get more room).
+const SHOP_FITTING_BOX_COUNT = 18;
 
 // Open ruled lines - used where a section is free-text (Miscellaneous) rather
 // than a fixed set of size rows.
@@ -434,16 +435,10 @@ function FittingBox() {
   return (
     <div className="flex flex-col border border-l-0 border-t-0 border-black">
       <div className="flex items-center justify-between gap-1 border-b border-black px-1 py-0.5">
-        <div className="flex items-center gap-1 text-[7pt] font-medium uppercase tracking-wide">
-          <span>SL?</span>
-          <label className="flex items-center gap-0.5">
-            <span className="inline-block h-2 w-2 border border-black" />
-            <span>N</span>
-          </label>
-          <label className="flex items-center gap-0.5">
-            <span className="inline-block h-2 w-2 border border-black" />
-            <span>Y</span>
-          </label>
+        {/* One open box beats N/Y micro-checkboxes on paper — write N or Y. */}
+        <div className="flex items-baseline gap-1 text-[7pt] font-medium uppercase tracking-wide">
+          <span>SL</span>
+          <span className="inline-block h-[10pt] w-[20pt] border border-black" />
         </div>
         <div className="flex items-baseline gap-1 text-[7pt] font-medium uppercase tracking-wide">
           <span>Qty</span>
@@ -461,7 +456,7 @@ function FittingBox() {
 
 function CutPage() {
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -553,7 +548,6 @@ function CutPage() {
           </Section>
         </div>
       </div>
-      <div className="flex-1" aria-hidden />
       <BottomStrip />
       <Footer />
     </div>
@@ -561,8 +555,10 @@ function CutPage() {
 }
 
 function BottomStrip() {
+  // flex-1: the reg boxes absorb the leftover page height (mirrors page 1's
+  // draw grid) — write-in room instead of a dead band above a fixed row.
   return (
-    <div className="grid grid-cols-4 border border-black border-t-0">
+    <div className="grid flex-1 grid-cols-4 border border-black border-t-0">
       <OpenBox title="Wall Regs" />
       <OpenBox title="Grills" />
       <OpenBox title="Filter Grills" />

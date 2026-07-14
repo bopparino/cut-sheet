@@ -264,7 +264,7 @@ function Footer() {
 
 function ShopPage({ data: d }: { data: Cutsheet }) {
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -339,11 +339,11 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
         </div>
       </div>
       {/* Drawing grid stays blank for hand sketches on the printed copy. */}
-      <div className="grid flex-1 grid-cols-7 grid-rows-3 border-l border-t border-black">
-        {Array.from({ length: 21 }).map((_, i) => (
+      <div className="grid flex-1 grid-cols-6 grid-rows-3 border-l border-t border-black">
+        {Array.from({ length: 18 }).map((_, i) => (
           <div key={i} className="flex flex-col border border-l-0 border-t-0 border-black">
             <div className="flex items-center justify-between gap-1 border-b border-black px-1 py-0.5 text-[7pt] uppercase">
-              <span>SL? □N □Y</span>
+              <span className="flex items-baseline gap-1">SL<span className="inline-block h-[10pt] w-[20pt] border border-black" /></span>
               <span className="flex items-baseline gap-1">Qty<span className="inline-block h-[10pt] w-[20pt] border border-black" /></span>
             </div>
             <div className="flex-1" />
@@ -376,7 +376,7 @@ function PlenumChecks({ value }: { value: string }) {
 function CutPage({ data: d }: { data: Cutsheet }) {
   const fo = d.formOnly;
   return (
-    <div className="mx-auto flex min-h-[16.5in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -471,8 +471,9 @@ function CutPage({ data: d }: { data: Cutsheet }) {
           </Section>
         </div>
       </div>
-      <div className="flex-1" aria-hidden />
-      <div className="grid grid-cols-4 border border-black border-t-0">
+      {/* Regs absorb the leftover page height (mirrors page 1's draw grid) —
+          write-in room instead of a dead band above a fixed-height row. */}
+      <div className="grid flex-1 grid-cols-4 border border-black border-t-0">
         <RegBox title="Wall Regs" rows={fo.wallRegs} />
         <RegBox title="Grills" rows={fo.grills} />
         <RegBox title="Filter Grills" rows={fo.filterGrills} />
