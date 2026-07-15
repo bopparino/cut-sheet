@@ -29,7 +29,7 @@
  *   plus IMPORTS > A-Z > <builder> holding the imported sheets, lettered by
  *   the builder's first character ("#" catch-all for non-letter builders).
  */
-import { readFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
 import ExcelJS from "exceljs";
@@ -40,9 +40,21 @@ type Tables = Record<string, { headers: string[]; rows: Row[] }>;
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
-const inputs = args.filter((a) => a !== "--force");
+// --emit <file>: write the assembled sheets as a JSON bundle instead of
+// touching a DB. The bundle is what scripts/push-legacy.mts sends to the
+// admin import endpoint - the path for getting legacy sheets into PROD,
+// where the SQLite file lives on the Railway volume out of local reach.
+const emitIdx = args.indexOf("--emit");
+const emitPath = emitIdx >= 0 ? args[emitIdx + 1] : null;
+if (emitIdx >= 0 && !emitPath) {
+  console.error("--emit needs a file path");
+  process.exit(1);
+}
+const inputs = args.filter((a, i) => a !== "--force" && a !== "--emit" && i !== emitIdx + 1);
 if (inputs.length === 0) {
-  console.error("usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force]");
+  console.error(
+    "usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force] [--emit bundle.json]",
+  );
   process.exit(1);
 }
 
@@ -594,6 +606,15 @@ for (const input of inputs) {
       (missing.length ? ` (no ${missing.join(", ")} file)` : ""),
   );
   assembleSource(tables);
+}
+
+if (emitPath) {
+  writeFileSync(emitPath, JSON.stringify({ sheets: assembled }));
+  console.log(
+    `emitted ${assembled.length} assembled sheets to ${emitPath} (no DB writes)` +
+      (failures.length ? `; ${failures.length} rows failed schema` : ""),
+  );
+  process.exit(0);
 }
 
 // ----- write --------------------------------------------------------------

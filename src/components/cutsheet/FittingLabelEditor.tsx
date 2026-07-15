@@ -104,7 +104,9 @@ export function FittingLabelEditor({ def, labels, onChange, onClose }: Props) {
             Done
           </Button>
         </div>
-        <FittingThumb def={def} className="h-[min(60vh,520px)] w-full rounded-md border">
+        {/* zoom matches the print sheet's gutter: a size placed on the
+            drawing's border stays fully visible instead of half-clipping. */}
+        <FittingThumb def={def} zoom={0.9} className="h-[min(60vh,520px)] w-full rounded-md border">
           <div className="absolute inset-0 cursor-crosshair" onClick={addAt}>
             {labels.map((l, i) =>
               editing === i ? (
