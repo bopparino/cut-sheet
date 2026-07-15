@@ -80,7 +80,7 @@ export function FilledCutSheet({ data }: { data: Cutsheet }) {
 function VBox({ v, black }: { v?: string; black?: boolean }) {
   return (
     <span
-      className={`inline-flex h-[10pt] w-[18pt] shrink-0 items-center justify-center border border-black text-center text-[7pt] font-semibold tabular-nums leading-none ${black ? "bg-black" : ""}`}
+      className={`inline-flex h-[13pt] w-[22pt] shrink-0 items-center justify-center border border-black text-center text-[9.5pt] font-bold tabular-nums leading-none ${black ? "bg-black" : ""}`}
     >
       {v ?? ""}
     </span>
@@ -94,7 +94,7 @@ function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: bo
     <div
       className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
     >
-      <span className="truncate leading-[1.3]">{label}</span>
+      <span className="truncate font-medium leading-[1.3]">{label}</span>
       <VBox v={v} />
     </div>
   );
@@ -121,9 +121,9 @@ function VMultiTable({
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[7pt] font-bold uppercase">Size</th>
+          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[8pt] font-bold uppercase">Size</th>
           {cols.map((c) => (
-            <th key={c} className="bg-neutral-200 px-0.5 py-0 text-center text-[7pt] font-bold uppercase" style={{ width: "20pt" }}>
+            <th key={c} className="bg-neutral-200 px-0.5 py-0 text-center text-[8pt] font-bold uppercase" style={{ width: "24pt" }}>
               {c}
             </th>
           ))}
@@ -132,7 +132,7 @@ function VMultiTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[10pt] font-medium leading-[1.3]">{r.label}</td>
             {r.cells.map((cell, i) => (
               <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 <VBox v={"v" in cell ? cell.v : undefined} black={"black" in cell} />
@@ -158,14 +158,14 @@ function WHFilled({
   const cols = withL ? ["Qty", "W", "H", "L", "S/L"] : ["Qty", "W", "H"];
   const count = Math.max(min, rows.length);
   const cell = (s: string) => (
-    <td className="h-[13pt] border border-black p-0 text-center text-[7pt] font-semibold">{s}</td>
+    <td className="h-[16pt] border border-black p-0 text-center text-[10pt] font-bold">{s}</td>
   );
   return (
     <table className="w-full border-collapse">
       <thead>
         <tr>
           {cols.map((h) => (
-            <th key={h} className="border border-black bg-neutral-200 px-1 py-0 text-center text-[7pt] font-bold uppercase">
+            <th key={h} className="border border-black bg-neutral-200 px-1 py-0 text-center text-[8pt] font-bold uppercase">
               {h}
             </th>
           ))}
@@ -192,7 +192,7 @@ function WHFilled({
 function Section({ title, children, gapTop }: { title: string; children: React.ReactNode; gapTop?: boolean }) {
   return (
     <div className={`border border-black ${gapTop ? "mt-2" : "border-t-0 first:border-t"}`}>
-      <div className="border-b border-black px-1.5 py-0.5 text-[8.5pt] font-bold uppercase tracking-wide">{title}</div>
+      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">{title}</div>
       <div className="p-0.5">{children}</div>
     </div>
   );
@@ -205,7 +205,7 @@ function PageHeader({ title, h }: { title: string; h: Cutsheet["header"] }) {
     <header className="border-2 border-black">
       <div className="flex items-center justify-between border-b border-black px-2 py-1">
         <span className="text-[14pt] font-bold uppercase tracking-wide">{title}</span>
-        <span className="text-[9pt]">Pad #_____________________</span>
+        <span className="text-[10pt]">Pad #_____________________</span>
       </div>
       <HRow>
         <HF label="Builder" v={h.builder} flex={4} />
@@ -241,8 +241,8 @@ function HRow({ children, last }: { children: React.ReactNode; last?: boolean })
 function HF({ label, v, flex }: { label: string; v: string; flex: number }) {
   return (
     <div className="flex min-h-[32pt] flex-col justify-end gap-0.5 border-r border-black px-2 pb-1 pt-3 last:border-r-0" style={{ flex }}>
-      <span className="text-[7pt] font-medium uppercase tracking-wide text-neutral-700">{label}</span>
-      <span className="min-h-[10pt] border-b border-black text-[9pt] font-semibold">{v}</span>
+      <span className="text-[8pt] font-medium uppercase tracking-wide text-neutral-700">{label}</span>
+      <span className="min-h-[13pt] border-b border-black text-[11pt] font-bold">{v}</span>
     </div>
   );
 }
@@ -252,7 +252,7 @@ function Footer() {
     <footer className="grid border border-black border-t-0 text-[8pt]" style={{ gridTemplateColumns: "1fr 1fr 2fr" }}>
       {["Cut By", "Date Cut", "Notes"].map((t) => (
         <div key={t} className="border-l border-black px-2 py-1.5 first:border-l-0">
-          <div className="text-[7pt] font-bold uppercase tracking-wide text-neutral-700">{t}</div>
+          <div className="text-[8pt] font-bold uppercase tracking-wide text-neutral-700">{t}</div>
           <div className="mt-2 border-b border-black" />
         </div>
       ))}
@@ -264,7 +264,7 @@ function Footer() {
 
 function ShopPage({ data: d }: { data: Cutsheet }) {
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -280,9 +280,9 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
           </Section>
           <Section title="Miscellaneous">
             {/* 7 lines standard, more if the data has more. */}
-            <div className="space-y-px text-[8pt]">
+            <div className="space-y-px text-[10pt]">
               {Array.from({ length: Math.max(7, d.custom.miscellaneous.length) }).map((_, i) => (
-                <div key={i} className="min-h-[11pt] border-b border-black/30">
+                <div key={i} className="min-h-[13pt] border-b border-black/30 font-medium">
                   {d.custom.miscellaneous[i] ?? ""}
                 </div>
               ))}
@@ -338,18 +338,10 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
           </Section>
         </div>
       </div>
-      {/* Drawing grid stays blank for hand sketches on the printed copy. */}
-      <div className="grid flex-1 grid-cols-6 grid-rows-3 border-l border-t border-black">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <div key={i} className="flex flex-col border border-l-0 border-t-0 border-black">
-            <div className="flex items-center justify-between gap-1 border-b border-black px-1 py-0.5 text-[7pt] uppercase">
-              <span className="flex items-baseline gap-1">SL<span className="inline-block h-[10pt] w-[20pt] border border-black" /></span>
-              <span className="flex items-baseline gap-1">Qty<span className="inline-block h-[10pt] w-[20pt] border border-black" /></span>
-            </div>
-            <div className="flex-1" />
-          </div>
-        ))}
-      </div>
+      {/* No draw grid here: hand sketches happen on the printed blank pad
+          (/print/blank2 keeps it); the digital packet carries its fittings on
+          the fittings sheet. The open band is still scribble room on paper. */}
+      <div className="flex-1" />
       <Footer />
     </div>
   );
@@ -359,14 +351,14 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
 
 function PlenumChecks({ value }: { value: string }) {
   return (
-    <div className="space-y-1 text-[7.5pt]">
+    <div className="space-y-1 text-[9pt]">
       {([["small", "Small", "· 18x22x18"], ["large", "Large", "· 24x22x18"], ["none", "None", ""]] as const).map(([v, label, detail]) => (
         <div key={v} className="flex items-center gap-1.5">
           <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center border border-black text-[10pt] leading-none">
             {value === v ? "✓" : ""}
           </span>
           <span className="font-bold">{label}</span>
-          {detail && <span className="text-[7pt]">{detail}</span>}
+          {detail && <span>{detail}</span>}
         </div>
       ))}
     </div>
@@ -376,7 +368,7 @@ function PlenumChecks({ value }: { value: string }) {
 function CutPage({ data: d }: { data: Cutsheet }) {
   const fo = d.formOnly;
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -487,10 +479,10 @@ function CutPage({ data: d }: { data: Cutsheet }) {
 function RegBox({ title, rows }: { title: string; rows: string[] }) {
   return (
     <div className="border-l border-black first:border-l-0">
-      <div className="border-b border-black px-1.5 py-0.5 text-[9pt] font-bold uppercase tracking-wide">{title}</div>
-      <div className="min-h-[2.2in] space-y-px p-1 text-[8pt]">
+      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">{title}</div>
+      <div className="min-h-[2.2in] space-y-px p-1 text-[10pt]">
         {rows.map((r, i) => (
-          <div key={i} className="border-b border-black/30">{r}</div>
+          <div key={i} className="border-b border-black/30 font-medium">{r}</div>
         ))}
       </div>
     </div>
