@@ -9,6 +9,7 @@ import { FittingLabelEditor } from "@/components/cutsheet/FittingLabelEditor";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
 import { FITTINGS, FITTING_MAP } from "@/lib/fittings";
 import { saveFittings } from "@/lib/actions";
+import { registerPrintFlush } from "@/lib/print-flush";
 import type { FittingRow } from "@/lib/schema";
 
 type Props = {
@@ -57,6 +58,20 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
       if (timer.current) clearTimeout(timer.current);
       if (pendingRef.current) void saveFittings(cutsheetId, pendingRef.current);
     },
+    [cutsheetId],
+  );
+  // Print flushes the same window: an SL toggle followed by a quick Print
+  // must land in the DB before the packet renders.
+  useEffect(
+    () =>
+      registerPrintFlush(async () => {
+        if (timer.current) clearTimeout(timer.current);
+        const pending = pendingRef.current;
+        if (!pending) return;
+        pendingRef.current = null;
+        await saveFittings(cutsheetId, pending);
+        setDirty(false);
+      }),
     [cutsheetId],
   );
 
