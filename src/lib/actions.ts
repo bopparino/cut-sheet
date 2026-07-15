@@ -78,9 +78,17 @@ function readHeaderFromFormData(formData: FormData): CutsheetHeader {
   };
 }
 
+// Coerce a form value to a non-negative integer count. Guards NaN, negatives,
+// and decimals - AND overflow: Number("1e999") is Infinity, which survives
+// floor/max and then fails Zod's z.number().int(), rejecting the entire save.
+// Number.isFinite catches that so one bad box can't block the whole sheet.
+function toCount(raw: unknown): number {
+  const n = Math.floor(Number(raw));
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+
 function readSingleNumber(formData: FormData, name: string): number {
-  const raw = formData.get(name);
-  return raw == null ? 0 : Math.max(0, Math.floor(Number(raw) || 0));
+  return toCount(formData.get(name));
 }
 
 function readNumberMap<T extends string>(
@@ -90,8 +98,7 @@ function readNumberMap<T extends string>(
 ): Record<T, number> {
   const result = {} as Record<T, number>;
   for (const size of sizes) {
-    const raw = formData.get(`${prefix}.${size}`);
-    result[size] = raw == null ? 0 : Math.max(0, Math.floor(Number(raw) || 0));
+    result[size] = toCount(formData.get(`${prefix}.${size}`));
   }
   return result;
 }
@@ -145,7 +152,7 @@ function readWHRows(
 ): { qty: number; w: string; h: string }[] {
   const out: { qty: number; w: string; h: string }[] = [];
   for (let i = 0; formData.has(`${prefix}.${i}.qty`); i++) {
-    const qty = Math.max(0, Math.floor(Number(formData.get(`${prefix}.${i}.qty`)) || 0));
+    const qty = toCount(formData.get(`${prefix}.${i}.qty`));
     const w = String(formData.get(`${prefix}.${i}.w`) ?? "").trim();
     const h = String(formData.get(`${prefix}.${i}.h`) ?? "").trim();
     if (qty === 0 && !w && !h) continue;
@@ -160,7 +167,7 @@ function readCustomDuctRows(
 ): { qty: number; w: string; h: string; l: string; sl: "Y" | "N" }[] {
   const out: { qty: number; w: string; h: string; l: string; sl: "Y" | "N" }[] = [];
   for (let i = 0; formData.has(`${prefix}.${i}.qty`); i++) {
-    const qty = Math.max(0, Math.floor(Number(formData.get(`${prefix}.${i}.qty`)) || 0));
+    const qty = toCount(formData.get(`${prefix}.${i}.qty`));
     const w = String(formData.get(`${prefix}.${i}.w`) ?? "").trim();
     const h = String(formData.get(`${prefix}.${i}.h`) ?? "").trim();
     const l = String(formData.get(`${prefix}.${i}.l`) ?? "").trim();
@@ -213,6 +220,14 @@ export async function cloneCutsheet(id: number) {
 }
 
 export async function updateCutsheet(id: number, formData: FormData) {
+  // Resolve the user BEFORE the SELECT: everything from the read below to the
+  // UPDATE must run without awaiting, so a concurrent save of the same sheet
+  // (the fittings autosave, another tab) can't interleave between read and
+  // write and clobber this write's slice of the shared JSON blob. better-
+  // sqlite3 is synchronous, so a yield-free read-modify-write is effectively
+  // atomic on Node's single thread. Do not add an await between here and the
+  // UPDATE.
+  const me = await getCurrentUser();
   const row = db
     .prepare<[number], { data: string }>(
       "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
@@ -289,7 +304,6 @@ export async function updateCutsheet(id: number, formData: FormData) {
     },
   };
   const parsed = CutsheetSchema.parse(next);
-  const me = await getCurrentUser();
   db.prepare(
     "UPDATE cutsheets SET data = ?, folder_id = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
   ).run(JSON.stringify(parsed), folderId, me?.id ?? null, id);
@@ -305,6 +319,10 @@ export async function updateCutsheet(id: number, formData: FormData) {
 // 4/6/8) - those are preserved from `current` so the replica never silently
 // zeroes data it doesn't show.
 export async function updateCutSheetReplica(id: number, formData: FormData) {
+  // Resolve the user before the SELECT so the read-modify-write below never
+  // yields the event loop between read and UPDATE - see updateCutsheet for the
+  // full rationale. Do not add an await between here and the UPDATE.
+  const me = await getCurrentUser();
   const row = db
     .prepare<[number], { data: string }>(
       "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
@@ -391,7 +409,6 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
     },
   };
   const parsed = CutsheetSchema.parse(next);
-  const me = await getCurrentUser();
   // Folder is managed on the card form, not here - leave folder_id untouched so
   // a replica save never unfiles the cutsheet (the replica has no folder input).
   db.prepare(
@@ -410,6 +427,11 @@ export async function saveFittings(id: number, rows: unknown) {
   for (const f of fittings) {
     if (!FITTING_MAP.has(f.type)) throw new Error(`Unknown fitting type "${f.type}"`);
   }
+  // Resolve the user before the SELECT so the read-modify-write below never
+  // yields between read and UPDATE - otherwise this fittings write and a
+  // concurrent form save both read the same blob and the later write drops the
+  // other's edits. See updateCutsheet. Do not add an await before the UPDATE.
+  const me = await getCurrentUser();
   const row = db
     .prepare<[number], { data: string }>(
       "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
@@ -418,7 +440,6 @@ export async function saveFittings(id: number, rows: unknown) {
   if (!row) throw new Error(`Cutsheet ${id} not found`);
   const current = CutsheetSchema.parse(JSON.parse(row.data));
   const next: Cutsheet = { ...current, fittings };
-  const me = await getCurrentUser();
   db.prepare(
     "UPDATE cutsheets SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
   ).run(JSON.stringify(next), me?.id ?? null, id);

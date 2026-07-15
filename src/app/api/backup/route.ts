@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -22,13 +23,28 @@ export async function GET() {
   if (!me || me.role !== "admin") return new NextResponse("admin only", { status: 403 });
 
   const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
-  const tmp = join(tmpdir(), `cutsheets-backup-${process.pid}-${Date.now()}.db`);
-  await db.backup(tmp);
+  // randomUUID (not pid+timestamp) so two concurrent backups - two admins, or a
+  // double-click - never compute the same path, which would interleave their
+  // page writes into one corrupt file and let the first finisher unlink it out
+  // from under the second. A corrupt snapshot downloads as a clean success, so
+  // the collision must be impossible, not just unlikely.
+  const tmp = join(tmpdir(), `cutsheets-backup-${randomUUID()}.db`);
 
-  const { size } = await stat(tmp);
+  let size: number;
+  try {
+    await db.backup(tmp);
+    size = (await stat(tmp)).size;
+  } catch (err) {
+    // If backup/stat fails, the close-handler that normally cleans up was never
+    // wired, so remove any partial file here before bailing.
+    await unlink(tmp).catch(() => {});
+    console.error("backup failed:", err);
+    return new NextResponse("backup failed", { status: 500 });
+  }
+
   const stream = createReadStream(tmp);
-  // The snapshot is a temp copy; remove it once the download finishes (or
-  // aborts - "close" fires either way).
+  // The snapshot is a temp copy; remove it once the download finishes OR aborts
+  // OR errors - all three end in "close".
   stream.once("close", () => {
     void unlink(tmp).catch(() => {});
   });

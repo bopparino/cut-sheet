@@ -69,3 +69,15 @@ export async function requireAdmin(): Promise<SessionUser> {
   if (user.role !== "admin") redirect("/browse");
   return user;
 }
+
+// API-route guard. Returns the user, or a 401 Response to return as-is when
+// there's no live session. Routes must call this themselves: the edge
+// middleware only checks that a session cookie is PRESENT, not that its token
+// maps to a live session, so it is not an identity check. Usage:
+//   const me = await requireApiUser();
+//   if (me instanceof Response) return me;
+export async function requireApiUser(): Promise<SessionUser | Response> {
+  const user = await getCurrentUser();
+  if (!user) return new Response("unauthorized", { status: 401 });
+  return user;
+}

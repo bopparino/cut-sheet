@@ -6,22 +6,40 @@ import { PDFDocument } from "pdf-lib";
 declare global {
   // eslint-disable-next-line no-var
   var __cutsheetBrowser: Browser | undefined;
+  // eslint-disable-next-line no-var
+  var __cutsheetBrowserLaunch: Promise<Browser> | undefined;
 }
 
 // Reuse one Chromium instance across requests. Puppeteer cold-starts cost
 // ~1s; the bulk of PDF latency comes from launching, not rendering.
+//
+// Cache the launch PROMISE, not just the resolved browser: two requests
+// arriving during cold start (first traffic after a deploy, or after a crash)
+// would both pass the connected check and each launch a Chromium, orphaning
+// one. Concurrent callers await the same in-flight launch instead.
 async function getBrowser(): Promise<Browser> {
   if (globalThis.__cutsheetBrowser?.connected) return globalThis.__cutsheetBrowser;
+  if (globalThis.__cutsheetBrowserLaunch) return globalThis.__cutsheetBrowserLaunch;
   // In Docker we install system Chromium and point PUPPETEER_EXECUTABLE_PATH
   // at it (so we don't have to also ship Puppeteer's bundled Chromium). In
   // local dev the var is unset and Puppeteer falls back to its bundled copy.
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-  globalThis.__cutsheetBrowser = browser;
-  return browser;
+  const launch = puppeteer
+    .launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+    .then((browser) => {
+      globalThis.__cutsheetBrowser = browser;
+      return browser;
+    })
+    .finally(() => {
+      // Clear the in-flight marker whether it resolved or rejected, so a failed
+      // launch doesn't wedge every future request on a rejected promise.
+      globalThis.__cutsheetBrowserLaunch = undefined;
+    });
+  globalThis.__cutsheetBrowserLaunch = launch;
+  return launch;
 }
 
 type PaperFormat = "Letter" | "Legal" | "Tabloid" | "A4";

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { renderPdfFromUrl } from "@/lib/pdf";
+import { requireApiUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
 // tiled contact sheet) the same way the other ticket PDFs are produced. Static
 // `fittings` segment wins over the sibling /api/pdf/[id]/[ticket] dynamic route.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await requireApiUser();
+  if (me instanceof Response) return me;
+
   const { id } = await params;
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) return new NextResponse("bad id", { status: 400 });
