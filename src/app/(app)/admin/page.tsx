@@ -149,6 +149,26 @@ export default async function AdminPage({
           </div>
         </section>
 
+        {/* Backups */}
+        <section className="space-y-3">
+          <h2 className="label-caps">Backups</h2>
+          <div className="flex flex-wrap items-center gap-4 rounded-sm border border-border bg-card px-[18px] py-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold text-foreground">Download a database snapshot</p>
+              <p className="mt-0.5 text-[12.5px] text-[var(--text-2)]">
+                Everything in one file - cutsheets, attachments, users, audit log. Keep a copy off
+                Railway; volume backups don&rsquo;t survive the volume itself.
+              </p>
+            </div>
+            <a
+              href="/api/backup"
+              className="btn-glow h-10 shrink-0 rounded-sm bg-primary px-5 text-[13.5px] font-semibold leading-10 text-primary-foreground"
+            >
+              Download backup
+            </a>
+          </div>
+        </section>
+
         {/* Send-to-Shop audit log */}
         <section className="space-y-3">
           <h2 className="label-caps">Recent Send to Shop</h2>
