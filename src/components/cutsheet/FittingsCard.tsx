@@ -61,7 +61,7 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
   );
 
   const add = (type: string) => {
-    persist([...rows, { type, qty: 1, labels: [], notes: "" }]);
+    persist([...rows, { type, qty: 1, sl: false, labels: [], notes: "" }]);
   };
   const update = (i: number, patch: Partial<FittingRow>) => {
     persist(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -152,6 +152,18 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                       value={row.qty}
                       onChange={(e) => update(i, { qty: Math.max(0, Math.trunc(Number(e.target.value) || 0)) })}
                       className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+                    />
+                  </label>
+                  <label
+                    className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
+                    title="Sound lined — prints as SL YES/NO on the fittings sheet"
+                  >
+                    SL
+                    <input
+                      type="checkbox"
+                      checked={row.sl}
+                      onChange={(e) => update(i, { sl: e.target.checked })}
+                      className="h-4 w-4 accent-primary"
                     />
                   </label>
                   <Button

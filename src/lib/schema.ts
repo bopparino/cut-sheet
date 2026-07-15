@@ -307,6 +307,9 @@ export type FittingLabel = z.infer<typeof FittingLabelSchema>;
 export const FittingRowSchema = z.object({
   type: z.string().min(1),
   qty: z.number().int().min(0).default(1),
+  // Sound-lined: prints as "SL YES/NO" beside the fitting name so the shop
+  // knows at a glance without reading notes. Defaulted so pre-SL rows parse.
+  sl: z.boolean().default(false),
   labels: z.array(FittingLabelSchema).default([]),
   notes: text,
 });

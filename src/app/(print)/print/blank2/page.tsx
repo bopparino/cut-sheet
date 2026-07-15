@@ -113,7 +113,7 @@ function PageHeader({ title }: { title: string }) {
     <header className="border-2 border-black">
       <div className="flex items-center justify-between border-b border-black px-2 py-1">
         <span className="text-[14pt] font-bold uppercase tracking-wide">{title}</span>
-        <span className="text-[9pt]">Pad #_____________________</span>
+        <span className="text-[10pt]">Pad #_____________________</span>
       </div>
       <HRow>
         <HF label="Builder" flex={4} />
@@ -156,7 +156,7 @@ function HF({ label, flex }: { label: string; flex: number }) {
       className="flex min-h-[32pt] items-end gap-1 border-r border-black px-2 pb-1 pt-3 last:border-r-0"
       style={{ flex }}
     >
-      <span className="shrink-0 text-[7pt] font-medium uppercase tracking-wide text-neutral-700">
+      <span className="shrink-0 text-[8pt] font-medium uppercase tracking-wide text-neutral-700">
         {label}
       </span>
       <span className="flex-1 border-b border-black" />
@@ -177,7 +177,7 @@ function Section({
 }) {
   return (
     <div className={`border border-black ${gapTop ? "mt-2" : "border-t-0 first:border-t"} ${className ?? ""}`}>
-      <div className="border-b border-black px-1.5 py-0.5 text-[8.5pt] font-bold uppercase tracking-wide">
+      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">
         {title}
       </div>
       <div className="p-0.5">{children}</div>
@@ -192,8 +192,8 @@ function QtyRow({ label, ruled }: { label: string; ruled?: boolean }) {
     <div
       className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
     >
-      <span className="truncate leading-[1.3]">{label}</span>
-      <span className="h-[10pt] w-[18pt] shrink-0 border border-black" />
+      <span className="truncate font-medium leading-[1.3]">{label}</span>
+      <span className="h-[13pt] w-[22pt] shrink-0 border border-black" />
     </div>
   );
 }
@@ -224,14 +224,14 @@ function MultiQtyTable({
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[7pt] font-bold uppercase">
+          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[8pt] font-bold uppercase">
             Size
           </th>
           {cols.map((c, i) => (
             <th
               key={i}
-              className="bg-neutral-200 px-0.5 py-0 text-center text-[7pt] font-bold uppercase"
-              style={{ width: "20pt" }}
+              className="bg-neutral-200 px-0.5 py-0 text-center text-[8pt] font-bold uppercase"
+              style={{ width: "24pt" }}
             >
               {c}
             </th>
@@ -241,11 +241,11 @@ function MultiQtyTable({
       <tbody>
         {rows.map((size) => (
           <tr key={size}>
-            <td className="border-b border-neutral-300 px-0.5 py-0 text-[8pt] leading-[1.3]">{size}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[10pt] font-medium leading-[1.3]">{size}</td>
             {cols.map((col, i) => (
               <td key={i} className="border-b border-neutral-300 px-0 py-px">
                 <span
-                  className={`block h-[10pt] w-[18pt] border border-black ${
+                  className={`block h-[13pt] w-[22pt] border border-black ${
                     blackout?.(col, size) ? "bg-black" : ""
                   }`}
                 />
@@ -267,7 +267,7 @@ function WHTable({ rows, withL = false }: { rows: number; withL?: boolean }) {
           {cols.map((h, i) => (
             <th
               key={i}
-              className="border border-black bg-neutral-200 px-1 py-0 text-center text-[7pt] font-bold uppercase"
+              className="border border-black bg-neutral-200 px-1 py-0 text-center text-[8pt] font-bold uppercase"
             >
               {h}
             </th>
@@ -278,7 +278,7 @@ function WHTable({ rows, withL = false }: { rows: number; withL?: boolean }) {
         {Array.from({ length: rows }).map((_, i) => (
           <tr key={i}>
             {cols.map((_, j) => (
-              <td key={j} className="h-[13pt] border border-black p-0" />
+              <td key={j} className="h-[16pt] border border-black p-0" />
             ))}
           </tr>
         ))}
@@ -289,7 +289,7 @@ function WHTable({ rows, withL = false }: { rows: number; withL?: boolean }) {
 
 function PlenumBlock() {
   return (
-    <div className="space-y-1.5 text-[7.5pt]">
+    <div className="space-y-1.5 text-[9pt]">
       <CheckLine>
         <span className="font-bold">Small</span>
         <span className="ml-1">· 18x22x18</span>
@@ -330,7 +330,7 @@ function Footer() {
 function FootCell({ title }: { title: string }) {
   return (
     <div className="border-l border-black px-2 py-1.5 first:border-l-0">
-      <div className="text-[7pt] font-bold uppercase tracking-wide text-neutral-700">
+      <div className="text-[8pt] font-bold uppercase tracking-wide text-neutral-700">
         {title}
       </div>
       <div className="mt-2 border-b border-black" />
@@ -344,7 +344,7 @@ function FootCell({ title }: { title: string }) {
 
 function ShopPage() {
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -425,7 +425,7 @@ function BlankLines({ rows }: { rows: number }) {
   return (
     <div className="space-y-1">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-[11pt] border-b border-black/30" />
+        <div key={i} className="h-[13pt] border-b border-black/30" />
       ))}
     </div>
   );
@@ -436,13 +436,13 @@ function FittingBox() {
     <div className="flex flex-col border border-l-0 border-t-0 border-black">
       <div className="flex items-center justify-between gap-1 border-b border-black px-1 py-0.5">
         {/* One open box beats N/Y micro-checkboxes on paper — write N or Y. */}
-        <div className="flex items-baseline gap-1 text-[7pt] font-medium uppercase tracking-wide">
+        <div className="flex items-baseline gap-1 text-[8pt] font-medium uppercase tracking-wide">
           <span>SL</span>
-          <span className="inline-block h-[10pt] w-[20pt] border border-black" />
+          <span className="inline-block h-[12pt] w-[22pt] border border-black" />
         </div>
-        <div className="flex items-baseline gap-1 text-[7pt] font-medium uppercase tracking-wide">
+        <div className="flex items-baseline gap-1 text-[8pt] font-medium uppercase tracking-wide">
           <span>Qty</span>
-          <span className="inline-block h-[10pt] w-[20pt] border border-black" />
+          <span className="inline-block h-[12pt] w-[22pt] border border-black" />
         </div>
       </div>
       <div className="flex-1" />
@@ -456,7 +456,7 @@ function FittingBox() {
 
 function CutPage() {
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[8pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -570,7 +570,7 @@ function BottomStrip() {
 function OpenBox({ title }: { title: string }) {
   return (
     <div className="border-l border-black first:border-l-0">
-      <div className="border-b border-black px-1.5 py-0.5 text-[9pt] font-bold uppercase tracking-wide">
+      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">
         {title}
       </div>
       <div className="h-[2.2in]" />
