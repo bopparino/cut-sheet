@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { requireApiUser } from "@/lib/auth";
 
 type Row = { mime: string; blob: Buffer; filename: string };
 
@@ -9,6 +10,11 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Streams raw uploaded blobs (plans, photos) - gate on a live session, not
+  // just the middleware's cookie-presence check.
+  const me = await requireApiUser();
+  if (me instanceof Response) return me;
+
   const { id } = await params;
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) return new Response("bad id", { status: 400 });

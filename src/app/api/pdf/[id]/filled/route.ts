@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { renderPdfFromUrl } from "@/lib/pdf";
+import { requireApiUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
 // way /api/pdf/blank2 renders the blank master, so the filled copy prints
 // identically - just with the numbers in. Vector output, not an image.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await requireApiUser();
+  if (me instanceof Response) return me;
+
   const { id } = await params;
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) {

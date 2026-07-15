@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { renderPdfFromUrl } from "@/lib/pdf";
+import { requireApiUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ export const dynamic = "force-dynamic";
 // print page), so it stays crisp at any scale instead of pixelating like an
 // embedded image would.
 export async function GET(req: Request) {
+  const me = await requireApiUser();
+  if (me instanceof Response) return me;
+
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   // A TLS-terminating proxy sets x-forwarded-proto; without one, the actual

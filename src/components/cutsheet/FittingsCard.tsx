@@ -31,8 +31,29 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
   const [isPending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Refs mirror the latest unsaved state so the unmount cleanup can flush it.
+  // pendingRef holds an un-fired (still-debounced) edit; inFlightRef holds a
+  // save that has already dispatched. A flush must await BOTH - the debounce
+  // clears pendingRef the moment it fires the save, so awaiting only pendingRef
+  // would miss an in-flight save and let Print render stale fittings.
   const pendingRef = useRef<FittingRow[] | null>(null);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+
+  const runSave = (toSave: FittingRow[]): Promise<void> => {
+    const p = saveFittings(cutsheetId, toSave)
+      .then(() => {
+        setDirty(false);
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Could not save fittings.");
+      });
+    inFlightRef.current = p;
+    // Clear the marker once settled, but only if a newer save hasn't replaced
+    // it. Chained separately so `p` is assigned before this references it.
+    void p.finally(() => {
+      if (inFlightRef.current === p) inFlightRef.current = null;
+    });
+    return p;
+  };
 
   const persist = (next: FittingRow[]) => {
     setRows(next);
@@ -40,40 +61,35 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
     pendingRef.current = next;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
+      const toSave = pendingRef.current;
       pendingRef.current = null;
-      startTransition(async () => {
-        try {
-          await saveFittings(cutsheetId, next);
-          setDirty(false);
-        } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Could not save fittings.");
-        }
-      });
+      if (toSave) startTransition(() => runSave(toSave));
     }, 600);
   };
-  // If the user navigates away inside the debounce window, flush the pending
-  // save instead of dropping the edit.
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      if (pendingRef.current) void saveFittings(cutsheetId, pendingRef.current);
-    },
-    [cutsheetId],
-  );
-  // Print flushes the same window: an SL toggle followed by a quick Print
-  // must land in the DB before the packet renders.
-  useEffect(
-    () =>
-      registerPrintFlush(async () => {
-        if (timer.current) clearTimeout(timer.current);
-        const pending = pendingRef.current;
-        if (!pending) return;
-        pendingRef.current = null;
-        await saveFittings(cutsheetId, pending);
-        setDirty(false);
-      }),
-    [cutsheetId],
-  );
+
+  // Flush an un-fired debounce AND any in-flight save, so the DB reflects the
+  // latest edit before the caller (Print, unmount) proceeds.
+  const flush = async () => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending) await runSave(pending);
+    await inFlightRef.current;
+  };
+
+  // Latest-value ref so the mount-only effects below always call the current
+  // flush closure (which captures the live cutsheetId) without re-registering.
+  const flushRef = useRef(flush);
+  useEffect(() => {
+    flushRef.current = flush;
+  });
+  // Print flushes before rendering the packet; unmount flushes so navigating
+  // away inside the debounce window doesn't drop the edit.
+  useEffect(() => registerPrintFlush(() => flushRef.current()), []);
+  useEffect(() => () => void flushRef.current(), []);
 
   const add = (type: string) => {
     persist([...rows, { type, qty: 1, sl: false, labels: [], notes: "" }]);
@@ -165,7 +181,10 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
                       type="number"
                       min={0}
                       value={row.qty}
-                      onChange={(e) => update(i, { qty: Math.max(0, Math.trunc(Number(e.target.value) || 0)) })}
+                      onChange={(e) => {
+                        const n = Math.trunc(Number(e.target.value));
+                        update(i, { qty: Number.isFinite(n) ? Math.max(0, n) : 0 });
+                      }}
                       className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
                     />
                   </label>

@@ -56,7 +56,7 @@ export default async function AdminPage({
        FROM print_events pe
        LEFT JOIN users u ON u.id = pe.user_id
        LEFT JOIN cutsheets c ON c.id = pe.cutsheet_id
-       WHERE pe.kind = 'send_to_shop'
+       WHERE pe.kind IN ('send_to_shop', 'shop_packet', 'foreman_packet')
        ORDER BY pe.created_at DESC LIMIT 50`,
     )
     .all();

@@ -32,6 +32,9 @@ const LGL_LONG = 72 * 14;
 // Letter tickets center on Legal; landscape plan pages go on landscape Legal,
 // scaled to fit.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await getCurrentUser();
+  if (!me) return new NextResponse("unauthorized", { status: 401 });
+
   const { id } = await params;
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) return new NextResponse("bad id", { status: 400 });
@@ -67,8 +70,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const out = await PDFDocument.create();
   const addOnLegal = async (source: Uint8Array | Buffer) => {
-    const src = await PDFDocument.load(source);
-    const pages = await out.embedPdf(source, src.getPageIndices());
+    // ignoreEncryption lets us embed permissions-encrypted (but readable) plan
+    // PDFs - a common architectural export. Pass the loaded document (not the
+    // raw bytes) to embedPdf so it copies pages from `src` instead of re-
+    // loading the bytes without the flag and throwing EncryptedPDFError.
+    const src = await PDFDocument.load(source, { ignoreEncryption: true });
+    const pages = await out.embedPdf(src, src.getPageIndices());
     for (const ep of pages) {
       const landscape = ep.width > ep.height;
       const pageW = landscape ? LGL_LONG : LGL;
@@ -96,23 +103,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .all(numeric);
     for (const plan of plans) {
       try {
-        await PDFDocument.load(plan.blob, { ignoreEncryption: true });
+        // The embed itself is the operation that can throw on a truly
+        // unreadable plan, so it must be INSIDE the try - otherwise one bad
+        // plan 500s the entire foreman packet instead of being skipped.
+        await addOnLegal(plan.blob);
       } catch {
-        // Unreadable/encrypted plan: skip it rather than break the whole packet.
         console.warn(`packet ${numeric}: could not embed plan "${plan.filename}"`);
-        continue;
       }
-      await addOnLegal(plan.blob);
     }
   }
 
   const bytes = await out.save();
 
   // Audit: record who printed which packet (shows as "Last sent by" on the sheet).
-  const me = await getCurrentUser();
+  // `me` is the authed user from the gate at the top of the handler.
   db.prepare("INSERT INTO print_events (cutsheet_id, user_id, kind) VALUES (?, ?, ?)").run(
     numeric,
-    me?.id ?? null,
+    me.id,
     kind === "foreman" ? "foreman_packet" : "shop_packet",
   );
 

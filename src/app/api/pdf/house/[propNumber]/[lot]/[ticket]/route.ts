@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { renderPdfFromUrl } from "@/lib/pdf";
+import { requireApiUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ export async function GET(
     params: Promise<{ propNumber: string; lot: string; ticket: string }>;
   },
 ) {
+  const me = await requireApiUser();
+  if (me instanceof Response) return me;
+
   const { propNumber, lot, ticket } = await params;
   if (!propNumber || !lot) return new NextResponse("missing identifiers", { status: 400 });
   if (!VALID_TICKETS.has(ticket)) return new NextResponse("bad ticket", { status: 400 });
