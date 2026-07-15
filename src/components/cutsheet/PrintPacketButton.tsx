@@ -3,12 +3,18 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Printer } from "lucide-react";
+import { flushPendingSaves } from "@/lib/print-flush";
 
 type Props = {
   cutsheetId: number;
   kind: "foreman" | "shop";
   label: string;
   primary?: boolean;
+  // When both are set, the sheet form is saved before the packet is built.
+  // Without this, edits made since the last explicit Save (the S/L dropdown
+  // was the reported case) print stale - the packet renders from the DB.
+  formId?: string;
+  saveAction?: (formData: FormData) => Promise<void>;
 };
 
 // Opens the browser's print dialog on a packet PDF instead of downloading it
@@ -17,7 +23,7 @@ type Props = {
 // and Chrome. Every packet page is Legal (8.5x14), so it prints correctly
 // from any browser on any printer with Legal loaded; the user just picks the
 // destination printer (Clinton / Seaford / desk) in the dialog.
-export function PrintPacketButton({ cutsheetId, kind, label, primary = false }: Props) {
+export function PrintPacketButton({ cutsheetId, kind, label, primary = false, formId, saveAction }: Props) {
   const [busy, setBusy] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -25,6 +31,15 @@ export function PrintPacketButton({ cutsheetId, kind, label, primary = false }: 
   const print = async () => {
     setBusy(true);
     try {
+      // What's on screen is what prints: flush the sheet form and any
+      // debounced autosaves first, and abort the print if a save fails.
+      if (formId && saveAction) {
+        const form = document.getElementById(formId);
+        if (form instanceof HTMLFormElement) {
+          await saveAction(new FormData(form));
+        }
+      }
+      await flushPendingSaves();
       const res = await fetch(`/api/pdf/${cutsheetId}/packet?kind=${kind}`);
       if (!res.ok) throw new Error(`Could not build the packet (${res.status})`);
       const blob = await res.blob();

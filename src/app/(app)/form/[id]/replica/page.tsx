@@ -116,8 +116,8 @@ export default async function ShopReplicaPage({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <PrintPacketButton cutsheetId={row.id} kind="shop" label="Print Shop Packet" primary />
-          <PrintPacketButton cutsheetId={row.id} kind="foreman" label="Print Foreman Packet" />
+          <PrintPacketButton cutsheetId={row.id} kind="shop" label="Print Shop Packet" primary formId={FORM_ID} saveAction={save} />
+          <PrintPacketButton cutsheetId={row.id} kind="foreman" label="Print Foreman Packet" formId={FORM_ID} saveAction={save} />
           <span className="mx-0.5 h-5 w-px bg-border" />
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />

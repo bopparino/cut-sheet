@@ -39,8 +39,9 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
             {row.qty > 0 ? `× ${row.qty}` : ""}
           </span>
           {/* Measurements print exactly where they were placed on the drawing
-              in the editor - the position says which side the number is for. */}
-          <FittingThumb def={def} className="h-full w-full">
+              in the editor - the position says which side the number is for.
+              zoom leaves a gutter so edge-anchored sizes don't clip. */}
+          <FittingThumb def={def} zoom={0.84} className="h-full w-full">
             {row.labels
               .filter((l) => l.text.trim())
               .map((l, j) => (
