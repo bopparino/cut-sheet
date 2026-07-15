@@ -10,14 +10,20 @@ import { fittingAspect, fittingCropStyle, type FittingDef } from "@/lib/fittings
 // absolutely positioned with fractional left/top lands on the same spot on
 // the drawing everywhere it's rendered - the label editor and the print page
 // share coordinates through this.
+//
+// `zoom` < 1 shrinks the drawing inside its box, leaving a gutter so labels
+// anchored at the drawing's edges (they center on their point, so half the
+// text overhangs) still land inside this component's overflow-hidden bounds.
 export function FittingThumb({
   def,
   className,
   children,
+  zoom = 1,
 }: {
   def: FittingDef;
   className?: string;
   children?: React.ReactNode;
+  zoom?: number;
 }) {
   const aspect = fittingAspect(def);
   return (
@@ -29,7 +35,7 @@ export function FittingThumb({
         style={{
           ...fittingCropStyle(def),
           aspectRatio: String(aspect),
-          width: `min(100cqw, calc(100cqh * ${aspect}))`,
+          width: `calc(min(100cqw, 100cqh * ${aspect}) * ${zoom})`,
           position: "relative",
         }}
         role="img"

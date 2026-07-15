@@ -28,9 +28,14 @@ import { LegalScalePage, LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/Le
 
 // Digitally-filled version of the new cut sheet. Mirrors /print/blank2's print
 // layout box-for-box (same 11x17 sizing, borders, columns) but each box shows
-// the saved value instead of being empty - so the filled PDF prints identically
-// to the approved blank master, just populated. Rendered by /print/filled/[id]
-// and turned into a PDF by /api/pdf/[id]/filled.
+// the saved value instead of being empty. Rendered by /print/filled/[id],
+// used by the packet routes and /api/pdf/[id]/filled.
+//
+// DELIBERATE divergence from blank2 (shop feedback, day one): no 6x3 sketch
+// grid, and fonts one step LARGER than the blank master - the grid's space
+// goes to legibility here, while blank2 keeps smaller type to preserve
+// sketch-box height on the photocopy pad. Structural changes still need to
+// land in both files; sizes no longer match 1:1.
 
 const duct60Label = (s: string) => (s.startsWith("3.25") ? `3¼x${s.slice(5)}` : s);
 const bootLabel = (s: string) => s.replace("3.25", "3¼");
@@ -80,7 +85,7 @@ export function FilledCutSheet({ data }: { data: Cutsheet }) {
 function VBox({ v, black }: { v?: string; black?: boolean }) {
   return (
     <span
-      className={`inline-flex h-[13pt] w-[22pt] shrink-0 items-center justify-center border border-black text-center text-[9.5pt] font-bold tabular-nums leading-none ${black ? "bg-black" : ""}`}
+      className={`inline-flex h-[15pt] w-[26pt] shrink-0 items-center justify-center border border-black text-center text-[11.5pt] font-bold tabular-nums leading-none ${black ? "bg-black" : ""}`}
     >
       {v ?? ""}
     </span>
@@ -92,7 +97,7 @@ function VBox({ v, black }: { v?: string; black?: boolean }) {
 function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: boolean }) {
   return (
     <div
-      className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-0.5" : ""}`}
+      className={`flex items-baseline justify-between gap-1 ${ruled ? "border-b border-neutral-300 pb-px" : ""}`}
     >
       <span className="truncate font-medium leading-[1.3]">{label}</span>
       <VBox v={v} />
@@ -102,7 +107,7 @@ function VRow({ label, v, ruled = true }: { label: string; v: string; ruled?: bo
 
 function VList({ items, ruled = true }: { items: { label: string; v: string }[]; ruled?: boolean }) {
   return (
-    <div className={ruled ? "space-y-1" : "space-y-px"}>
+    <div className={ruled ? "space-y-0.5" : "space-y-px"}>
       {items.map((it) => (
         <VRow key={it.label} label={it.label} v={it.v} ruled={ruled} />
       ))}
@@ -121,9 +126,9 @@ function VMultiTable({
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[8pt] font-bold uppercase">Size</th>
+          <th className="bg-neutral-200 px-0.5 py-0 text-left text-[9pt] font-bold uppercase">Size</th>
           {cols.map((c) => (
-            <th key={c} className="bg-neutral-200 px-0.5 py-0 text-center text-[8pt] font-bold uppercase" style={{ width: "24pt" }}>
+            <th key={c} className="bg-neutral-200 px-0.5 py-0 text-center text-[9pt] font-bold uppercase" style={{ width: "28pt" }}>
               {c}
             </th>
           ))}
@@ -132,7 +137,7 @@ function VMultiTable({
       <tbody>
         {rows.map((r) => (
           <tr key={r.label}>
-            <td className="border-b border-neutral-300 px-0.5 py-0 text-[10pt] font-medium leading-[1.3]">{r.label}</td>
+            <td className="border-b border-neutral-300 px-0.5 py-0 text-[12pt] font-medium leading-[1.3]">{r.label}</td>
             {r.cells.map((cell, i) => (
               <td key={i} className="border-b border-neutral-300 px-0 py-px text-center">
                 <VBox v={"v" in cell ? cell.v : undefined} black={"black" in cell} />
@@ -158,14 +163,14 @@ function WHFilled({
   const cols = withL ? ["Qty", "W", "H", "L", "S/L"] : ["Qty", "W", "H"];
   const count = Math.max(min, rows.length);
   const cell = (s: string) => (
-    <td className="h-[16pt] border border-black p-0 text-center text-[10pt] font-bold">{s}</td>
+    <td className="h-[19pt] border border-black p-0 text-center text-[12pt] font-bold">{s}</td>
   );
   return (
     <table className="w-full border-collapse">
       <thead>
         <tr>
           {cols.map((h) => (
-            <th key={h} className="border border-black bg-neutral-200 px-1 py-0 text-center text-[8pt] font-bold uppercase">
+            <th key={h} className="border border-black bg-neutral-200 px-1 py-0 text-center text-[9pt] font-bold uppercase">
               {h}
             </th>
           ))}
@@ -192,7 +197,7 @@ function WHFilled({
 function Section({ title, children, gapTop }: { title: string; children: React.ReactNode; gapTop?: boolean }) {
   return (
     <div className={`border border-black ${gapTop ? "mt-2" : "border-t-0 first:border-t"}`}>
-      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">{title}</div>
+      <div className="border-b border-black px-1.5 py-0.5 text-[11.5pt] font-bold uppercase tracking-wide">{title}</div>
       <div className="p-0.5">{children}</div>
     </div>
   );
@@ -240,9 +245,9 @@ function HRow({ children, last }: { children: React.ReactNode; last?: boolean })
 
 function HF({ label, v, flex }: { label: string; v: string; flex: number }) {
   return (
-    <div className="flex min-h-[32pt] flex-col justify-end gap-0.5 border-r border-black px-2 pb-1 pt-3 last:border-r-0" style={{ flex }}>
-      <span className="text-[8pt] font-medium uppercase tracking-wide text-neutral-700">{label}</span>
-      <span className="min-h-[13pt] border-b border-black text-[11pt] font-bold">{v}</span>
+    <div className="flex min-h-[32pt] flex-col justify-end gap-0.5 border-r border-black px-2 pb-1 pt-1 last:border-r-0" style={{ flex }}>
+      <span className="text-[9pt] font-medium uppercase tracking-wide text-neutral-700">{label}</span>
+      <span className="min-h-[15pt] border-b border-black text-[13pt] font-bold">{v}</span>
     </div>
   );
 }
@@ -252,7 +257,7 @@ function Footer() {
     <footer className="grid border border-black border-t-0 text-[8pt]" style={{ gridTemplateColumns: "1fr 1fr 2fr" }}>
       {["Cut By", "Date Cut", "Notes"].map((t) => (
         <div key={t} className="border-l border-black px-2 py-1.5 first:border-l-0">
-          <div className="text-[8pt] font-bold uppercase tracking-wide text-neutral-700">{t}</div>
+          <div className="text-[9pt] font-bold uppercase tracking-wide text-neutral-700">{t}</div>
           <div className="mt-2 border-b border-black" />
         </div>
       ))}
@@ -264,7 +269,7 @@ function Footer() {
 
 function ShopPage({ data: d }: { data: Cutsheet }) {
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[12pt] leading-[1.1] text-black">
       <PageHeader title="Shop Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -280,9 +285,9 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
           </Section>
           <Section title="Miscellaneous">
             {/* 7 lines standard, more if the data has more. */}
-            <div className="space-y-px text-[10pt]">
+            <div className="space-y-px text-[12pt]">
               {Array.from({ length: Math.max(7, d.custom.miscellaneous.length) }).map((_, i) => (
-                <div key={i} className="min-h-[13pt] border-b border-black/30 font-medium">
+                <div key={i} className="min-h-[16pt] border-b border-black/30 font-medium">
                   {d.custom.miscellaneous[i] ?? ""}
                 </div>
               ))}
@@ -351,7 +356,7 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
 
 function PlenumChecks({ value }: { value: string }) {
   return (
-    <div className="space-y-1 text-[9pt]">
+    <div className="space-y-1 text-[11pt]">
       {([["small", "Small", "· 18x22x18"], ["large", "Large", "· 24x22x18"], ["none", "None", ""]] as const).map(([v, label, detail]) => (
         <div key={v} className="flex items-center gap-1.5">
           <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center border border-black text-[10pt] leading-none">
@@ -368,7 +373,7 @@ function PlenumChecks({ value }: { value: string }) {
 function CutPage({ data: d }: { data: Cutsheet }) {
   const fo = d.formOnly;
   return (
-    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[10pt] leading-[1.1] text-black">
+    <div className="mx-auto flex min-h-[17.65in] w-[10.5in] flex-col bg-white p-0 font-sans text-[12pt] leading-[1.1] text-black">
       <PageHeader title="Cut Sheet" h={d.header} />
       <div className="grid grid-cols-4">
         {/* Col 1 */}
@@ -479,8 +484,11 @@ function CutPage({ data: d }: { data: Cutsheet }) {
 function RegBox({ title, rows }: { title: string; rows: string[] }) {
   return (
     <div className="border-l border-black first:border-l-0">
-      <div className="border-b border-black px-1.5 py-0.5 text-[10pt] font-bold uppercase tracking-wide">{title}</div>
-      <div className="min-h-[2.2in] space-y-px p-1 text-[10pt]">
+      <div className="border-b border-black px-1.5 py-0.5 text-[11.5pt] font-bold uppercase tracking-wide">{title}</div>
+      {/* 1.9in floor (was 2.2) - at the larger type the dense column 4 plus a
+          2.2in floor overflowed the page and clipped the footer. flex-1 still
+          grows this strip on typical sheets. */}
+      <div className="min-h-[1.9in] space-y-px p-1 text-[12pt]">
         {rows.map((r, i) => (
           <div key={i} className="border-b border-black/30 font-medium">{r}</div>
         ))}

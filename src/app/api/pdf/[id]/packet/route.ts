@@ -23,11 +23,14 @@ const LGL_LONG = 72 * 14;
 // The one-click packets, one PDF each, EVERY page normalized to Legal
 // (8.5x14) - the office standardized on Legal so any printer/browser prints
 // the whole thing correctly with no tray games:
-//   ?kind=shop    (default) - Cut Sheet -> Pick Tickets -> Fittings
+//   ?kind=shop    (default) - Cut Sheet x2 -> Pick Tickets -> Fittings x2
 //   ?kind=foreman           - Cut Sheet -> Trim Pull -> Fittings -> Plans
-// HTML docs render via Puppeteer (reused browser); uploaded plan PDFs are
-// embedded with pdf-lib. Letter tickets center on Legal; landscape plan pages
-// go on landscape Legal, scaled to fit.
+// The shop copies print back-to-back per document (sheet, sheet, ..., fittings,
+// fittings) so the stack splits into handout copies in one pass at the printer;
+// each doc renders once and the PDF pages embed twice. HTML docs render via
+// Puppeteer (reused browser); uploaded plan PDFs are embedded with pdf-lib.
+// Letter tickets center on Legal; landscape plan pages go on landscape Legal,
+// scaled to fit.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numeric = Number(id);
@@ -56,9 +59,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           { url: `${base}/print/fittings/${numeric}`, opts: LEGAL },
         ]
       : [
-          { url: `${base}/print/filled/${numeric}`, opts: LEGAL },
+          { url: `${base}/print/filled/${numeric}`, opts: LEGAL, copies: 2 },
           { url: `${base}/print/tickets/${numeric}`, opts: { format: "Letter" as const } },
-          { url: `${base}/print/fittings/${numeric}`, opts: LEGAL },
+          { url: `${base}/print/fittings/${numeric}`, opts: LEGAL, copies: 2 },
         ];
   const docs = await Promise.all(docUrls.map((d) => renderPdfFromUrl(d.url, d.opts)));
 
@@ -78,7 +81,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   };
 
-  for (const buf of docs) await addOnLegal(buf);
+  for (const [i, buf] of docs.entries()) {
+    const copies = "copies" in docUrls[i] ? (docUrls[i].copies ?? 1) : 1;
+    for (let c = 0; c < copies; c++) await addOnLegal(buf);
+  }
 
   // Plans ride only in the foreman packet, scaled from 11x17 onto Legal.
   if (kind === "foreman") {
