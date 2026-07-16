@@ -42,8 +42,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const kind = new URL(req.url).searchParams.get("kind") === "foreman" ? "foreman" : "shop";
 
   const exists = db
-    .prepare<[number], { id: number }>(
-      "SELECT id FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    .prepare<[number], { id: number; prop: string | null }>(
+      "SELECT id, TRIM(json_extract(data, '$.header.propNumber')) AS prop FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
     )
     .get(numeric);
   if (!exists) return new NextResponse("cutsheet not found", { status: 404 });
@@ -53,17 +53,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
   const base = `${proto}://${host}`;
 
+  // Pick ticket + trim = the WHOLE house: consolidated across every cutsheet
+  // sharing this property number (all zones + options). Keyed by property
+  // number, so a sheet with no property number falls back to its own per-sheet
+  // document - the one thing we can build without a house key.
+  const pickUrl = exists.prop
+    ? `${base}/print/pick/${encodeURIComponent(exists.prop)}`
+    : `${base}/print/tickets/${numeric}`;
+  const trimUrl = exists.prop
+    ? `${base}/print/trimpull/${encodeURIComponent(exists.prop)}`
+    : `${base}/print/trim/${numeric}`;
+
   // Render the packet's HTML docs (merge order = array order).
   const docUrls =
     kind === "foreman"
       ? [
           { url: `${base}/print/filled/${numeric}`, opts: LEGAL },
-          { url: `${base}/print/trim/${numeric}`, opts: LEGAL },
+          { url: trimUrl, opts: LEGAL },
           { url: `${base}/print/fittings/${numeric}`, opts: LEGAL },
         ]
       : [
           { url: `${base}/print/filled/${numeric}`, opts: LEGAL, copies: 2 },
-          { url: `${base}/print/tickets/${numeric}`, opts: { format: "Letter" as const } },
+          { url: pickUrl, opts: { format: "Letter" as const } },
           { url: `${base}/print/fittings/${numeric}`, opts: LEGAL, copies: 2 },
         ];
   const docs = await Promise.all(docUrls.map((d) => renderPdfFromUrl(d.url, d.opts)));
