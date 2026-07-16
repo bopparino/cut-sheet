@@ -44,7 +44,59 @@ export function TrimPullSheet({ cutsheet, cutsheetId, embedded = false }: Props)
       <TrimSection title="Grill" items={TRIM_GRILL} map={t.grill} extras={t.grillExtra} />
       <TrimSection title="Floor Reg" items={TRIM_FLOOR_REG} map={t.floorReg} extras={t.floorRegExtra} />
       <TrimSection title="Fans" items={TRIM_FANS} map={t.fans} extras={t.fansExtra} />
+      <TrimSheetLines sheets={[cutsheet]} />
     </div>
+  );
+}
+
+// Register/grille lines typed on the cut sheet itself (page 2's free-text
+// boxes; the Access import lands all its trim there, e.g. "11- 8x6  1- 10x6").
+// The zone tables above only carry what was entered in the trim matrix, so
+// without this block an imported sheet prints a trim pull that's entirely
+// blank while the quantities sit on the cut sheet. Zone-tagged when the
+// consolidated sheet passes several zones' cutsheets.
+const SHEET_LINE_GROUPS = [
+  ["Wall Registers", "wallRegs"],
+  ["Grilles", "grills"],
+  ["Filter Grills", "filterGrills"],
+  ["Floor Registers", "floorRegs"],
+] as const;
+
+export function TrimSheetLines({ sheets }: { sheets: Cutsheet[] }) {
+  const groups = SHEET_LINE_GROUPS.map(([title, key]) => ({
+    title,
+    entries: sheets.flatMap((s) => {
+      const lines = s.formOnly[key].map((l) => l.trim()).filter(Boolean);
+      if (lines.length === 0) return [];
+      const zone = sheets.length > 1 && s.header.zone.trim() ? `Zone ${s.header.zone.trim()}: ` : "";
+      return [zone + lines.join("   ")];
+    }),
+  })).filter((g) => g.entries.length > 0);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <table className="mb-4 w-full border-collapse text-[10pt]">
+      <thead>
+        <tr>
+          <th colSpan={2} className="border-2 border-black bg-neutral-100 px-1.5 py-0.5 text-left uppercase">
+            As listed on cut sheet
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {groups.map((g) => (
+          <tr key={g.title}>
+            <td className="w-44 border border-black px-1.5 py-0.5 font-semibold">{g.title}</td>
+            <td className="border border-black px-1.5 py-0.5 tabular-nums">
+              {g.entries.map((e, i) => (
+                <div key={i}>{e}</div>
+              ))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
