@@ -2,17 +2,17 @@ import { db } from "@/lib/db";
 import { CutsheetSchema, type Cutsheet } from "@/lib/schema";
 
 // The "whole house" behind a property number - IF the sheets sharing that
-// number actually form one house. Kimmy's rule (one cut sheet per zone, same
-// property number on each) holds for sheets made in the app, but the imported
-// Access library reuses property numbers in ways that must never be summed:
-//   - option/revision variants of one plan ("*HADLEY - BASEMENT BATHROOM",
-//     "*HADLEY - ON BASEMENT REV 2/3/2026", ...) all carry the plan's number;
-//   - placeholder numbers (999999999) sit on dozens of unrelated sheets
-//     across different builders.
-// So a set of sheets consolidates only when it looks like one real house:
-// same builder, same lot, and no two sheets claiming the same zone. Anything
-// else returns null and callers fall back to the per-sheet documents - the
-// exact output the shop got before consolidation existed.
+// number actually form one house. A property number is the Salesforce lot
+// record, so one physical house legitimately spans several sheets: its zones
+// AND its option sheets (basement rec room / bathroom / bedroom, all "Zone 1")
+// - the old Access shop package summed exactly that set, verified against a
+// printed 2026 packet for prop 219786. What must NEVER be summed is the
+// import's placeholder numbers (999999999 sits on 63 unrelated sheets across
+// different builders) and template sheets filed without a job. One physical
+// house = one builder + one lot, so that's the test: every sheet agrees on
+// builder and on a non-empty lot. Anything else returns null and callers fall
+// back to the per-sheet documents - the exact output the shop got before
+// consolidation existed.
 
 export type HouseSheet = { id: number; data: Cutsheet };
 
@@ -46,8 +46,7 @@ export function houseSheets(propNumber: string): HouseSheet[] | null {
 
   const builders = new Set(sheets.map((s) => norm(s.data.header.builder)));
   const lots = new Set(sheets.map((s) => norm(s.data.header.lot)));
-  const zones = sheets.map((s) => norm(s.data.header.zone));
-  const zonesDistinct = new Set(zones).size === zones.length;
+  const [lot] = lots;
 
-  return builders.size === 1 && lots.size === 1 && zonesDistinct ? sheets : null;
+  return builders.size === 1 && lots.size === 1 && lot !== "" ? sheets : null;
 }
