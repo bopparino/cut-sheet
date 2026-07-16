@@ -1,15 +1,35 @@
 import Link from "next/link";
-import { Search as SearchIcon, Plus } from "lucide-react";
+import { Search as SearchIcon, Plus, ChevronRight, Home } from "lucide-react";
 import { db } from "@/lib/db";
 import { relativeTime } from "@/lib/utils";
-import { getBuilderRollup } from "@/lib/builders";
-import { BuildersTable } from "@/components/folders/BuildersTable";
+import {
+  getBuilderLevel,
+  getSubdivisionLevel,
+  getHouseTypeLevel,
+  getHouseTypeSheets,
+  getBrowseTotals,
+} from "@/lib/builders";
+import { BrowseLevel, BrowseSheets } from "@/components/browse/BrowseLevel";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
 export const dynamic = "force-dynamic";
 
-export default async function BrowsePage() {
+// Browse drills Builder -> Subdivision -> House type -> sheets, all derived
+// live from the header fields (see src/lib/builders.ts). The current level is
+// whichever query params are present, so every level is a plain link - no
+// client state, deep-linkable, and the breadcrumb always shows the full path
+// (which matters when one house type name appears under many subdivisions).
+export default async function BrowsePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ builder?: string; sub?: string; type?: string }>;
+}) {
+  const sp = await searchParams;
+  const builder = sp.builder;
+  const sub = sp.sub;
+  const type = sp.type;
+
   const recent = db
     .prepare<[], CutsheetRow>(
       `SELECT id, data, updated_at FROM cutsheets
@@ -17,7 +37,25 @@ export default async function BrowsePage() {
     )
     .all();
 
-  const { builders, totalBuilders, totalCutsheets } = getBuilderRollup();
+  const totals = getBrowseTotals();
+
+  // Build the href for a level by carrying the parent params forward.
+  const href = (params: { builder?: string; sub?: string; type?: string }) => {
+    const q = new URLSearchParams();
+    if (params.builder !== undefined) q.set("builder", params.builder);
+    if (params.sub !== undefined) q.set("sub", params.sub);
+    if (params.type !== undefined) q.set("type", params.type);
+    const s = q.toString();
+    return s ? `/browse?${s}` : "/browse";
+  };
+
+  // Breadcrumb segments for the path we're currently at.
+  const crumbs: { label: string; href: string }[] = [];
+  if (builder !== undefined) crumbs.push({ label: builder || "Unfiled", href: href({ builder }) });
+  if (builder !== undefined && sub !== undefined)
+    crumbs.push({ label: sub || "(No subdivision)", href: href({ builder, sub }) });
+  if (builder !== undefined && sub !== undefined && type !== undefined)
+    crumbs.push({ label: type || "(No house type)", href: href({ builder, sub, type }) });
 
   return (
     <div>
@@ -25,7 +63,8 @@ export default async function BrowsePage() {
         <div className="min-w-0">
           <h1 className="text-[21px] font-bold tracking-[-0.02em] text-foreground">Browse</h1>
           <p className="font-mono-data mt-0.5 text-[12px] text-[var(--text-3)]">
-            {totalBuilders.toLocaleString()} builders · {totalCutsheets.toLocaleString()} cutsheets
+            {totals.builders.toLocaleString()} builders · {totals.subdivisions.toLocaleString()} subdivisions ·{" "}
+            {totals.cutsheets.toLocaleString()} cutsheets
           </p>
         </div>
         <form action="/search" className="relative ml-auto hidden max-w-xs flex-1 sm:block">
@@ -45,40 +84,75 @@ export default async function BrowsePage() {
       </header>
 
       <div className="space-y-7 px-8 py-7">
-        {/* Recent */}
-        <section className="space-y-3">
-          <h2 className="label-caps">Recent</h2>
-          {recent.length === 0 ? (
-            <p className="rounded-sm border border-border bg-card px-4 py-6 text-center text-[13.5px] text-[var(--text-2)]">
-              No cutsheets yet.{" "}
-              <Link href="/form/new" className="font-semibold text-foreground underline">
-                Create one
-              </Link>
-              .
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {recent.map((row) => (
-                <RecentTile key={row.id} row={row} />
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Recent only shows at the top level, so drill-downs stay focused. */}
+        {crumbs.length === 0 && (
+          <section className="space-y-3">
+            <h2 className="label-caps">Recent</h2>
+            {recent.length === 0 ? (
+              <p className="rounded-sm border border-border bg-card px-4 py-6 text-center text-[13.5px] text-[var(--text-2)]">
+                No cutsheets yet.{" "}
+                <Link href="/form/new" className="font-semibold text-foreground underline">
+                  Create one
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {recent.map((row) => (
+                  <RecentTile key={row.id} row={row} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
-        {/* Builders */}
         <section className="space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="label-caps">Builders</h2>
-            <span className="font-mono-data text-[11px] text-[var(--text-3)]">
-              Click a builder to see its cutsheets
-            </span>
-          </div>
-          {builders.length === 0 ? (
-            <p className="rounded-sm border border-border bg-card px-4 py-8 text-center text-[13.5px] text-[var(--text-2)]">
-              Nothing here yet. Start a new cutsheet and it will file under its builder.
-            </p>
+          {/* Breadcrumb: Builder > Subdivision > House type */}
+          <nav className="flex flex-wrap items-center gap-1.5 text-[13px]">
+            <Link
+              href="/browse"
+              className="flex items-center gap-1 font-medium text-[var(--text-2)] hover:text-foreground"
+            >
+              <Home className="h-3.5 w-3.5" /> Builders
+            </Link>
+            {crumbs.map((c, i) => (
+              <span key={i} className="flex items-center gap-1.5">
+                <ChevronRight className="h-3.5 w-3.5 text-[var(--text-ghost)]" />
+                {i === crumbs.length - 1 ? (
+                  <span className="font-semibold text-foreground">{c.label}</span>
+                ) : (
+                  <Link href={c.href} className="font-medium text-[var(--text-2)] hover:text-foreground">
+                    {c.label}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </nav>
+
+          {/* Render the level matching the deepest present param. */}
+          {builder === undefined ? (
+            <BrowseLevel
+              rows={getBuilderLevel()}
+              childNoun="Subdivisions"
+              countLabel="Builder"
+              hrefFor={(b) => href({ builder: b })}
+            />
+          ) : sub === undefined ? (
+            <BrowseLevel
+              rows={getSubdivisionLevel(builder)}
+              childNoun="House types"
+              countLabel="Subdivision"
+              hrefFor={(s) => href({ builder, sub: s })}
+            />
+          ) : type === undefined ? (
+            <BrowseLevel
+              rows={getHouseTypeLevel(builder, sub)}
+              childNoun="—"
+              countLabel="House type"
+              hrefFor={(t) => href({ builder, sub, type: t })}
+            />
           ) : (
-            <BuildersTable builders={builders} />
+            <BrowseSheets sheets={getHouseTypeSheets(builder, sub, type)} />
           )}
         </section>
       </div>
