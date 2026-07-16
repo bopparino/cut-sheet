@@ -58,7 +58,7 @@ export function ConsolidatedTicketSheet({ sheets, ticket, pageBreakBefore = fals
     <div
       className={`mx-auto max-w-[7.5in] px-6 py-8 font-sans text-[11pt] leading-snug print:px-0 print:py-0 ${pageBreakBefore ? "break-before-page" : ""}`}
     >
-      <header className="mb-6 flex items-end justify-between border-b-2 border-black pb-2">
+      <header className="mb-3 flex items-end justify-between border-b-2 border-black pb-2">
         <div>
           <h1 className="text-2xl font-bold uppercase tracking-tight">{TICKET_TITLES[ticket]}</h1>
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600">
@@ -71,6 +71,12 @@ export function ConsolidatedTicketSheet({ sheets, ticket, pageBreakBefore = fals
           <div>Combined pick ticket</div>
         </div>
       </header>
+
+      {/* The shop has to know this ticket is already summed across every zone,
+          so they don't go hunting for a per-zone ticket that no longer exists. */}
+      <div className="mb-5 border-2 border-black bg-neutral-100 px-3 py-2 text-center text-[12pt] font-bold uppercase tracking-wide">
+        This includes all items across all zones
+      </div>
 
       {headerPairs.length > 0 && (
         <section className="mb-6">
