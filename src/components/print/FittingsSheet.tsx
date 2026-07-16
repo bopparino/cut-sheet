@@ -111,7 +111,8 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
         <section className="px-2 py-2">
           <Header name={name} cutsheetId={cutsheetId} meta={meta} />
           <p className="py-10 text-center text-sm text-neutral-500">
-            No fittings picked or attached.
+            No fittings on this cut sheet. Sheets imported from the old Access library come
+            over without fittings — open the sheet and pick them from the catalog.
           </p>
         </section>
       ) : (

@@ -1,7 +1,7 @@
 import type { Cutsheet } from "@/lib/schema";
 import { TRIM_FANS, TRIM_FLOOR_REG, TRIM_GRILL, TRIM_REGISTERS } from "@/lib/schema";
 import { consolidateTrimPull } from "@/lib/trim-rules";
-import { TrimSection } from "@/components/print/TrimPullSheet";
+import { TrimSection, TrimSheetLines } from "@/components/print/TrimPullSheet";
 
 const TRIM_PAGE_CSS = "@page { size: 8.5in 14in; margin: 0.4in; }";
 
@@ -72,6 +72,7 @@ export function ConsolidatedTrimPullSheet({ sheets, embedded = false }: Props) {
       <TrimSection title="Grill" items={TRIM_GRILL} map={t.grill} extras={t.grillExtra} />
       <TrimSection title="Floor Reg" items={TRIM_FLOOR_REG} map={t.floorReg} extras={t.floorRegExtra} />
       <TrimSection title="Fans" items={TRIM_FANS} map={t.fans} extras={t.fansExtra} />
+      <TrimSheetLines sheets={sheets} />
     </div>
   );
 }

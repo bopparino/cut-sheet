@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { PDFDocument } from "pdf-lib";
 import { db } from "@/lib/db";
+import { houseSheets } from "@/lib/house";
 import { renderPdfFromUrl } from "@/lib/pdf";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -54,14 +55,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const base = `${proto}://${host}`;
 
   // Pick ticket + trim = the WHOLE house: consolidated across every cutsheet
-  // sharing this property number (all zones + options). Keyed by property
-  // number, so a sheet with no property number falls back to its own per-sheet
-  // document - the one thing we can build without a house key.
-  const pickUrl = exists.prop
-    ? `${base}/print/pick/${encodeURIComponent(exists.prop)}`
+  // sharing this property number (all zones + options). houseSheets() vets the
+  // set - imported library sheets reuse property numbers across option
+  // variants and placeholder values, and summing those prints garbage - so a
+  // sheet whose property number doesn't name one real house falls back to its
+  // own per-sheet documents, the exact packet the shop got before.
+  const house = exists.prop ? houseSheets(exists.prop) : null;
+  const pickUrl = house
+    ? `${base}/print/pick/${encodeURIComponent(exists.prop!)}`
     : `${base}/print/tickets/${numeric}`;
-  const trimUrl = exists.prop
-    ? `${base}/print/trimpull/${encodeURIComponent(exists.prop)}`
+  const trimUrl = house
+    ? `${base}/print/trimpull/${encodeURIComponent(exists.prop!)}`
     : `${base}/print/trim/${numeric}`;
 
   // Render the packet's HTML docs (merge order = array order).
