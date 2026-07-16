@@ -40,15 +40,16 @@ export function TrimPullSheet({ cutsheet, cutsheetId, embedded = false }: Props)
         </div>
       </header>
 
-      <Section title="Registers" items={TRIM_REGISTERS} map={t.registers} extras={t.registersExtra} />
-      <Section title="Grill" items={TRIM_GRILL} map={t.grill} extras={t.grillExtra} />
-      <Section title="Floor Reg" items={TRIM_FLOOR_REG} map={t.floorReg} extras={t.floorRegExtra} />
-      <Section title="Fans" items={TRIM_FANS} map={t.fans} extras={t.fansExtra} />
+      <TrimSection title="Registers" items={TRIM_REGISTERS} map={t.registers} extras={t.registersExtra} />
+      <TrimSection title="Grill" items={TRIM_GRILL} map={t.grill} extras={t.grillExtra} />
+      <TrimSection title="Floor Reg" items={TRIM_FLOOR_REG} map={t.floorReg} extras={t.floorRegExtra} />
+      <TrimSection title="Fans" items={TRIM_FANS} map={t.fans} extras={t.fansExtra} />
     </div>
   );
 }
 
-function Section<T extends string>({
+// Exported so the whole-house consolidated trim sheet renders identical tables.
+export function TrimSection<T extends string>({
   title,
   items,
   map,

@@ -53,20 +53,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
   const base = `${proto}://${host}`;
 
-  // Pick ticket = the WHOLE house: consolidated across every cutsheet sharing
-  // this property number (all zones + options). Keyed by property number, so a
-  // sheet with no property number falls back to its own per-sheet ticket - the
-  // one thing we can build without a house key.
+  // Pick ticket + trim = the WHOLE house: consolidated across every cutsheet
+  // sharing this property number (all zones + options). Keyed by property
+  // number, so a sheet with no property number falls back to its own per-sheet
+  // document - the one thing we can build without a house key.
   const pickUrl = exists.prop
     ? `${base}/print/pick/${encodeURIComponent(exists.prop)}`
     : `${base}/print/tickets/${numeric}`;
+  const trimUrl = exists.prop
+    ? `${base}/print/trimpull/${encodeURIComponent(exists.prop)}`
+    : `${base}/print/trim/${numeric}`;
 
   // Render the packet's HTML docs (merge order = array order).
   const docUrls =
     kind === "foreman"
       ? [
           { url: `${base}/print/filled/${numeric}`, opts: LEGAL },
-          { url: `${base}/print/trim/${numeric}`, opts: LEGAL },
+          { url: trimUrl, opts: LEGAL },
           { url: `${base}/print/fittings/${numeric}`, opts: LEGAL },
         ]
       : [
