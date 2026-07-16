@@ -42,6 +42,10 @@ export async function GET() {
     return new NextResponse("backup failed", { status: 500 });
   }
 
+  // Audit: record the backup (feeds the admin panel's "last backup"). Logged
+  // once the snapshot is on disk and about to stream, not per-byte.
+  db.prepare("INSERT INTO backup_events (user_id, size_bytes) VALUES (?, ?)").run(me.id, size);
+
   const stream = createReadStream(tmp);
   // The snapshot is a temp copy; remove it once the download finishes OR aborts
   // OR errors - all three end in "close".
