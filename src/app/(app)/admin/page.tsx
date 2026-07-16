@@ -3,7 +3,8 @@ import { Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { createUser, updateUser, resetPassword, deleteUser } from "@/lib/user-actions";
-import { relativeTime } from "@/lib/utils";
+import { relativeTime, formatDateTime } from "@/lib/utils";
+import { getSystemStats, getUserActivity, formatBytes } from "@/lib/admin-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -61,13 +62,16 @@ export default async function AdminPage({
     )
     .all();
 
+  const stats = getSystemStats();
+  const activity = getUserActivity();
+
   return (
     <div>
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background/90 px-8 py-[18px] backdrop-blur">
         <div className="min-w-0">
-          <h1 className="text-[21px] font-bold tracking-[-0.02em] text-foreground">Users & audit</h1>
+          <h1 className="text-[21px] font-bold tracking-[-0.02em] text-foreground">Admin</h1>
           <p className="font-mono-data mt-0.5 text-[12px] text-[var(--text-3)]">
-            {users.length} user{users.length === 1 ? "" : "s"}
+            {stats.users} user{stats.users === 1 ? "" : "s"} · {stats.cutsheets.toLocaleString()} cutsheets
           </p>
         </div>
         <Link href="/admin/trash" className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-sm border border-input bg-card px-4 text-[13px] font-semibold text-foreground hover:bg-accent">
@@ -82,6 +86,63 @@ export default async function AdminPage({
         {errorMsg && (
           <p className="rounded-sm px-4 py-2.5 text-[13.5px] font-semibold" style={{ background: "var(--warn-bg)", color: "var(--danger-fg)" }}>{errorMsg}</p>
         )}
+
+        {/* System stats */}
+        <section className="space-y-3">
+          <h2 className="label-caps">System</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Cutsheets" value={stats.cutsheets.toLocaleString()} />
+            <Stat label="Houses" value={stats.houses.toLocaleString()} hint="distinct property #" />
+            <Stat label="Builders" value={stats.builders.toLocaleString()} />
+            <Stat label="Subdivisions" value={stats.subdivisions.toLocaleString()} />
+            <Stat label="House types" value={stats.houseTypes.toLocaleString()} />
+            <Stat label="Attachments" value={stats.attachments.toLocaleString()} hint={formatBytes(stats.attachmentBytes)} />
+            <Stat label="Database size" value={formatBytes(stats.dbBytes)} />
+            <Stat
+              label="Last backup"
+              value={stats.lastBackup ? relativeTime(stats.lastBackup.at) : "never"}
+              hint={
+                stats.lastBackup
+                  ? `${formatBytes(stats.lastBackup.sizeBytes)}${stats.lastBackup.by ? ` · ${stats.lastBackup.by}` : ""}`
+                  : "download one below"
+              }
+              warn={!stats.lastBackup}
+            />
+          </div>
+        </section>
+
+        {/* Team activity (SOP visibility) */}
+        <section className="space-y-3">
+          <h2 className="label-caps">Team activity</h2>
+          <div className="overflow-x-auto rounded-sm border border-border bg-card">
+            <div className="grid min-w-[560px] grid-cols-[minmax(140px,1fr)_90px_140px_78px_78px_78px] items-center gap-3 border-b border-border bg-[var(--row-tint)] px-[18px] py-2.5">
+              <span className="label-caps">User</span>
+              <span className="label-caps">Role</span>
+              <span className="label-caps">Last login</span>
+              <span className="label-caps text-right">Created</span>
+              <span className="label-caps text-right">Edited</span>
+              <span className="label-caps text-right">Sent</span>
+            </div>
+            {activity.map((a) => (
+              <div
+                key={a.id}
+                className="grid min-w-[560px] grid-cols-[minmax(140px,1fr)_90px_140px_78px_78px_78px] items-center gap-3 border-b border-[var(--divider)] px-[18px] py-3 last:border-0"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] font-semibold text-foreground">{a.displayName || a.username}</span>
+                  <span className="font-mono-data block truncate text-[11px] text-[var(--text-3)]">{a.username}</span>
+                </span>
+                <span className="font-mono-data text-[11px] uppercase text-[var(--text-2)]">{a.role}</span>
+                <span className="font-mono-data text-[12px] text-[var(--text-2)]" title={a.lastLoginAt ? formatDateTime(a.lastLoginAt) : ""}>
+                  {a.lastLoginAt ? relativeTime(a.lastLoginAt) : "—"}
+                </span>
+                <span className="font-mono-data text-right text-[13px] text-foreground">{a.created.toLocaleString()}</span>
+                <span className="font-mono-data text-right text-[13px] text-foreground">{a.edited.toLocaleString()}</span>
+                <span className="font-mono-data text-right text-[13px] text-foreground">{a.sent.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Add user */}
         <section className="space-y-3">
@@ -187,6 +248,18 @@ export default async function AdminPage({
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, hint, warn }: { label: string; value: string; hint?: string; warn?: boolean }) {
+  return (
+    <div className="rounded-sm border border-border bg-card px-3.5 py-3">
+      <div className="label-caps">{label}</div>
+      <div className={`font-mono-data mt-1 text-[19px] font-semibold ${warn ? "text-[var(--danger-fg)]" : "text-foreground"}`}>
+        {value}
+      </div>
+      {hint ? <div className="font-mono-data mt-0.5 truncate text-[11px] text-[var(--text-3)]">{hint}</div> : null}
     </div>
   );
 }

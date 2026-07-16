@@ -19,6 +19,9 @@ export async function createSession(userId: number): Promise<void> {
   const token = randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + MAX_AGE_S * 1000).toISOString();
   db.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(token, userId, expires);
+  // Durable last-login stamp for the admin panel (sessions get pruned on
+  // logout/expiry, so we can't derive it from the sessions table).
+  db.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").run(userId);
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,

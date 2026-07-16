@@ -222,6 +222,25 @@ function migrate(db: Database.Database): void {
 
     db.pragma("user_version = 6");
   }
+
+  if (version < 7) {
+    // Admin visibility: when each user last logged in, and a log of database
+    // backups (the /api/backup endpoint records one row per download) so the
+    // admin panel can show "last backup" without guessing.
+    const ucols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+    if (!ucols.some((c) => c.name === "last_login_at")) {
+      db.exec("ALTER TABLE users ADD COLUMN last_login_at TEXT");
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS backup_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    db.pragma("user_version = 7");
+  }
 }
 
 // Lazy: open on first access. `next build` imports every route module to
