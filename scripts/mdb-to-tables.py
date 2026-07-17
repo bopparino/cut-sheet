@@ -32,7 +32,11 @@ for mdb in args:
         if full not in listed:
             continue
         raw = subprocess.run(
-            ["mdb-export", "-b", "strip", "-D", "%Y-%m-%d %H:%M:%S", mdb, full],
+            # -D covers date columns, -T datetime columns (Access DateCreated
+            # etc. are datetimes - without -T they export as "07/24/20 0...",
+            # which poisons header.date and the created/updated stamps).
+            ["mdb-export", "-b", "strip", "-D", "%Y-%m-%d",
+             "-T", "%Y-%m-%d %H:%M:%S", mdb, full],
             capture_output=True, text=True, check=True).stdout
         rows = list(csv.DictReader(io.StringIO(raw)))
         headers = list(rows[0].keys()) if rows else []
