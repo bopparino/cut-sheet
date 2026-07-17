@@ -40,6 +40,11 @@ type Tables = Record<string, { headers: string[]; rows: Row[] }>;
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
+// --update: sheets whose ledger key already exists get their data refreshed
+// in place (same row id, same folder, deleted_at untouched) instead of being
+// skipped. This is the "Access wins" mode for re-importing from the live
+// .mdb files - Kimmy double-enters, and the Access copy is authoritative.
+const update = args.includes("--update");
 // --emit <file>: write the assembled sheets as a JSON bundle instead of
 // touching a DB. The bundle is what scripts/push-legacy.mts sends to the
 // admin import endpoint - the path for getting legacy sheets into PROD,
@@ -50,7 +55,9 @@ if (emitIdx >= 0 && !emitPath) {
   console.error("--emit needs a file path");
   process.exit(1);
 }
-const inputs = args.filter((a, i) => a !== "--force" && a !== "--emit" && i !== emitIdx + 1);
+const inputs = args.filter(
+  (a, i) => a !== "--force" && a !== "--emit" && a !== "--update" && i !== emitIdx + 1,
+);
 if (inputs.length === 0) {
   console.error(
     "usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force] [--emit bundle.json]",
@@ -608,10 +615,21 @@ for (const input of inputs) {
   assembleSource(tables);
 }
 
+// Newest first, so when the same key appears in several sources (the Caruso
+// year files overlap; templates were copied between letters) the freshest
+// Date Modified wins and older copies fall to the dedupe skip below.
+assembled.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+
 if (emitPath) {
-  writeFileSync(emitPath, JSON.stringify({ sheets: assembled }));
+  // Dedupe by key keeping the first (newest, thanks to the sort) copy. The
+  // server has no cross-chunk memory, so in --update mode a stale duplicate
+  // arriving later in the bundle would overwrite the fresh one it just wrote.
+  const seen = new Set<string>();
+  const unique = assembled.filter((a) => !seen.has(a.key) && (seen.add(a.key), true));
+  writeFileSync(emitPath, JSON.stringify({ sheets: unique }));
   console.log(
-    `emitted ${assembled.length} assembled sheets to ${emitPath} (no DB writes)` +
+    `emitted ${unique.length} assembled sheets to ${emitPath} ` +
+      `(${assembled.length - unique.length} stale duplicates dropped; no DB writes)` +
       (failures.length ? `; ${failures.length} rows failed schema` : ""),
   );
   process.exit(0);
@@ -716,6 +734,10 @@ const insertSheet = db.prepare(
 const recordImport = db.prepare(
   "INSERT INTO legacy_imports (key, cutsheet_id) VALUES (?, ?)",
 );
+const updateSheet = db.prepare(
+  `UPDATE cutsheets SET data = ?, updated_at = COALESCE(?, updated_at)
+   WHERE id = (SELECT cutsheet_id FROM legacy_imports WHERE key = ?)`,
+);
 
 const ALPHABET = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 const builderLetter = (builder: string) => {
@@ -725,6 +747,7 @@ const builderLetter = (builder: string) => {
 
 let foldersCreated = 0;
 let imported = 0;
+let updated = 0;
 let skipped = 0;
 const builderFolderIds = new Map<string, number>();
 const seed = db.transaction(() => {
@@ -747,9 +770,23 @@ const seed = db.transaction(() => {
     ALPHABET.map((l) => [l, folder(l, importsId)]),
   );
 
+  // In-run dedupe is separate from the ledger: within one run the newest
+  // copy of a key (first after the sort) must win even in --update mode,
+  // where ledger membership no longer means "skip".
+  const seenThisRun = new Set<string>();
   for (const a of assembled) {
-    if (alreadyImported.has(a.key)) {
+    if (seenThisRun.has(a.key)) {
       skipped++;
+      continue;
+    }
+    seenThisRun.add(a.key);
+    if (alreadyImported.has(a.key)) {
+      if (update) {
+        updateSheet.run(JSON.stringify(a.cutsheet), a.updatedAt, a.key);
+        updated++;
+      } else {
+        skipped++;
+      }
       continue;
     }
     let folderId = builderFolderIds.get(a.builder);
@@ -780,6 +817,7 @@ const seed = db.transaction(() => {
 seed();
 
 console.log(`imported ${imported} cutsheets into ${dbPath}`);
+if (updated > 0) console.log(`updated ${updated} existing sheets in place (--update)`);
 if (skipped > 0) console.log(`skipped ${skipped} already-imported (legacy_imports ledger)`);
 if (emptySkipped > 0) console.log(`skipped ${emptySkipped} empty Access artifact rows`);
 console.log(`folders created: ${foldersCreated}`);

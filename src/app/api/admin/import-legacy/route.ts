@@ -16,6 +16,9 @@ export const dynamic = "force-dynamic";
 // so a dropped connection or a re-run never duplicates a sheet.
 
 const BundleSchema = z.object({
+  // "update" refreshes already-imported sheets in place from the incoming
+  // data (Access wins); the default keeps the original skip-if-known behavior.
+  mode: z.enum(["insert", "update"]).optional(),
   sheets: z
     .array(
       z.object({
@@ -26,8 +29,22 @@ const BundleSchema = z.object({
         cutsheet: CutsheetSchema,
       }),
     )
-    .min(1)
-    .max(1000),
+    .max(1000)
+    .optional(),
+  // Fittings whiteboard drawings extracted from the .mdb files
+  // (scripts/extract-drawings.py), addressed by ledger key. Upserted by
+  // (cutsheet, filename) so re-pushes refresh rather than duplicate.
+  attachments: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        filename: z.string().min(1),
+        mime: z.string().default("image/png"),
+        dataBase64: z.string().min(1).max(4_000_000),
+      }),
+    )
+    .max(200)
+    .optional(),
 });
 
 const ALPHABET = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
@@ -57,16 +74,30 @@ export async function POST(req: Request) {
 
   const findFolder = db.prepare("SELECT id FROM folders WHERE name = ? AND parent_id IS ?");
   const insertFolder = db.prepare("INSERT INTO folders (name, parent_id) VALUES (?, ?)");
-  const hasKey = db.prepare("SELECT 1 FROM legacy_imports WHERE key = ?");
+  const keyRow = db.prepare("SELECT cutsheet_id FROM legacy_imports WHERE key = ?");
   const insertSheet = db.prepare(
     `INSERT INTO cutsheets (data, folder_id, created_at, updated_at)
      VALUES (?, ?, COALESCE(?, datetime('now')), COALESCE(?, datetime('now')))`,
   );
+  const updateSheet = db.prepare(
+    "UPDATE cutsheets SET data = ?, updated_at = COALESCE(?, updated_at) WHERE id = ?",
+  );
   const recordImport = db.prepare("INSERT INTO legacy_imports (key, cutsheet_id) VALUES (?, ?)");
+  const deleteAttachment = db.prepare(
+    "DELETE FROM attachments WHERE cutsheet_id = ? AND filename = ?",
+  );
+  const insertAttachment = db.prepare(
+    `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
+     VALUES (?, 'image', ?, ?, ?, ?)`,
+  );
 
+  const updateMode = bundle.mode === "update";
   let imported = 0;
+  let updated = 0;
   let skipped = 0;
   let foldersCreated = 0;
+  let attached = 0;
+  let unmatched = 0;
 
   const run = db.transaction(() => {
     const folder = (name: string, parentId: number | null): number => {
@@ -81,9 +112,15 @@ export async function POST(req: Request) {
     for (const l of ALPHABET) folder(l, null);
     const importsId = folder("IMPORTS", null);
 
-    for (const s of bundle.sheets) {
-      if (hasKey.get(s.key)) {
-        skipped++;
+    for (const s of bundle.sheets ?? []) {
+      const known = keyRow.get(s.key) as { cutsheet_id: number } | undefined;
+      if (known) {
+        if (updateMode) {
+          updateSheet.run(JSON.stringify(s.cutsheet), s.updatedAt ?? null, known.cutsheet_id);
+          updated++;
+        } else {
+          skipped++;
+        }
         continue;
       }
       const letterId = folder(builderLetter(s.builder), importsId);
@@ -97,8 +134,20 @@ export async function POST(req: Request) {
       recordImport.run(s.key, Number(res.lastInsertRowid));
       imported++;
     }
+
+    for (const a of bundle.attachments ?? []) {
+      const known = keyRow.get(a.key) as { cutsheet_id: number } | undefined;
+      if (!known) {
+        unmatched++;
+        continue;
+      }
+      const blob = Buffer.from(a.dataBase64, "base64");
+      deleteAttachment.run(known.cutsheet_id, a.filename);
+      insertAttachment.run(known.cutsheet_id, a.filename, a.mime, blob.length, blob);
+      attached++;
+    }
   });
   run();
 
-  return NextResponse.json({ imported, skipped, foldersCreated });
+  return NextResponse.json({ imported, updated, skipped, foldersCreated, attached, unmatched });
 }
