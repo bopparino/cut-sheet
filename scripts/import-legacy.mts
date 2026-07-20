@@ -436,15 +436,21 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
     // packet (paper "STD Fan 4: 5" = CustomFan1 5) and the trim pull's AE80
     // counts; nonzero on 47% of all sheets - the everyday bath fan.
     CustomFan1: "AE80_4",
-    // Fan/light combo: the 744 is the current-offering combo box.
+    // Fan/light combo: the Broan 744 IS a recessed fan-with-light - the
+    // current-offering combo box (web-verified).
     "FAN LIGHT COMBOS": "744",
+    // Legacy single unsized ROOFJACKS box -> the shop's smallest/default
+    // current offering, Roof J 6". Assumption recorded in legacyNotes below.
+    ROOFJACKS: "roofJ6",
   });
+  if (num(row.ROOFJACKS) > 0) {
+    leftovers.push(`Roof jacks mapped to 6" (legacy box had no size) × ${num(row.ROOFJACKS)}`);
+  }
   // Legacy fan-ish columns with no current offering go to Miscellaneous as
   // REAL, described lines (per Austin: "be detailed of what it is").
   for (const [col, label] of [
     ["Fan Housings", "Fan housing"],
     ["NVFanLights", "NuVent fan/light"],
-    ["ROOFJACKS", "Roof jack (size unspecified)"],
   ] as const) {
     const qty = num(row[col]);
     if (qty > 0) cs.custom.miscellaneous.push(`${label} × ${qty} (from old cut sheet)`);
