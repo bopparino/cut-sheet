@@ -436,9 +436,16 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
     // packet (paper "STD Fan 4: 5" = CustomFan1 5) and the trim pull's AE80
     // counts; nonzero on 47% of all sheets - the everyday bath fan.
     CustomFan1: "AE80_4",
-    // Fan/light combo: the Broan 744 IS a recessed fan-with-light - the
-    // current-offering combo box (web-verified).
+    // The paper form had five fan boxes (STD Fan 3" / STD Fan 4" / 744 /
+    // 744 F/L / RoofJK) and Access has five used columns. CustomFan1 = STD
+    // Fan 4 (packet-proven). Fan Housings is a STANDALONE fan box (706/711
+    // sheets with it have no fan/light columns) = STD Fan 3" -> today's
+    // 3"-duct offering, the SLM 70. The two remaining columns are the two
+    // 744-family boxes; the current form collapsed them into one 744 line,
+    // so both map there regardless of which was which.
+    "Fan Housings": "SLM70",
     "FAN LIGHT COMBOS": "744",
+    NVFanLights: "744",
     // Legacy single unsized ROOFJACKS box -> the shop's smallest/default
     // current offering, Roof J 6". Assumption recorded in legacyNotes below.
     ROOFJACKS: "roofJ6",
@@ -448,17 +455,11 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
   }
   // Legacy fan-ish columns with no current offering go to Miscellaneous as
   // REAL, described lines (per Austin: "be detailed of what it is").
-  for (const [col, label] of [
-    // Access stored QUANTITY ONLY for these - no model number exists in the
-    // data. The wording tells the shop that explicitly so nobody hunts for a
-    // model that was never written down; purchasing picks the modern
-    // equivalent (bulk remap is one script once Kimmy names it).
-    ["Fan Housings", "Fan housing — model not recorded in old system, verify before ordering"],
-    ["NVFanLights", "NuVent fan/light — discontinued brand, model not recorded; sub with current fan/light"],
-  ] as const) {
-    const qty = num(row[col]);
-    if (qty > 0) cs.custom.miscellaneous.push(`${label} × ${qty}`);
-  }
+  // Provenance for the elimination-mapped boxes (hidden, auditable).
+  if (num(row["Fan Housings"]) > 0)
+    leftovers.push(`Legacy "STD Fan 3" box mapped to SLM 70 × ${num(row["Fan Housings"])}`);
+  if (num(row.NVFanLights) > 0)
+    leftovers.push(`Legacy 744-family box mapped to 744 × ${num(row.NVFanLights)}`);
 
   fillMap(row, cs.custom.rndCollars as Record<string, number>, {
     "4 Inch Round Collar": "4", "5 Inch Round Collar": "5", "6 Inch Round Collar": "6",
