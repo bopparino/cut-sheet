@@ -27,7 +27,9 @@ const update = argv.includes("--update");
 const drawingsIdx = argv.indexOf("--drawings");
 const drawingsDir = drawingsIdx >= 0 ? argv[drawingsIdx + 1] : null;
 const positional = argv.filter(
-  (a, i) => a !== "--update" && a !== "--drawings" && i !== drawingsIdx + 1,
+  // drawingsIdx is -1 when --drawings is absent; -1 + 1 = 0 was silently
+  // eating the first positional arg (the bundle path).
+  (a, i) => a !== "--update" && a !== "--drawings" && (drawingsIdx < 0 || i !== drawingsIdx + 1),
 );
 const [bundlePath, baseUrl] = positional;
 const session = process.env.CUTSHEET_SESSION;
