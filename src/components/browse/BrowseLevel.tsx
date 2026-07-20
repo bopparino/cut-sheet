@@ -79,9 +79,11 @@ export function BrowseLevel({
 export function BrowseSheets({
   sheets,
   dupes,
+  legacyIds,
 }: {
   sheets: CutsheetLeaf[];
   dupes?: Map<number, "exact" | "likely">;
+  legacyIds?: Set<number>;
 }) {
   return (
     <div className="overflow-hidden rounded-sm border border-border bg-card">
@@ -101,6 +103,11 @@ export function BrowseSheets({
             <span className="flex min-w-0 items-center gap-2.5">
               <span className="font-mono-data shrink-0 text-[11px] text-[var(--text-3)]">#{s.id}</span>
               <span className="truncate text-[13px] font-medium text-foreground">{s.title}</span>
+              {legacyIds?.has(s.id) ? (
+                <span className="font-mono-data shrink-0 rounded-sm border border-border bg-[var(--fill-2)] px-1.5 py-px text-[10px] text-[var(--text-3)]">
+                  LEGACY
+                </span>
+              ) : null}
               {dupes?.get(s.id) === "exact" ? (
                 <span className="chip chip-danger shrink-0">EXACT DUPLICATE FOUND</span>
               ) : dupes?.get(s.id) === "likely" ? (

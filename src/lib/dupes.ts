@@ -93,6 +93,16 @@ export function getDupMap(): Map<number, "exact" | "likely"> {
   return out;
 }
 
+/** Ids of sheets that came from the Access import (legacy_imports ledger). */
+export function getLegacyIds(): Set<number> {
+  try {
+    const rows = db.prepare("SELECT cutsheet_id FROM legacy_imports").all() as { cutsheet_id: number }[];
+    return new Set(rows.map((r) => r.cutsheet_id));
+  } catch {
+    return new Set();
+  }
+}
+
 /** Builder name (as displayed/uppercased) -> flagged sheet count. */
 export function getDupBuilderCounts(): Map<string, number> {
   const out = new Map<string, number>();

@@ -10,7 +10,7 @@ import {
   getBrowseTotals,
 } from "@/lib/builders";
 import { BrowseLevel, BrowseSheets } from "@/components/browse/BrowseLevel";
-import { getDupBuilderCounts, getDupMap } from "@/lib/dupes";
+import { getDupBuilderCounts, getDupMap, getLegacyIds } from "@/lib/dupes";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
@@ -154,7 +154,7 @@ export default async function BrowsePage({
               hrefFor={(t) => href({ builder, sub, type: t })}
             />
           ) : (
-            <BrowseSheets sheets={getHouseTypeSheets(builder, sub, type)} dupes={getDupMap()} />
+            <BrowseSheets sheets={getHouseTypeSheets(builder, sub, type)} dupes={getDupMap()} legacyIds={getLegacyIds()} />
           )}
         </section>
       </div>
