@@ -217,6 +217,8 @@ const FormOnlySchema = z.object({
     bubbleWrap: qty,
     foilIns: qty,
   }),
+  // Unmapped values carried from the Access import - stored, never printed.
+  legacyNotes: z.array(z.string()).default([]),
   uninsulatedFlex: mapOf(FLEX_SIZES),
   insulatedFlexR4: mapOf(FLEX_SIZES),
   insulatedFlexR8: mapOf(FLEX_SIZES),

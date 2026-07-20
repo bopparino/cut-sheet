@@ -23,11 +23,14 @@ export function BrowseLevel({
   hrefFor,
   childNoun,
   countLabel,
+  dupCounts,
 }: {
   rows: BrowseLevelRow[];
   hrefFor: (value: string) => string;
   childNoun: string;
   countLabel: string;
+  /** value (uppercased) -> flagged-duplicate sheet count, builder level only */
+  dupCounts?: Map<string, number>;
 }) {
   return (
     <div className="overflow-hidden rounded-sm border border-border bg-card">
@@ -49,7 +52,14 @@ export function BrowseLevel({
               {monogram(r.label)}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[14px] font-semibold text-foreground">{r.label}</span>
+              <span className="flex items-center gap-2 truncate text-[14px] font-semibold text-foreground">
+                <span className="truncate">{r.label}</span>
+                {dupCounts?.get(r.value.trim().toUpperCase()) ? (
+                  <span className="chip chip-danger shrink-0">
+                    {dupCounts.get(r.value.trim().toUpperCase())} DUPLICATES
+                  </span>
+                ) : null}
+              </span>
               <span className="font-mono-data block text-[11px] text-[var(--text-3)]">
                 {r.cutsheets} {r.cutsheets === 1 ? "cutsheet" : "cutsheets"}
               </span>
@@ -66,7 +76,13 @@ export function BrowseLevel({
 }
 
 // Leaf level: the actual cutsheets under a chosen house type. Opens the sheet.
-export function BrowseSheets({ sheets }: { sheets: CutsheetLeaf[] }) {
+export function BrowseSheets({
+  sheets,
+  dupes,
+}: {
+  sheets: CutsheetLeaf[];
+  dupes?: Map<number, "exact" | "likely">;
+}) {
   return (
     <div className="overflow-hidden rounded-sm border border-border bg-card">
       <div className="grid grid-cols-[minmax(0,1fr)_92px_26px] items-center gap-3 border-b border-border bg-[var(--row-tint)] px-[18px] py-2.5">
@@ -85,6 +101,11 @@ export function BrowseSheets({ sheets }: { sheets: CutsheetLeaf[] }) {
             <span className="flex min-w-0 items-center gap-2.5">
               <span className="font-mono-data shrink-0 text-[11px] text-[var(--text-3)]">#{s.id}</span>
               <span className="truncate text-[13px] font-medium text-foreground">{s.title}</span>
+              {dupes?.get(s.id) === "exact" ? (
+                <span className="chip chip-danger shrink-0">EXACT DUPLICATE FOUND</span>
+              ) : dupes?.get(s.id) === "likely" ? (
+                <span className="chip chip-warn shrink-0">POSSIBLE DUPLICATE</span>
+              ) : null}
               {s.lot ? (
                 <span className="font-mono-data shrink-0 rounded-sm border border-border bg-card px-1.5 py-px text-[10px] text-[var(--text-2)]">
                   Lot {s.lot}
