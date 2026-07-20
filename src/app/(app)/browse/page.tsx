@@ -10,7 +10,7 @@ import {
   getBrowseTotals,
 } from "@/lib/builders";
 import { BrowseLevel, BrowseSheets } from "@/components/browse/BrowseLevel";
-import { getDupBuilderCounts, getDupMap, getLegacyIds } from "@/lib/dupes";
+import { getDupCountsForLevel, getDupMap, getLegacyIds } from "@/lib/dupes";
 
 type CutsheetRow = { id: number; data: string; updated_at: string };
 
@@ -137,7 +137,7 @@ export default async function BrowsePage({
               childNoun="Subdivisions"
               countLabel="Builder"
               hrefFor={(b) => href({ builder: b })}
-              dupCounts={getDupBuilderCounts()}
+              dupCounts={getDupCountsForLevel()}
             />
           ) : sub === undefined ? (
             <BrowseLevel
@@ -145,6 +145,7 @@ export default async function BrowsePage({
               childNoun="House types"
               countLabel="Subdivision"
               hrefFor={(s) => href({ builder, sub: s })}
+              dupCounts={getDupCountsForLevel(builder)}
             />
           ) : type === undefined ? (
             <BrowseLevel
@@ -152,6 +153,7 @@ export default async function BrowsePage({
               childNoun="—"
               countLabel="House type"
               hrefFor={(t) => href({ builder, sub, type: t })}
+              dupCounts={getDupCountsForLevel(builder, sub)}
             />
           ) : (
             <BrowseSheets sheets={getHouseTypeSheets(builder, sub, type)} dupes={getDupMap()} legacyIds={getLegacyIds()} />

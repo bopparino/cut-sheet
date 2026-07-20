@@ -449,11 +449,15 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
   // Legacy fan-ish columns with no current offering go to Miscellaneous as
   // REAL, described lines (per Austin: "be detailed of what it is").
   for (const [col, label] of [
-    ["Fan Housings", "Fan housing"],
-    ["NVFanLights", "NuVent fan/light"],
+    // Access stored QUANTITY ONLY for these - no model number exists in the
+    // data. The wording tells the shop that explicitly so nobody hunts for a
+    // model that was never written down; purchasing picks the modern
+    // equivalent (bulk remap is one script once Kimmy names it).
+    ["Fan Housings", "Fan housing — model not recorded in old system, verify before ordering"],
+    ["NVFanLights", "NuVent fan/light — discontinued brand, model not recorded; sub with current fan/light"],
   ] as const) {
     const qty = num(row[col]);
-    if (qty > 0) cs.custom.miscellaneous.push(`${label} × ${qty} (from old cut sheet)`);
+    if (qty > 0) cs.custom.miscellaneous.push(`${label} × ${qty}`);
   }
 
   fillMap(row, cs.custom.rndCollars as Record<string, number>, {

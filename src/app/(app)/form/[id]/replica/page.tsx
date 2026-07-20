@@ -12,6 +12,7 @@ import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
 import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
 import { db } from "@/lib/db";
+import { getDupInfo } from "@/lib/dupes";
 import { CutsheetSchema } from "@/lib/schema";
 import { listBuilderNames } from "@/lib/builders";
 import { updateCutSheetReplica } from "@/lib/actions";
@@ -86,6 +87,8 @@ export default async function ShopReplicaPage({
     .filter(Boolean)
     .join(" · ");
 
+  const dup = getDupInfo(numeric);
+
   const save = updateCutSheetReplica.bind(null, numeric);
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
 
@@ -134,6 +137,21 @@ export default async function ShopReplicaPage({
           </button>
         </div>
       </header>
+      {dup ? (
+        <div
+          className={`flex items-center gap-3 border-b px-6 py-2 text-[13px] font-semibold ${
+            dup.kind === "exact"
+              ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger-fg)]"
+              : "border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn-fg)]"
+          }`}
+        >
+          {dup.kind === "exact" ? "EXACT DUPLICATE FOUND" : "POSSIBLE DUPLICATE"} — this sheet matches{" "}
+          <Link href={`/form/${dup.matchId}`} className="underline underline-offset-2">
+            cutsheet #{dup.matchId}
+          </Link>
+          . Flagged for review; nothing has been deleted.
+        </div>
+      ) : null}
 
       <div className="space-y-5 px-6 py-7">
         <CutsheetForm formId={FORM_ID} action={save} className="space-y-6">

@@ -137,12 +137,15 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
               className={`px-2 ${pages.length > 0 || i > 0 ? "break-before-page" : ""}`}
             >
               {pages.length === 0 && i === 0 && <Header name={name} cutsheetId={cutsheetId} meta={meta} />}
-              <div className="flex h-[11.5in] items-center justify-center">
+              <div className="flex h-[11.5in] items-start justify-center">
+                {/* w-full upscales small cropped drawings to page width so
+                    every legacy image prints at a consistent, readable scale
+                    (the canvases varied 468 ways; content is now cropped). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/attachment/${img.id}`}
                   alt={img.filename}
-                  className="max-h-full max-w-full object-contain"
+                  className="w-full max-h-full object-contain"
                 />
               </div>
               <div className="mt-1 text-right text-[8pt] text-neutral-500">
