@@ -93,6 +93,36 @@ export function getDupMap(): Map<number, "exact" | "likely"> {
   return out;
 }
 
+/** Flag info for one sheet: kind + the sheet it matches. */
+export function getDupInfo(id: number): { kind: "exact" | "likely"; matchId: number } | null {
+  const r = db.prepare("SELECT kind, match_id FROM dup_flags WHERE cutsheet_id = ?").get(id) as
+    | { kind: "exact" | "likely"; match_id: number }
+    | undefined;
+  return r ? { kind: r.kind, matchId: r.match_id } : null;
+}
+
+/** Flagged-sheet counts grouped by the given browse level's value. */
+export function getDupCountsForLevel(builder?: string, project?: string): Map<string, number> {
+  const B = "COALESCE(TRIM(json_extract(c.data,'$.header.builder')),'')";
+  const P = "COALESCE(TRIM(json_extract(c.data,'$.header.project')),'')";
+  const HT = "COALESCE(TRIM(json_extract(c.data,'$.header.houseType')),'')";
+  let sql: string;
+  let args: string[];
+  if (builder === undefined) {
+    sql = `SELECT UPPER(${B}) AS v, COUNT(*) AS n FROM dup_flags f JOIN cutsheets c ON c.id = f.cutsheet_id GROUP BY v`;
+    args = [];
+  } else if (project === undefined) {
+    sql = `SELECT UPPER(${P}) AS v, COUNT(*) AS n FROM dup_flags f JOIN cutsheets c ON c.id = f.cutsheet_id WHERE ${B} = ? GROUP BY v`;
+    args = [builder];
+  } else {
+    sql = `SELECT UPPER(${HT}) AS v, COUNT(*) AS n FROM dup_flags f JOIN cutsheets c ON c.id = f.cutsheet_id WHERE ${B} = ? AND ${P} = ? GROUP BY v`;
+    args = [builder, project];
+  }
+  const out = new Map<string, number>();
+  for (const r of db.prepare(sql).all(...args) as { v: string; n: number }[]) out.set(r.v, r.n);
+  return out;
+}
+
 /** Ids of sheets that came from the Access import (legacy_imports ledger). */
 export function getLegacyIds(): Set<number> {
   try {
