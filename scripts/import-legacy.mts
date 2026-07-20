@@ -177,8 +177,19 @@ function constantCols(rows: Row[]): Set<string> {
   const out = new Set<string>();
   if (rows.length < 2) return out;
   for (const col of Object.keys(rows[0])) {
-    const first = str(rows[0][col]);
-    if (rows.every((r) => str(r[col]) === first)) out.add(col);
+    // Majority default, not strict constant: a value repeated on >=90% of a
+    // source's rows is an Access form default, and echoing it onto nearly
+    // every sheet made all sheets read identical ("fake data" to Kimmy).
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const v = str(r[col]);
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    const top = Math.max(...counts.values());
+    // Small sources can't establish a "default" statistically - require a
+    // strict constant below 20 rows.
+    const threshold = rows.length < 20 ? 1 : 0.9;
+    if (top >= rows.length * threshold) out.add(col);
   }
   return out;
 }
@@ -420,7 +431,30 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
 
   fillMap(row, cs.formOnly.fans as Record<string, number>, {
     "4InGalvNeck": "gNeckSilv4", "6InGalvNeck": "gNeck116_6",
+    // The Access column is NAMED CustomFan1 but it IS the paper form's
+    // standard 4" fan box (AE80): proven against the printed 2026 Hadley
+    // packet (paper "STD Fan 4: 5" = CustomFan1 5) and the trim pull's AE80
+    // counts; nonzero on 47% of all sheets - the everyday bath fan.
+    CustomFan1: "AE80_4",
+    // Fan/light combo: the Broan 744 IS a recessed fan-with-light - the
+    // current-offering combo box (web-verified).
+    "FAN LIGHT COMBOS": "744",
+    // Legacy single unsized ROOFJACKS box -> the shop's smallest/default
+    // current offering, Roof J 6". Assumption recorded in legacyNotes below.
+    ROOFJACKS: "roofJ6",
   });
+  if (num(row.ROOFJACKS) > 0) {
+    leftovers.push(`Roof jacks mapped to 6" (legacy box had no size) × ${num(row.ROOFJACKS)}`);
+  }
+  // Legacy fan-ish columns with no current offering go to Miscellaneous as
+  // REAL, described lines (per Austin: "be detailed of what it is").
+  for (const [col, label] of [
+    ["Fan Housings", "Fan housing"],
+    ["NVFanLights", "NuVent fan/light"],
+  ] as const) {
+    const qty = num(row[col]);
+    if (qty > 0) cs.custom.miscellaneous.push(`${label} × ${qty} (from old cut sheet)`);
+  }
 
   fillMap(row, cs.custom.rndCollars as Record<string, number>, {
     "4 Inch Round Collar": "4", "5 Inch Round Collar": "5", "6 Inch Round Collar": "6",
@@ -491,8 +525,7 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
       "12x4x8 Straight Boots",
       "5 Inch  Ell Vertical", "6 Inch  Ell Vertical", "7 Inch  Ell Vertical",
       "8 Inch Flat Ell Flat",
-      "Fan Housings", "FAN LIGHT COMBOS", "CustomFan1", "CustomFan2", "CustomFan3",
-      "ROOFJACKS", "NVFanLights",
+      "CustomFan2", "CustomFan3",
       "3 Inch Wall Cap", "4 Inch Wall Cap", "5 Inch Wall Cap", "6 Inch Wall Cap",
       "7 Inch Wall Cap", "8 Inch Wall Cap", "10x31/4 Inch Wall Cap",
       "6 Inch Screen  Cap", "7 Inch Screen  Cap", "8 Inch Screen Cap",
@@ -585,7 +618,10 @@ function assembleSource(tables: Tables) {
   if (stock) mapStock(stock, cs, leftovers);
   if (prefab) mapPreFab(prefab, cs, leftovers);
 
-  cs.custom.miscellaneous.push(...leftovers);
+  // Leftovers used to spam custom.miscellaneous (printed on the Custom
+  // ticket!) - Kimmy read 7,000 identical "Legacy -" lines as corrupted
+  // data. They now live in formOnly.legacyNotes: stored, never printed.
+  cs.formOnly.legacyNotes = leftovers;
   leftoverTotal += leftovers.length;
 
   const parsed = CutsheetSchema.safeParse(cs);

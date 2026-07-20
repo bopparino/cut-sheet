@@ -27,6 +27,9 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
   const h = cutsheet.header;
   const name = cutsheet.name.trim();
 
+  const legacyImages = images.filter((img) => img.filename.includes("(Access)"));
+  const photoImages = images.filter((img) => !img.filename.includes("(Access)"));
+
   const picked = cutsheet.fittings
     .map((row) => ({ row, def: FITTING_MAP.get(row.type) }))
     .filter((x): x is { row: (typeof cutsheet.fittings)[number]; def: NonNullable<ReturnType<typeof FITTING_MAP.get>> } => Boolean(x.def));
@@ -77,15 +80,11 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
         </figcaption>
       </figure>
     )),
-    ...images.map((img) => (
+    ...photoImages.map((img) => (
       <figure key={`i${img.id}`} className="flex h-[2.9in] flex-col overflow-hidden rounded border border-black">
         <div className="flex min-h-0 flex-1 items-center justify-center bg-white p-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/attachment/${img.id}`}
-            alt={img.filename}
-            className="max-h-full max-w-full object-contain"
-          />
+          <img src={`/api/attachment/${img.id}`} alt={img.filename} className="max-h-full max-w-full object-contain" />
         </div>
         <figcaption className="shrink-0 truncate border-t border-neutral-300 px-2 py-1 text-[8pt] text-neutral-600">
           {img.filename}
@@ -107,7 +106,7 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
     <div className="font-sans text-black">
       {!embedded && <style>{LEGAL_PAGE_CSS}</style>}
 
-      {figures.length === 0 ? (
+      {figures.length === 0 && legacyImages.length === 0 ? (
         <section className="px-2 py-2">
           <Header name={name} cutsheetId={cutsheetId} meta={meta} />
           <p className="py-10 text-center text-sm text-neutral-500">
@@ -116,18 +115,42 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
           </p>
         </section>
       ) : (
-        pages.map((pageFigures, pageIndex) => (
-          <section
-            key={pageIndex}
-            className={`px-2 ${pageIndex > 0 ? "break-before-page" : ""}`}
-          >
-            {pageIndex === 0 && <Header name={name} cutsheetId={cutsheetId} meta={meta} />}
-            <div className="grid grid-cols-3 gap-2">{pageFigures}</div>
-            <div className="mt-2 text-right text-[8pt] text-neutral-500">
-              Fittings · Page {pageIndex + 1} of {pages.length} · Cutsheet #{cutsheetId}
-            </div>
-          </section>
-        ))
+        <>
+          {pages.map((pageFigures, pageIndex) => (
+            <section
+              key={pageIndex}
+              className={`px-2 ${pageIndex > 0 ? "break-before-page" : ""}`}
+            >
+              {pageIndex === 0 && <Header name={name} cutsheetId={cutsheetId} meta={meta} />}
+              <div className="grid grid-cols-3 gap-2">{pageFigures}</div>
+              <div className="mt-2 text-right text-[8pt] text-neutral-500">
+                Fittings · Page {pageIndex + 1} of {pages.length} · Cutsheet #{cutsheetId}
+              </div>
+            </section>
+          ))}
+          {/* Legacy whiteboard drawings: Kimmy drew every fitting for the house
+              on ONE canvas, so each image gets a full page of its own instead
+              of a 2.9-inch grid cell - the shop needs to read the dimensions. */}
+          {legacyImages.map((img, i) => (
+            <section
+              key={`img${img.id}`}
+              className={`px-2 ${pages.length > 0 || i > 0 ? "break-before-page" : ""}`}
+            >
+              {pages.length === 0 && i === 0 && <Header name={name} cutsheetId={cutsheetId} meta={meta} />}
+              <div className="flex h-[11.5in] items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/attachment/${img.id}`}
+                  alt={img.filename}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="mt-1 text-right text-[8pt] text-neutral-500">
+                {img.filename} · Legacy drawing {i + 1} of {legacyImages.length} · Cutsheet #{cutsheetId}
+              </div>
+            </section>
+          ))}
+        </>
       )}
     </div>
   );
