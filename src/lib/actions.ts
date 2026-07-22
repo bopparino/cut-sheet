@@ -41,15 +41,9 @@ import {
   STRT_BOOTS_SIZES,
   TTO_SIZES,
   FittingRowSchema,
-  TRIM_FANS,
-  TRIM_FLOOR_REG,
-  TRIM_GRILL,
-  TRIM_REGISTERS,
   emptyCutsheet,
   type Cutsheet,
   type CutsheetHeader,
-  type TrimExtraRow,
-  type TrimRow,
 } from "@/lib/schema";
 
 // ----- Generic FormData readers ----------------------------------------------
@@ -101,40 +95,6 @@ function readNumberMap<T extends string>(
     result[size] = toCount(formData.get(`${prefix}.${size}`));
   }
   return result;
-}
-
-function readTrimMap<T extends string>(
-  formData: FormData,
-  prefix: string,
-  items: readonly T[],
-): Record<T, TrimRow> {
-  const result = {} as Record<T, TrimRow>;
-  for (const item of items) {
-    result[item] = {
-      zone1: readSingleNumber(formData, `${prefix}.${item}.zone1`),
-      zone2: readSingleNumber(formData, `${prefix}.${item}.zone2`),
-      zone3: readSingleNumber(formData, `${prefix}.${item}.zone3`),
-      base: readSingleNumber(formData, `${prefix}.${item}.base`),
-    };
-  }
-  return result;
-}
-
-// Extra trim rows: blank labels are dropped (they're just unused blank lines).
-function readTrimExtras(formData: FormData, prefix: string): TrimExtraRow[] {
-  const out: TrimExtraRow[] = [];
-  for (let i = 0; formData.has(`${prefix}.${i}.label`); i++) {
-    const label = String(formData.get(`${prefix}.${i}.label`) ?? "").trim();
-    if (!label) continue;
-    out.push({
-      label,
-      zone1: readSingleNumber(formData, `${prefix}.${i}.zone1`),
-      zone2: readSingleNumber(formData, `${prefix}.${i}.zone2`),
-      zone3: readSingleNumber(formData, `${prefix}.${i}.zone3`),
-      base: readSingleNumber(formData, `${prefix}.${i}.base`),
-    });
-  }
-  return out;
 }
 
 function readStringRows(formData: FormData, prefix: string): string[] {
@@ -315,9 +275,9 @@ export async function updateCutsheet(id: number, formData: FormData) {
 
 // Replica save - the full two-page Cut Sheet replica (pages 1 + 2). Writes
 // every field the new sheet surfaces. A few legacy schema fields aren't on the
-// new design (tto, plenumContents, sdMiscExtras.angles, and Flex R4 outside
-// 4/6/8) - those are preserved from `current` so the replica never silently
-// zeroes data it doesn't show.
+// new design (tto, plenumContents, and Flex R4 outside 4/6/8) - those are
+// preserved from `current` so the replica never silently zeroes data it
+// doesn't show.
 export async function updateCutSheetReplica(id: number, formData: FormData) {
   // Resolve the user before the SELECT so the read-modify-write below never
   // yields the event loop between read and UPDATE - see updateCutsheet for the
@@ -375,9 +335,7 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
       fans: readNumberMap(formData, "fans", FANS_KEYS),
       straightBootBoxes: readNumberMap(formData, "straightBootBoxes", STRAIGHT_BOOT_BOXES_SIZES),
       simpsonStp: readNumberMap(formData, "simpsonStp", SIMPSON_STP_KEYS),
-      // angles isn't on the new sheet - keep it; bubbleWrap/foilIns are.
       sdMiscExtras: {
-        ...current.formOnly.sdMiscExtras,
         bubbleWrap: readSingleNumber(formData, "sdMiscExtras.bubbleWrap"),
         foilIns: readSingleNumber(formData, "sdMiscExtras.foilIns"),
       },
@@ -397,16 +355,10 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
       floorRegs: readStringRows(formData, "floorRegs"),
       // tto + plenumContents aren't on the new sheet - preserved via spread.
     },
-    trimPull: {
-      registers: readTrimMap(formData, "trim.registers", TRIM_REGISTERS),
-      registersExtra: readTrimExtras(formData, "trim.registersExtra"),
-      grill: readTrimMap(formData, "trim.grill", TRIM_GRILL),
-      grillExtra: readTrimExtras(formData, "trim.grillExtra"),
-      floorReg: readTrimMap(formData, "trim.floorReg", TRIM_FLOOR_REG),
-      floorRegExtra: readTrimExtras(formData, "trim.floorRegExtra"),
-      fans: readTrimMap(formData, "trim.fans", TRIM_FANS),
-      fansExtra: readTrimExtras(formData, "trim.fansExtra"),
-    },
+    // The Trim Pull Sheet left the form (Kimmie handles trim on paper now).
+    // Preserve whatever trim data a sheet already has so nothing is destroyed
+    // and the section can come back with its data intact.
+    trimPull: current.trimPull,
   };
   const parsed = CutsheetSchema.parse(next);
   // Folder is managed on the card form, not here - leave folder_id untouched so

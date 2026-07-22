@@ -23,15 +23,24 @@ const LGL_LONG = 72 * 14;
 
 // The one-click packets, one PDF each, EVERY page normalized to Legal
 // (8.5x14) - the office standardized on Legal so any printer/browser prints
-// the whole thing correctly with no tray games:
-//   ?kind=shop    (default) - Cut Sheet x2 -> Pick Tickets -> Fittings x2
-//   ?kind=foreman           - Cut Sheet -> Trim Pull -> Fittings -> Plans
-// The shop copies print back-to-back per document (sheet, sheet, ..., fittings,
-// fittings) so the stack splits into handout copies in one pass at the printer;
-// each doc renders once and the PDF pages embed twice. HTML docs render via
-// Puppeteer (reused browser); uploaded plan PDFs are embedded with pdf-lib.
-// Letter tickets center on Legal; landscape plan pages go on landscape Legal,
-// scaled to fit.
+// the whole thing correctly with no tray games.
+//
+// A packet covers the WHOLE HOUSE: every cutsheet sharing the property number
+// (all zones + option sheets), grouped by zone — each sheet's Cut Sheets then
+// its fittings pages, zone after zone, single copy of everything — and, on the
+// shop packet, the three consolidated pick tickets at the end:
+//   ?kind=shop    (default) - [Cut Sheets -> Fittings] per zone -> Pick Tickets
+//   ?kind=foreman           - [Cut Sheets -> Fittings] per zone -> Plans
+//   ?zone=N                 - only that zone's sheets, with pick tickets
+//                             consolidated over just that zone (the
+//                             couldn't-get-permits case: build one zone now).
+// houseSheets() vets the set — imported library sheets reuse property numbers
+// across placeholders, and summing those prints garbage — so a sheet whose
+// property number doesn't name one real house falls back to its own per-sheet
+// documents, the exact packet the shop got before consolidation existed.
+// HTML docs render via Puppeteer (reused browser); uploaded plan PDFs are
+// embedded with pdf-lib. Letter tickets center on Legal; landscape plan pages
+// go on landscape Legal, scaled to fit.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await getCurrentUser();
   if (!me) return new NextResponse("unauthorized", { status: 401 });
@@ -40,7 +49,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) return new NextResponse("bad id", { status: 400 });
 
-  const kind = new URL(req.url).searchParams.get("kind") === "foreman" ? "foreman" : "shop";
+  const query = new URL(req.url).searchParams;
+  const kind = query.get("kind") === "foreman" ? "foreman" : "shop";
+  const zone = (query.get("zone") ?? "").trim();
 
   const exists = db
     .prepare<[number], { id: number; prop: string | null }>(
@@ -54,34 +65,62 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
   const base = `${proto}://${host}`;
 
-  // Pick ticket + trim = the WHOLE house: consolidated across every cutsheet
-  // sharing this property number (all zones + options). houseSheets() vets the
-  // set - imported library sheets reuse property numbers across option
-  // variants and placeholder values, and summing those prints garbage - so a
-  // sheet whose property number doesn't name one real house falls back to its
-  // own per-sheet documents, the exact packet the shop got before.
-  const house = exists.prop ? houseSheets(exists.prop) : null;
-  const pickUrl = house
-    ? `${base}/print/pick/${encodeURIComponent(exists.prop!)}`
-    : `${base}/print/tickets/${numeric}`;
-  const trimUrl = house
-    ? `${base}/print/trimpull/${encodeURIComponent(exists.prop!)}`
-    : `${base}/print/trim/${numeric}`;
+  // The vetted whole-house set, in zone order. With ?zone= it narrows to that
+  // zone's sheets (a zone can span several sheets: base + option sheets). If
+  // the property number doesn't name one real house — or the zone filter
+  // matches nothing — fall back to just the clicked sheet with its own
+  // per-sheet tickets.
+  const houseAll = exists.prop ? houseSheets(exists.prop) : null;
+  const house = zone && houseAll
+    ? houseAll.filter((s) => (s.data.header.zone ?? "").trim() === zone)
+    : houseAll;
+  const consolidated = !!house && house.length > 0;
+  const sheetIds = consolidated ? house!.map((s) => s.id) : [numeric];
 
-  // Render the packet's HTML docs (merge order = array order).
-  const docUrls =
-    kind === "foreman"
-      ? [
-          { url: `${base}/print/filled/${numeric}`, opts: LEGAL },
-          { url: trimUrl, opts: LEGAL },
-          { url: `${base}/print/fittings/${numeric}`, opts: LEGAL },
-        ]
-      : [
-          { url: `${base}/print/filled/${numeric}`, opts: LEGAL, copies: 2 },
-          { url: pickUrl, opts: { format: "Letter" as const } },
-          { url: `${base}/print/fittings/${numeric}`, opts: LEGAL, copies: 2 },
-        ];
-  const docs = await Promise.all(docUrls.map((d) => renderPdfFromUrl(d.url, d.opts)));
+  const pickUrl = consolidated
+    ? `${base}/print/pick/${encodeURIComponent(exists.prop!)}${zone ? `?zone=${encodeURIComponent(zone)}` : ""}`
+    : `${base}/print/tickets/${numeric}`;
+
+  // A sheet with no picked fittings and no legacy drawing images would print a
+  // "No fittings" placeholder page — fine on a single sheet, noise when an
+  // 8-zone house prints. Skip the fittings doc for those sheets.
+  const hasFittings = (sid: number): boolean => {
+    const fit = db
+      .prepare<[number], { n: number }>(
+        "SELECT COALESCE(json_array_length(data, '$.fittings'), 0) AS n FROM cutsheets WHERE id = ?",
+      )
+      .get(sid);
+    if ((fit?.n ?? 0) > 0) return true;
+    const img = db
+      .prepare<[number], { n: number }>(
+        "SELECT COUNT(*) AS n FROM attachments WHERE cutsheet_id = ? AND kind = 'image'",
+      )
+      .get(sid);
+    return (img?.n ?? 0) > 0;
+  };
+
+  // Render order = merge order: each sheet's Cut Sheets then its fittings,
+  // zone by zone; the shop packet closes with the consolidated pick tickets.
+  const docUrls: Array<{ url: string; opts: Parameters<typeof renderPdfFromUrl>[1] }> = [];
+  for (const sid of sheetIds) {
+    docUrls.push({ url: `${base}/print/filled/${sid}`, opts: LEGAL });
+    if (hasFittings(sid)) docUrls.push({ url: `${base}/print/fittings/${sid}`, opts: LEGAL });
+  }
+  if (kind === "shop") docUrls.push({ url: pickUrl, opts: { format: "Letter" as const } });
+
+  // Bounded concurrency: an 8-zone house is ~17 documents, and rendering them
+  // all at once would stack that many Chromium pages on the small prod box.
+  const docs: Buffer[] = new Array(docUrls.length);
+  const POOL = 4;
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(POOL, docUrls.length) }, async () => {
+      while (next < docUrls.length) {
+        const i = next++;
+        docs[i] = await renderPdfFromUrl(docUrls[i].url, docUrls[i].opts);
+      }
+    }),
+  );
 
   const out = await PDFDocument.create();
   const addOnLegal = async (source: Uint8Array | Buffer) => {
@@ -103,27 +142,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
   };
 
-  for (const [i, buf] of docs.entries()) {
-    const copies = "copies" in docUrls[i] ? (docUrls[i].copies ?? 1) : 1;
-    for (let c = 0; c < copies; c++) await addOnLegal(buf);
-  }
+  for (const buf of docs) await addOnLegal(buf);
 
-  // Plans ride only in the foreman packet, scaled from 11x17 onto Legal.
+  // Plans ride only in the foreman packet, scaled from 11x17 onto Legal —
+  // gathered from every sheet in the packet, in the same zone order.
   if (kind === "foreman") {
-    const plans = db
-      .prepare<[number], { blob: Buffer; filename: string }>(
-        `SELECT blob, filename FROM attachments WHERE cutsheet_id = ? AND kind = 'plan'
-         ORDER BY created_at ASC, id ASC`,
-      )
-      .all(numeric);
-    for (const plan of plans) {
-      try {
-        // The embed itself is the operation that can throw on a truly
-        // unreadable plan, so it must be INSIDE the try - otherwise one bad
-        // plan 500s the entire foreman packet instead of being skipped.
-        await addOnLegal(plan.blob);
-      } catch {
-        console.warn(`packet ${numeric}: could not embed plan "${plan.filename}"`);
+    for (const sid of sheetIds) {
+      const plans = db
+        .prepare<[number], { blob: Buffer; filename: string }>(
+          `SELECT blob, filename FROM attachments WHERE cutsheet_id = ? AND kind = 'plan'
+           ORDER BY created_at ASC, id ASC`,
+        )
+        .all(sid);
+      for (const plan of plans) {
+        try {
+          // The embed itself is the operation that can throw on a truly
+          // unreadable plan, so it must be INSIDE the try - otherwise one bad
+          // plan 500s the entire foreman packet instead of being skipped.
+          await addOnLegal(plan.blob);
+        } catch {
+          console.warn(`packet ${numeric}: could not embed plan "${plan.filename}"`);
+        }
       }
     }
   }
@@ -138,12 +177,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     kind === "foreman" ? "foreman_packet" : "shop_packet",
   );
 
-  const download = new URL(req.url).searchParams.get("download") === "1";
+  const download = query.get("download") === "1";
+  const zoneTag = zone ? `-zone-${zone.replace(/[^\w.-]+/g, "_")}` : "";
   return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="cutsheet-${numeric}-${kind}-packet.pdf"`,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="cutsheet-${numeric}-${kind}${zoneTag}-packet.pdf"`,
       "Cache-Control": "no-store, must-revalidate",
     },
   });

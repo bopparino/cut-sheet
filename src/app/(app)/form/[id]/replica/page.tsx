@@ -4,14 +4,15 @@ import { ChevronLeft } from "lucide-react";
 import { CutsheetForm } from "@/components/cutsheet/CutsheetForm";
 import { ShopCutSheetReplica } from "@/components/cutsheet/replica/ShopCutSheetReplica";
 import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
-import { TrimPullReplica } from "@/components/cutsheet/replica/TrimPullReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
 import { FittingsCard } from "@/components/cutsheet/FittingsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
 import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
 import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
+import { PrintZoneButton } from "@/components/cutsheet/PrintZoneButton";
 import { db } from "@/lib/db";
+import { houseSheets } from "@/lib/house";
 import { getDupInfo } from "@/lib/dupes";
 import { CutsheetSchema } from "@/lib/schema";
 import { listBuilderNames } from "@/lib/builders";
@@ -89,6 +90,23 @@ export default async function ShopReplicaPage({
 
   const dup = getDupInfo(numeric);
 
+  // Zones for the Print Zone button: only offered when the property number
+  // names one vetted house (same houseSheets gate the packet route uses) and
+  // there's more than one zone to choose between.
+  const prop = (d.header.propNumber ?? "").trim();
+  const house = prop ? houseSheets(prop) : null;
+  const zones = house
+    ? [...new Set(house.map((s) => (s.data.header.zone ?? "").trim()).filter(Boolean))].sort(
+        (a, b) => {
+          const na = Number(a);
+          const nb = Number(b);
+          if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+          return a.localeCompare(b);
+        },
+      )
+    : [];
+  const zoneChoices = zones.length > 1 ? zones : [];
+
   const save = updateCutSheetReplica.bind(null, numeric);
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
 
@@ -121,6 +139,7 @@ export default async function ShopReplicaPage({
         <div className="flex flex-wrap items-center gap-1.5">
           <PrintPacketButton cutsheetId={row.id} kind="shop" label="Print Shop Packet" primary formId={FORM_ID} saveAction={save} />
           <PrintPacketButton cutsheetId={row.id} kind="foreman" label="Print Foreman Packet" formId={FORM_ID} saveAction={save} />
+          <PrintZoneButton cutsheetId={row.id} zones={zoneChoices} formId={FORM_ID} saveAction={save} />
           <span className="mx-0.5 h-5 w-px bg-border" />
           <CloneCutsheetButton cutsheetId={numeric} />
           <DeleteCutsheetButton cutsheetId={numeric} />
@@ -160,9 +179,6 @@ export default async function ShopReplicaPage({
           </div>
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
             <CutSheetReplica data={d} />
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
-            <TrimPullReplica data={d} />
           </div>
         </CutsheetForm>
 

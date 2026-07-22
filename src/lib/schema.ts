@@ -145,7 +145,9 @@ export const FILTER_RACKS_KEYS = ["16x25", "20x25", "lBox"] as const;
 export const DRAIN_PANS_KEYS = ["31x31", "31x36", "31x60"] as const;
 export const RETURN_PLENUM_KEYS = ["14x24SL", "18x24SL", "furnaceFeet"] as const;
 export const SD_MISC_KEYS = ["drive24", "slips26", "mastic", "brushes"] as const;
-export const SD_MISC_EXTRAS_KEYS = ["angles", "bubbleWrap", "foilIns"] as const;
+// "angles" was dropped July 2026: it doesn't exist on the new cut sheet and
+// the shop confirmed it's dead. Values on old rows are stripped on next parse.
+export const SD_MISC_EXTRAS_KEYS = ["bubbleWrap", "foilIns"] as const;
 export const SIMPSON_STP_KEYS = ["stp18", "stp24"] as const;
 export const MID_ATLANTIC_KEYS = [
   "buildersEdgeMetal4", "buildersEdgeMetal6", "buildersEdgeScreen4", "buildersEdgeScreen6",
@@ -213,7 +215,6 @@ const FormOnlySchema = z.object({
   straightBootBoxes: mapOf(STRAIGHT_BOOT_BOXES_SIZES),
   simpsonStp: z.object({ stp18: qty, stp24: qty }),
   sdMiscExtras: z.object({
-    angles: qty,
     bubbleWrap: qty,
     foilIns: qty,
   }),

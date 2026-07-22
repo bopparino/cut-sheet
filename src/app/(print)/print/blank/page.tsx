@@ -51,7 +51,6 @@ const SD_MISC_LABELS: Record<(typeof SD_MISC_KEYS)[number], string> = {
   brushes: "Brushes",
 };
 const SD_MISC_EXTRAS_LABELS: Record<(typeof SD_MISC_EXTRAS_KEYS)[number], string> = {
-  angles: "Angles",
   bubbleWrap: "Bubble Wrap",
   foilIns: "Foil Ins",
 };
