@@ -22,3 +22,7 @@ uploads/
 *.log
 .vscode/
 .idea/
+
+# Salesforce: mock-server output and CLI describe/query dumps
+.mock-salesforce/
+sf-*.json
