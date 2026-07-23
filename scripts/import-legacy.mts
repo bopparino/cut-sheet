@@ -259,6 +259,43 @@ function auditUnmapped(
   }
 }
 
+/**
+ * Retired products with no field on the new form: carry each as a VISIBLE
+ * line in the sheet's Miscellaneous box (per Austin, July 2026 — same
+ * philosophy as the legacy fan boxes: a reprint should match what the shop
+ * originally built). Only the 2004-07 Server library has data in these
+ * columns; they're inert for the 2023-era sources.
+ */
+function retiredToMisc(row: Row, cs: Cutsheet, map: Record<string, string>) {
+  for (const [col, label] of Object.entries(map)) {
+    const n = num(row[col]);
+    if (n > 0) cs.custom.miscellaneous.push(`${label} — ${n}`);
+  }
+}
+
+const RETIRED_STOCK_MISC: Record<string, string> = {
+  "8x10x48 Duct": '8x10 x 48" Duct',
+  "8x12x48 Duct": '8x12 x 48" Duct',
+  "8x14x48 Duct": '8x14 x 48" Duct',
+  "8x16x48 Duct": '8x16 x 48" Duct',
+  "8x18x48 Duct": '8x18 x 48" Duct',
+  "10x16x48 Duct": '10x16 x 48" Duct',
+  "3x10x100 Duct": '3x10 x 100" Duct',
+  "3x12x100 Duct": '3x12 x 100" Duct',
+};
+
+const RETIRED_PREFAB_MISC: Record<string, string> = {
+  "3 Inch Screen Cap": '3" Screen Cap',
+  // Access column really has two spaces in "Screen  Cap".
+  "4 Inch Screen  Cap": '4" Screen Cap',
+  "5 Inch x 10 Foot Insulated Flex": "5\" x 10' Insulated Flex",
+  "6 Inch x 10 Foot Insulated Flex": "6\" x 10' Insulated Flex",
+  "7 Inch x 10 Foot Insulated Flex": "7\" x 10' Insulated Flex",
+  "8 Inch x 10 Foot Insulated Flex": "8\" x 10' Insulated Flex",
+  "Furn-Conn-1ft-adj": "Furnace Connector 1' Adj",
+  "5x4x5 BV-Tee": "5x4x5 BV Tee",
+};
+
 const DUCT60_MAP: Record<string, string> = {
   "3x10x60 Duct": "3.25x10",
   "3x12x60 Duct": "3.25x12",
@@ -286,6 +323,7 @@ const BOOT_MAP: Record<string, string> = {
 
 function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
   fillMap(row, cs.stock.duct60 as Record<string, number>, DUCT60_MAP);
+  retiredToMisc(row, cs, RETIRED_STOCK_MISC);
   fillMap(row, cs.stock.sdMisc as Record<string, number>, {
     "24 Inch Drives": "drive24",
     "26 Inch Slips": "slips26",
@@ -329,14 +367,14 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
     "7InSaddleTap": "7", "8InSaddleTap": "8", "10InSaddleTap": "10",
     "12InSaddleTap": "12",
   });
-  // P400 was silently dropped for months (only P600 was mapped; the column
-  // was in neither the map nor the leftover list, so it vanished without a
-  // trace — Kimmie caught it with a red pen on the Jade sheets). Map the
-  // spelling variants seen across the letter libraries; fillMap reads a
-  // missing column as 0, so extra aliases are harmless.
+  // The old Access FORM labels this row "P400 (4\")" but the COLUMN was never
+  // renamed from an earlier product name: it is BlueFlashingP300 in every
+  // library. Verified against Jade prop 219116 (Kimmie's red-pen sheets):
+  // column P300 = 1 on zone 1 and 6 on zone 2, exactly the values her form
+  // shows as P400. It used to sit in the leftovers list as "P300", so the
+  // qty vanished from the printed sheet entirely.
   fillMap(row, cs.formOnly.blueFlashing as Record<string, number>, {
-    BlueFlashingP400: "p400",
-    "BlueFlashingP-400": "p400",
+    BlueFlashingP300: "p400",
     BlueFlashingP600: "p600",
   });
   fillMap(row, cs.formOnly.simpsonStp as Record<string, number>, {
@@ -353,7 +391,6 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
       "7InMetalWallCap", "7InMetalScreenWallCap",
       "3InBoxTPDryerBox", "3InBoxBTDryerBox", "4InBoxPlasticDryerBox",
       "60DegreeFurnaceConnector", "6x5BVentRed", "6x4BVentRed", "5x4BVentRed",
-      "BlueFlashingP300",
     ],
     leftovers,
     CONSTANTS.stock,
@@ -444,6 +481,7 @@ function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
 }
 
 function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
+  retiredToMisc(row, cs, RETIRED_PREFAB_MISC);
   fillMap(row, cs.formOnly.ovalSHeads as Record<string, number>, {
     "8x6x4 Oval Stackheads": "8x6x4", "8x6x5 Oval Stackheads": "8x6x5",
     "10x6x6 Oval Stackheads": "10x6x6", "12x6x7 Oval Stackheads": "12x6x7",
@@ -637,8 +675,9 @@ function assembleSource(tables: Tables, sourceName: string) {
   };
 
   // Every column the mappers read this source, per table (the join keys are
-  // read by byId() on the raw rows, before wrapping — mark them by hand).
-  const joinKeys = ["Cut Sheet #", "Cut Sheet ."];
+  // read by byId() on the raw rows, before wrapping — mark them by hand;
+  // property_number rides along in every section table as a second join key).
+  const joinKeys = ["Cut Sheet #", "Cut Sheet .", "property_number"];
   const seen = {
     customDuct: new Set<string>(joinKeys),
     stock: new Set<string>(joinKeys),
@@ -679,7 +718,14 @@ function assembleSource(tables: Tables, sourceName: string) {
     zone: str(h.Zone),
     eqTo: eq as Cutsheet["header"]["eqTo"],
   };
-  collectLeftovers(h, ["Comments", "Creation Notes"], leftovers, CONSTANTS.header);
+  // Cloned From / AsBuilts initials are header metadata with no home on the
+  // new form — preserved as hidden legacyNotes, never printed.
+  collectLeftovers(
+    h,
+    ["Comments", "Creation Notes", "Cut Sheet Cloned From", "AsBuilts Reviewed by Initials"],
+    leftovers,
+    CONSTANTS.header,
+  );
 
   const custom = customById.get(id);
   const stock = stockById.get(id);

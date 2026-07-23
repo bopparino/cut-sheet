@@ -26,10 +26,25 @@ const argv = process.argv.slice(2);
 const update = argv.includes("--update");
 const drawingsIdx = argv.indexOf("--drawings");
 const drawingsDir = drawingsIdx >= 0 ? argv[drawingsIdx + 1] : null;
+// --force-edited 3723,3724,... : cutsheet ids whose edited-sheet guard the
+// admin has reviewed and chosen to override (see the server route).
+const forceIdx = argv.indexOf("--force-edited");
+const forceEditedIds =
+  forceIdx >= 0
+    ? (argv[forceIdx + 1] ?? "")
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n))
+    : undefined;
 const positional = argv.filter(
   // drawingsIdx is -1 when --drawings is absent; -1 + 1 = 0 was silently
   // eating the first positional arg (the bundle path).
-  (a, i) => a !== "--update" && a !== "--drawings" && (drawingsIdx < 0 || i !== drawingsIdx + 1),
+  (a, i) =>
+    a !== "--update" &&
+    a !== "--drawings" &&
+    a !== "--force-edited" &&
+    (drawingsIdx < 0 || i !== drawingsIdx + 1) &&
+    (forceIdx < 0 || i !== forceIdx + 1),
 );
 const [bundlePath, baseUrl] = positional;
 const session = process.env.CUTSHEET_SESSION;
@@ -66,6 +81,8 @@ async function post(body: unknown, what: string) {
     skipped: number;
     attached?: number;
     unmatched?: number;
+    unknownSkipped?: number;
+    skippedEdited?: number[];
   };
 }
 
@@ -75,20 +92,36 @@ console.log(`${sheets.length} sheets in ${bundlePath} -> ${baseUrl}${update ? " 
 let imported = 0;
 let updated = 0;
 let skipped = 0;
+let unknownSkipped = 0;
+const skippedEdited: number[] = [];
 for (let i = 0; i < sheets.length; i += SHEET_CHUNK) {
   const out = await post(
-    { mode, sheets: sheets.slice(i, i + SHEET_CHUNK) },
+    { mode, forceEditedIds, sheets: sheets.slice(i, i + SHEET_CHUNK) },
     `sheet chunk ${i / SHEET_CHUNK + 1}`,
   );
   imported += out.imported;
   updated += out.updated ?? 0;
   skipped += out.skipped;
+  unknownSkipped += out.unknownSkipped ?? 0;
+  skippedEdited.push(...(out.skippedEdited ?? []));
   console.log(
     `sheets ${i / SHEET_CHUNK + 1}/${Math.ceil(sheets.length / SHEET_CHUNK)}: ` +
       `+${out.imported} imported, ~${out.updated ?? 0} updated, ${out.skipped} skipped`,
   );
 }
 console.log(`sheets done: ${imported} imported, ${updated} updated, ${skipped} skipped`);
+if (unknownSkipped > 0) {
+  console.log(
+    `${unknownSkipped} sheets not in the server's import ledger were left alone ` +
+      `(update mode never inserts).`,
+  );
+}
+if (skippedEdited.length > 0) {
+  console.log(
+    `${skippedEdited.length} sheets were skipped because a user edited them in the app ` +
+      `(human edits win). Review by id: ${skippedEdited.join(", ")}`,
+  );
+}
 
 if (drawingsDir) {
   type Entry = { key: string; label: string; file: string };

@@ -17,8 +17,15 @@ export const dynamic = "force-dynamic";
 
 const BundleSchema = z.object({
   // "update" refreshes already-imported sheets in place from the incoming
-  // data (Access wins); the default keeps the original skip-if-known behavior.
+  // data (Access wins) — but ONLY sheets that are already in the ledger AND
+  // that no user has edited in the app (updated_by IS NULL): a refresh must
+  // never insert surprise sheets or clobber human work. The default keeps
+  // the original insert-if-unknown / skip-if-known behavior.
   mode: z.enum(["insert", "update"]).optional(),
+  // Explicit override for the edited-sheet guard: cutsheet ids the admin has
+  // REVIEWED (diffed against the incoming data) and chosen to refresh anyway.
+  // Named ids only - there is deliberately no "force all" switch.
+  forceEditedIds: z.array(z.number().int()).max(5000).optional(),
   sheets: z
     .array(
       z.object({
@@ -91,6 +98,10 @@ export async function POST(req: Request) {
      VALUES (?, 'image', ?, ?, ?, ?)`,
   );
 
+  const editedBy = db.prepare(
+    "SELECT updated_by AS by FROM cutsheets WHERE id = ?",
+  );
+
   const updateMode = bundle.mode === "update";
   let imported = 0;
   let updated = 0;
@@ -98,6 +109,11 @@ export async function POST(req: Request) {
   let foldersCreated = 0;
   let attached = 0;
   let unmatched = 0;
+  // Update-mode safety reporting: which known sheets were left alone because
+  // a user edited them in the app, and how many incoming sheets had no ledger
+  // entry (never inserted in update mode - a refresh is not an import).
+  const skippedEdited: number[] = [];
+  let unknownSkipped = 0;
 
   const run = db.transaction(() => {
     const folder = (name: string, parentId: number | null): number => {
@@ -116,11 +132,26 @@ export async function POST(req: Request) {
       const known = keyRow.get(s.key) as { cutsheet_id: number } | undefined;
       if (known) {
         if (updateMode) {
-          updateSheet.run(JSON.stringify(s.cutsheet), s.updatedAt ?? null, known.cutsheet_id);
-          updated++;
+          // Human edits win over Access: a sheet someone touched in the app
+          // is reported, not refreshed - unless the admin reviewed it and
+          // named its id in forceEditedIds.
+          const edit = editedBy.get(known.cutsheet_id) as { by: number | null } | undefined;
+          if (edit && edit.by != null && !bundle.forceEditedIds?.includes(known.cutsheet_id)) {
+            skippedEdited.push(known.cutsheet_id);
+          } else {
+            updateSheet.run(JSON.stringify(s.cutsheet), s.updatedAt ?? null, known.cutsheet_id);
+            updated++;
+          }
         } else {
           skipped++;
         }
+        continue;
+      }
+      if (updateMode) {
+        // A refresh is not an import: keys the ledger doesn't know (sources
+        // that were never imported, or Access rows whose identity changed
+        // since import) are counted and reported, never inserted.
+        unknownSkipped++;
         continue;
       }
       const letterId = folder(builderLetter(s.builder), importsId);
@@ -149,5 +180,14 @@ export async function POST(req: Request) {
   });
   run();
 
-  return NextResponse.json({ imported, updated, skipped, foldersCreated, attached, unmatched });
+  return NextResponse.json({
+    imported,
+    updated,
+    skipped,
+    foldersCreated,
+    attached,
+    unmatched,
+    unknownSkipped,
+    skippedEdited,
+  });
 }
