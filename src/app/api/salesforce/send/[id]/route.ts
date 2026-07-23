@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { verifyPassword } from "@/lib/password";
+import { requireSfPushPassword } from "@/lib/settings";
 import {
   SalesforceError,
   findLotByProp,
@@ -40,6 +42,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       { error: "Salesforce sending is not configured on this server." },
       { status: 503 },
     );
+  }
+
+  // Staged-rollout gate (admin panel → Salesforce → "Require SF Push
+  // Password"): while ON, the caller must confirm an ADMIN account's password
+  // with every push. Enforced HERE, server-side — hiding the prompt in the UI
+  // would not protect anything. The check runs before any Salesforce work.
+  if (requireSfPushPassword()) {
+    const body = (await req.json().catch(() => ({}))) as { password?: string };
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!password) {
+      return NextResponse.json(
+        { error: "Sending to Salesforce requires the push password.", passwordRequired: true },
+        { status: 403 },
+      );
+    }
+    const admins = db
+      .prepare<[], { password_hash: string }>("SELECT password_hash FROM users WHERE role = 'admin'")
+      .all();
+    const ok = admins.some((a) => verifyPassword(password, a.password_hash));
+    if (!ok) {
+      // Flat delay keeps casual guessing slow without a rate-limit table.
+      await new Promise((r) => setTimeout(r, 750));
+      return NextResponse.json(
+        { error: "Incorrect push password.", passwordRequired: true },
+        { status: 403 },
+      );
+    }
   }
 
   const { id } = await params;

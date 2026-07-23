@@ -279,6 +279,20 @@ function migrate(db: Database.Database): void {
     `);
     db.pragma("user_version = 8");
   }
+
+  if (version < 9) {
+    // App settings the admin can flip at runtime (vs env vars, which need a
+    // redeploy). First tenant: require_sf_push_password — the staged-rollout
+    // gate on Send to Salesforce (src/lib/settings.ts holds the defaults).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    db.pragma("user_version = 9");
+  }
 }
 
 // Lazy: open on first access. `next build` imports every route module to

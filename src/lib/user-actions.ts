@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getCurrentUser, requireUser, requireAdmin } from "@/lib/auth";
+import { setSetting, REQUIRE_SF_PUSH_PASSWORD_KEY } from "@/lib/settings";
 
 type UserRow = { id: number; username: string; display_name: string; password_hash: string; role: string };
 
@@ -115,6 +116,19 @@ export async function deleteUser(formData: FormData) {
   db.prepare("DELETE FROM users WHERE id = ?").run(id);
   revalidatePath("/admin");
   redirect("/admin?saved=deleted");
+}
+
+// ----- Admin: app settings ------------------------------------------------------
+
+// The Send-to-Salesforce staged-rollout switch (admin panel → Salesforce).
+// "yes" = every push must confirm an admin account's password; "no" = the
+// button works for everyone (full rollout).
+export async function updateSfPushPasswordSetting(formData: FormData) {
+  await requireAdmin();
+  const value = String(formData.get("require") ?? "yes") === "no" ? "no" : "yes";
+  setSetting(REQUIRE_SF_PUSH_PASSWORD_KEY, value);
+  revalidatePath("/admin");
+  redirect("/admin?saved=sfgate");
 }
 
 // Re-exported for pages that want the current user without importing auth directly.
