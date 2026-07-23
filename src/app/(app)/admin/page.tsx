@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { createUser, updateUser, resetPassword, deleteUser } from "@/lib/user-actions";
+import { createUser, updateUser, resetPassword, deleteUser, updateSfPushPasswordSetting } from "@/lib/user-actions";
 import { relativeTime, formatDateTime } from "@/lib/utils";
 import { getSystemStats, getUserActivity, formatBytes } from "@/lib/admin-stats";
+import { salesforceEnabled } from "@/lib/salesforce";
+import { requireSfPushPassword } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ const SAVED: Record<string, string> = {
   updated: "User saved.",
   reset: "Password reset.",
   deleted: "User deleted.",
+  sfgate: "Salesforce push setting saved.",
 };
 
 function cutsheetTitle(cdata: string | null, id: number | null): string {
@@ -64,6 +67,27 @@ export default async function AdminPage({
 
   const stats = getSystemStats();
   const activity = getUserActivity();
+
+  // Salesforce: live/dormant status, the push-password gate, recent sends.
+  const sfLive = salesforceEnabled();
+  const sfGate = requireSfPushPassword();
+  type SfEventRow = {
+    created_at: string;
+    prop_number: string;
+    kind: string;
+    new_version: number;
+    uname: string | null;
+    udisp: string | null;
+  };
+  const sfEvents = db
+    .prepare<[], SfEventRow>(
+      `SELECT se.created_at, se.prop_number, se.kind, se.new_version,
+              u.username AS uname, u.display_name AS udisp
+       FROM sf_send_events se
+       LEFT JOIN users u ON u.id = se.user_id
+       ORDER BY se.created_at DESC, se.id DESC LIMIT 30`,
+    )
+    .all();
 
   return (
     <div>
@@ -208,6 +232,59 @@ export default async function AdminPage({
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Salesforce: rollout gate + push audit log */}
+        <section className="space-y-3">
+          <h2 className="label-caps">Salesforce</h2>
+          <div className="flex flex-wrap items-center gap-4 rounded-sm border border-border bg-card px-[18px] py-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold text-foreground">
+                Send to Salesforce is{" "}
+                {sfLive ? (
+                  <span className="text-foreground">LIVE</span>
+                ) : (
+                  <span className="text-[var(--text-2)]">dormant (Salesforce env vars not set)</span>
+                )}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-[var(--text-2)]">
+                While the push password is required, every &ldquo;Send to Salesforce&rdquo; click must
+                confirm an admin account&rsquo;s password before anything is pushed. Turn it off for
+                the full rollout once the team is trained.
+              </p>
+            </div>
+            <form action={updateSfPushPasswordSetting} className="flex items-end gap-2">
+              <Labeled label="Require SF Push Password" className="w-[180px]">
+                <select
+                  name="require"
+                  defaultValue={sfGate ? "yes" : "no"}
+                  className="h-9 w-full rounded-sm border border-input bg-card px-2 text-[13px] outline-none"
+                >
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </Labeled>
+              <button type="submit" className="h-9 rounded-sm border border-input bg-card px-3 text-[12.5px] font-semibold text-foreground hover:bg-accent">
+                Save
+              </button>
+            </form>
+          </div>
+          {sfEvents.length > 0 && (
+            <div className="overflow-hidden rounded-sm border border-border bg-card">
+              {sfEvents.map((e, i) => (
+                <div key={i} className="flex items-center gap-3 border-b border-[var(--divider)] px-[18px] py-2.5 last:border-0">
+                  <span className="font-mono-data w-[64px] shrink-0 text-[11.5px] text-[var(--text-3)]">{relativeTime(e.created_at)}</span>
+                  <span className="min-w-0 flex-1 truncate text-[13.5px] text-foreground">
+                    Prop {e.prop_number} · {e.kind === "shop_packet" ? "Shop Packet" : "Foreman Packet"}
+                  </span>
+                  <span className="font-mono-data shrink-0 rounded-sm border border-border bg-[var(--fill)] px-1.5 py-px text-[10px] uppercase text-[var(--text-2)]">
+                    {e.new_version ? "new version" : "new file"}
+                  </span>
+                  <span className="font-mono-data shrink-0 text-[12px] text-[var(--text-2)]">{e.udisp || e.uname || "unknown"}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Backups */}

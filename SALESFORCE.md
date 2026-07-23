@@ -108,14 +108,32 @@ SALESFORCE_CLIENT_ID=mock SALESFORCE_CLIENT_SECRET=mock npm run dev
 Received PDFs land in `.mock-salesforce/` so you can open exactly what
 "Salesforce" got.
 
+## The push password (staged rollout)
+
+Admin → **Salesforce** → "Require SF Push Password" (default **Yes**).
+
+While **Yes**, every "Send to Salesforce" click opens a password prompt and
+the send only runs if the entered password matches an **admin account's**
+password — enforced server-side, so hiding the button or crafting the
+request by hand doesn't get around it. This lets the integration be fully
+live in prod while only the admin (or someone trained and trusted with the
+password) can actually push. Every push — gated or not — lands in the
+Salesforce section's audit log with who/what/when and whether it created or
+versioned the files.
+
+When the team is trained, flip it to **No** and the button works for
+everyone with no prompt. No redeploy either way.
+
 ## Prod activation checklist
 
 1. Repeat the Connected App + integration user setup in prod.
 2. Set the env vars on Railway (prod My Domain URL + prod key/secret,
-   `SALESFORCE_ENABLED=true`). Railway redeploys; the button appears.
-3. Pick one real house, send, verify the two Files on the lot in Salesforce.
+   `SALESFORCE_ENABLED=true`). Railway redeploys; the button appears —
+   password-gated by default (see above).
+3. Pick one real house, send with the admin password, verify the two Files
+   on the lot in Salesforce.
 4. Re-send the same house; confirm versioning (no duplicate file cards).
-5. Tell Kimmie.
+5. Train Kimmie, then flip "Require SF Push Password" to No.
 
 To turn it all off again: set `SALESFORCE_ENABLED=false`. History in
 `sf_send_events` is kept either way.

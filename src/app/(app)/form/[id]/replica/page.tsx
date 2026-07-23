@@ -13,6 +13,7 @@ import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
 import { PrintZoneButton } from "@/components/cutsheet/PrintZoneButton";
 import { SendToSalesforceButton } from "@/components/cutsheet/SendToSalesforceButton";
 import { salesforceEnabled } from "@/lib/salesforce";
+import { requireSfPushPassword } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { houseSheets } from "@/lib/house";
 import { getDupInfo } from "@/lib/dupes";
@@ -144,7 +145,12 @@ export default async function ShopReplicaPage({
           <PrintZoneButton cutsheetId={row.id} zones={zoneChoices} formId={FORM_ID} saveAction={save} />
           {/* Dormant until the Salesforce env vars are set (see SALESFORCE.md). */}
           {salesforceEnabled() && (
-            <SendToSalesforceButton cutsheetId={row.id} formId={FORM_ID} saveAction={save} />
+            <SendToSalesforceButton
+              cutsheetId={row.id}
+              requirePassword={requireSfPushPassword()}
+              formId={FORM_ID}
+              saveAction={save}
+            />
           )}
           <span className="mx-0.5 h-5 w-px bg-border" />
           <CloneCutsheetButton cutsheetId={numeric} />
