@@ -5,6 +5,7 @@ import {
   RND_SIZES,
   SD_MISC_KEYS,
   SIMPSON_STP_KEYS,
+  STRAIGHT_BOOT_BOXES_SIZES,
   type Cutsheet,
 } from "@/lib/schema";
 import {
@@ -97,13 +98,6 @@ export function ShopCutSheetReplica({ data, builders }: { data: Cutsheet; builde
         </div>
         {/* Col 4 */}
         <div>
-          <Section title="Plenum Package">
-            <PlenumRadios value={d.header.plenumPackage} />
-          </Section>
-          <Section title="Return Plenum">
-            <SingletonInputRow label="14x24 S.L." name="returnPlenum.14x24SL" value={fo.returnPlenum["14x24SL"]} />
-            <SingletonInputRow label="18x24 S.L." name="returnPlenum.18x24SL" value={fo.returnPlenum["18x24SL"]} />
-          </Section>
           <Section title="Furnace Feet">
             <SingletonInputRow label="Furnace Feet" name="returnPlenum.furnaceFeet" value={fo.returnPlenum.furnaceFeet} />
           </Section>
@@ -113,31 +107,15 @@ export function ShopCutSheetReplica({ data, builders }: { data: Cutsheet; builde
           <Section title="Filter Racks">
             <QtyInputList prefix="filterRacks" sizes={FILTER_RACKS_KEYS} values={fo.filterRacks} label={(k) => FILTER_RACKS_LABELS[k]} />
           </Section>
+          <Section title="Straight Ceiling Boot">
+            <QtyInputList prefix="straightBootBoxes" sizes={STRAIGHT_BOOT_BOXES_SIZES} values={fo.straightBootBoxes} />
+          </Section>
         </div>
       </div>
       {/* The fitting drawing grid is intentionally omitted from the editor -
           it's a draw-on-paper section, so it stays only on the printed/filled
           PDF (see FilledCutSheet). Digital fitting sketches attach via the
           Attachments upload on the replica page. */}
-    </div>
-  );
-}
-
-function PlenumRadios({ value }: { value: string }) {
-  const opts = [
-    { v: "small", label: "Small", detail: "· 18x22x18" },
-    { v: "large", label: "Large", detail: "· 24x22x18" },
-    { v: "none", label: "None", detail: "" },
-  ];
-  return (
-    <div className="space-y-1.5">
-      {opts.map((o) => (
-        <label key={o.v} className="flex items-center gap-2">
-          <input type="radio" name="plenumPackage" value={o.v} defaultChecked={value === o.v} className="h-4 w-4 accent-black" />
-          <span className="font-bold">{o.label}</span>
-          {o.detail && <span className="text-[8px]">{o.detail}</span>}
-        </label>
-      ))}
     </div>
   );
 }

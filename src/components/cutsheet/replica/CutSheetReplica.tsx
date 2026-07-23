@@ -16,7 +16,6 @@ import {
   RND_ELL_SIZES,
   RND_PIPE_SIZES,
   SADDLE_TAP_SIZES,
-  STRAIGHT_BOOT_BOXES_SIZES,
   type Cutsheet,
 } from "@/lib/schema";
 import {
@@ -98,6 +97,17 @@ export function CutSheetReplica({ data }: { data: Cutsheet }) {
       <div className="grid grid-cols-4">
         {/* Col 1 */}
         <div>
+          {/* Plenum Package / Return Plenum lead the page (moved from the Shop
+              Cut Sheet, July 2026 — Straight Ceiling Boot went the other way).
+              Same single-submit rule as the header: these fields render inputs
+              exactly once across the two pages, just on page 2 now. */}
+          <Section title="Plenum Package">
+            <PlenumRadios value={d.header.plenumPackage} />
+          </Section>
+          <Section title="Return Plenum">
+            <SingletonInputRow label="14x24 S.L." name="returnPlenum.14x24SL" value={fo.returnPlenum["14x24SL"]} />
+            <SingletonInputRow label="18x24 S.L." name="returnPlenum.18x24SL" value={fo.returnPlenum["18x24SL"]} />
+          </Section>
           <Section title="Boots (Ell / End / Strt)">
             <MultiQtyInputTable
               colLabels={["Ell", "End", "Strt"]}
@@ -113,9 +123,6 @@ export function CutSheetReplica({ data }: { data: Cutsheet }) {
           </Section>
           <Section title="Oval Stack Heads">
             <QtyInputList prefix="ovalSHeads" sizes={OVAL_S_HEADS_SIZES} values={fo.ovalSHeads} />
-          </Section>
-          <Section title="Straight Ceiling Boot">
-            <QtyInputList prefix="straightBootBoxes" sizes={STRAIGHT_BOOT_BOXES_SIZES} values={fo.straightBootBoxes} />
           </Section>
           <Section title="Round Pipe">
             <QtyInputList prefix="rndPipe" sizes={RND_PIPE_SIZES} values={d.truck.rndPipe} />
@@ -227,6 +234,25 @@ export function CutSheetReplica({ data }: { data: Cutsheet }) {
         <RegisterColumn title="Filter Grills" prefix="filterGrills" initial={fo.filterGrills} />
         <RegisterColumn title="Floor Regs" prefix="floorRegs" initial={fo.floorRegs} />
       </div>
+    </div>
+  );
+}
+
+function PlenumRadios({ value }: { value: string }) {
+  const opts = [
+    { v: "small", label: "Small", detail: "· 18x22x18" },
+    { v: "large", label: "Large", detail: "· 24x22x18" },
+    { v: "none", label: "None", detail: "" },
+  ];
+  return (
+    <div className="space-y-1.5">
+      {opts.map((o) => (
+        <label key={o.v} className="flex items-center gap-2">
+          <input type="radio" name="plenumPackage" value={o.v} defaultChecked={value === o.v} className="h-4 w-4 accent-black" />
+          <span className="font-bold">{o.label}</span>
+          {o.detail && <span className="text-[8px]">{o.detail}</span>}
+        </label>
+      ))}
     </div>
   );
 }
