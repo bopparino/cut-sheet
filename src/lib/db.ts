@@ -57,6 +57,15 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_attachments_cutsheet ON attachments(cutsheet_id);
+
+    -- Dup-flag scratch table (see src/lib/dupes.ts). Created here so that
+    -- module never has to touch the db at import time - opening the DB
+    -- guarantees the table exists.
+    CREATE TABLE IF NOT EXISTS dup_flags (
+      cutsheet_id INTEGER PRIMARY KEY REFERENCES cutsheets(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('exact', 'likely')),
+      match_id INTEGER NOT NULL
+    );
   `);
 
   // Versioned migrations. user_version defaults to 0 on fresh DBs and on
@@ -215,8 +224,14 @@ function migrate(db: Database.Database): void {
     if (userCount === 0) {
       const username = process.env.ADMIN_USERNAME || "acantrell";
       const password = process.env.ADMIN_PASSWORD || "AllMight02@";
+      // OR IGNORE: `next build` collects page data in several worker
+      // PROCESSES; each one that touches the db opens a fresh build-container
+      // DB and runs this migration concurrently. The count check above isn't
+      // atomic across processes, so two workers can both see 0 and both
+      // insert - the loser used to die with UNIQUE(users.username) and take
+      // the whole build down with it.
       db.prepare(
-        "INSERT INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, 'admin')",
+        "INSERT OR IGNORE INTO users (username, display_name, password_hash, role) VALUES (?, ?, ?, 'admin')",
       ).run(username, username, hashPassword(password));
     }
 

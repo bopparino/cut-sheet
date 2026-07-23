@@ -10,13 +10,12 @@ import { db } from "@/lib/db";
 // exact  = every box identical (data normalized: dates/sheet# ignored)
 // likely = same builder + house type + prop + lot + zone, but boxes differ
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS dup_flags (
-    cutsheet_id INTEGER PRIMARY KEY REFERENCES cutsheets(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL CHECK (kind IN ('exact', 'likely')),
-    match_id INTEGER NOT NULL
-  );
-`);
+// NO module-level db access here: several route modules import this file, and
+// `next build` imports route modules in parallel worker processes while
+// collecting page data. A module-load db.exec forces every worker to open and
+// migrate the DB concurrently, which is exactly the race db.ts's lazy-open
+// design exists to avoid (and what broke the Railway build). The dup_flags
+// table is created by the bootstrap in db.ts, on first real connection.
 
 type Parsed = {
   header?: Record<string, string>;
