@@ -388,12 +388,6 @@ function ShopPage() {
         </div>
         {/* Col 4 */}
         <div>
-          <Section title="Plenum Package">
-            <PlenumBlock />
-          </Section>
-          <Section title="Return Plenum">
-            <QtyList items={["14x24 S.L.", "18x24 S.L."]} />
-          </Section>
           <Section title="Furnace Feet">
             <QtyList items={["Furnace Feet"]} />
           </Section>
@@ -402,6 +396,9 @@ function ShopPage() {
           </Section>
           <Section title="Filter Racks">
             <QtyList items={FILTER_RACKS_KEYS.map((k) => FILTER_RACKS_LABELS[k])} />
+          </Section>
+          <Section title="Straight Ceiling Boot">
+            <QtyList items={[...STRAIGHT_BOOT_BOXES_SIZES]} />
           </Section>
         </div>
       </div>
@@ -461,14 +458,19 @@ function CutPage() {
       <div className="grid grid-cols-4">
         {/* Col 1 */}
         <div>
+          {/* Plenum Package / Return Plenum lead the page (moved from the Shop
+              Cut Sheet, July 2026 — Straight Ceiling Boot went the other way). */}
+          <Section title="Plenum Package">
+            <PlenumBlock />
+          </Section>
+          <Section title="Return Plenum">
+            <QtyList items={["14x24 S.L.", "18x24 S.L."]} />
+          </Section>
           <Section title="Boots (Ell / End / Strt)">
             <MultiQtyTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map(bootLabel)} />
           </Section>
           <Section title="Oval Stack Heads">
             <QtyList items={[...OVAL_S_HEADS_SIZES]} />
-          </Section>
-          <Section title="Straight Ceiling Boot">
-            <QtyList items={[...STRAIGHT_BOOT_BOXES_SIZES]} />
           </Section>
           <Section title="Round Pipe">
             <QtyList items={[...RND_PIPE_SIZES]} />
@@ -548,6 +550,10 @@ function CutPage() {
           </Section>
         </div>
       </div>
+      {/* Spacer: soaks up leftover height so the fixed-height reg strip and
+          footer sit at the bottom of the sheet (open scribble room, like the
+          band above page 1's draw grid used to be). */}
+      <div className="flex-1" />
       <BottomStrip />
       <Footer />
     </div>
@@ -555,10 +561,13 @@ function CutPage() {
 }
 
 function BottomStrip() {
-  // flex-1: the reg boxes absorb the leftover page height (mirrors page 1's
-  // draw grid) — write-in room instead of a dead band above a fixed row.
+  // Fixed-height reg boxes (shop feedback, July 2026): the old flex-1 strip
+  // absorbed all leftover page height and printed ~3.4in tall — too much for
+  // a hand-written size list. Now the boxes hold at 2.2in and the CutPage's
+  // flex spacer above eats the slack instead, so the strip and footer stay
+  // anchored to the bottom of the sheet.
   return (
-    <div className="grid flex-1 grid-cols-4 border border-black border-t-0">
+    <div className="grid grid-cols-4 border border-black border-t-0">
       <OpenBox title="Wall Regs" />
       <OpenBox title="Grills" />
       <OpenBox title="Filter Grills" />

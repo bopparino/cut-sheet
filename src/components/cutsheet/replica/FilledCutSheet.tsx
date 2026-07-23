@@ -326,12 +326,6 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
         </div>
         {/* Col 4 */}
         <div>
-          <Section title="Plenum Package">
-            <PlenumChecks value={d.header.plenumPackage} />
-          </Section>
-          <Section title="Return Plenum">
-            <VList items={[{ label: "14x24 S.L.", v: num(d.formOnly.returnPlenum["14x24SL"]) }, { label: "18x24 S.L.", v: num(d.formOnly.returnPlenum["18x24SL"]) }]} />
-          </Section>
           <Section title="Furnace Feet">
             <VRow label="Furnace Feet" v={num(d.formOnly.returnPlenum.furnaceFeet)} />
           </Section>
@@ -340,6 +334,9 @@ function ShopPage({ data: d }: { data: Cutsheet }) {
           </Section>
           <Section title="Filter Racks">
             <VList items={FILTER_RACKS_KEYS.map((k) => ({ label: FILTER_RACKS_LABELS[k], v: num(d.formOnly.filterRacks[k]) }))} />
+          </Section>
+          <Section title="Straight Ceiling Boot">
+            <VList items={STRAIGHT_BOOT_BOXES_SIZES.map((s) => ({ label: s, v: num(d.formOnly.straightBootBoxes[s]) }))} />
           </Section>
         </div>
       </div>
@@ -378,14 +375,19 @@ function CutPage({ data: d }: { data: Cutsheet }) {
       <div className="grid grid-cols-4">
         {/* Col 1 */}
         <div>
+          {/* Plenum Package / Return Plenum lead the page (moved from the Shop
+              Cut Sheet, July 2026 — Straight Ceiling Boot went the other way). */}
+          <Section title="Plenum Package">
+            <PlenumChecks value={d.header.plenumPackage} />
+          </Section>
+          <Section title="Return Plenum">
+            <VList items={[{ label: "14x24 S.L.", v: num(fo.returnPlenum["14x24SL"]) }, { label: "18x24 S.L.", v: num(fo.returnPlenum["18x24SL"]) }]} />
+          </Section>
           <Section title="Boots (Ell / End / Strt)">
             <VMultiTable cols={["Ell", "End", "Strt"]} rows={ELL_BOOTS_SIZES.map((s) => ({ label: bootLabel(s), cells: [{ v: num(fo.ellBoots[s]) }, { v: num(fo.endBoots[s]) }, { v: num(fo.strtBoots[s]) }] }))} />
           </Section>
           <Section title="Oval Stack Heads">
             <VList items={OVAL_S_HEADS_SIZES.map((s) => ({ label: s, v: num(fo.ovalSHeads[s]) }))} />
-          </Section>
-          <Section title="Straight Ceiling Boot">
-            <VList items={STRAIGHT_BOOT_BOXES_SIZES.map((s) => ({ label: s, v: num(fo.straightBootBoxes[s]) }))} />
           </Section>
           <Section title="Round Pipe">
             <VList items={RND_PIPE_SIZES.map((s) => ({ label: s, v: num(d.truck.rndPipe[s]) }))} />
