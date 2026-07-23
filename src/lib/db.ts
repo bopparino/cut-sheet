@@ -256,6 +256,29 @@ function migrate(db: Database.Database): void {
     `);
     db.pragma("user_version = 7");
   }
+
+  if (version < 8) {
+    // Salesforce send ledger: one row per packet PDF pushed onto a Salesforce
+    // Lot record (scaffolded July 2026, dormant until the env vars are set —
+    // see SALESFORCE.md). The table exists either way so history is never
+    // lost to a feature flag.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sf_send_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cutsheet_id INTEGER REFERENCES cutsheets(id) ON DELETE SET NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        prop_number TEXT NOT NULL DEFAULT '',
+        sf_lot_id TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL CHECK (kind IN ('shop_packet', 'foreman_packet')),
+        content_document_id TEXT NOT NULL DEFAULT '',
+        new_version INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_sf_send_events_cutsheet ON sf_send_events(cutsheet_id);
+      CREATE INDEX IF NOT EXISTS idx_sf_send_events_prop ON sf_send_events(prop_number);
+    `);
+    db.pragma("user_version = 8");
+  }
 }
 
 // Lazy: open on first access. `next build` imports every route module to
