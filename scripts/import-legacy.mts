@@ -216,6 +216,49 @@ function collectLeftovers(
   }
 }
 
+// ----- unmapped-column audit ----------------------------------------------
+// The P400 lesson: a column that's neither mapped, nor leftover-listed, nor a
+// form-default constant vanishes SILENTLY — no error, no leftover line, the
+// data just never arrives. Every row handed to a mapper is wrapped in a
+// recording proxy, so any column the mappers never even LOOK at gets flagged
+// per source after assembly. New columns in future exports announce
+// themselves instead of dying quietly.
+
+/** Wrap a row so every column read is recorded into `seen`. */
+const track = (row: Row, seen: Set<string>): Row =>
+  new Proxy(row, {
+    get(t, p) {
+      if (typeof p === "string") seen.add(p);
+      return t[p as string];
+    },
+  });
+
+// Columns dropped ON PURPOSE (decided with the shop) — the audit stays quiet.
+const DELIBERATELY_DROPPED = new Set([
+  "Angles", // not on the new cut sheet; shop confirmed it's dead (July 2026)
+]);
+
+function auditUnmapped(
+  source: string,
+  tableName: string,
+  table: { headers: string[]; rows: Row[] } | undefined,
+  seen: Set<string>,
+  constants: Set<string>,
+) {
+  if (!table) return;
+  const flagged: string[] = [];
+  for (const col of table.headers) {
+    if (seen.has(col) || constants.has(col) || DELIBERATELY_DROPPED.has(col)) continue;
+    let n = 0;
+    for (const r of table.rows) if (present(r[col])) n++;
+    if (n > 0) flagged.push(`${col} — data on ${n} row${n === 1 ? "" : "s"}`);
+  }
+  if (flagged.length > 0) {
+    console.warn(`⚠ ${source} / ${tableName}: UNMAPPED columns with data (values are NOT imported):`);
+    for (const f of flagged) console.warn(`    ${f}`);
+  }
+}
+
 const DUCT60_MAP: Record<string, string> = {
   "3x10x60 Duct": "3.25x10",
   "3x12x60 Duct": "3.25x12",
@@ -258,7 +301,6 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
     "12x5 Round": "12x5", "14x5 Round": "14x5", "16x5 Round": "16x5",
   });
   fillMap(row, cs.formOnly.sdMiscExtras as Record<string, number>, {
-    Angles: "angles",
     FoilInsulation: "foilIns",
   });
   fillMap(row, cs.formOnly.birdCage as Record<string, number>, {
@@ -287,7 +329,14 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
     "7InSaddleTap": "7", "8InSaddleTap": "8", "10InSaddleTap": "10",
     "12InSaddleTap": "12",
   });
+  // P400 was silently dropped for months (only P600 was mapped; the column
+  // was in neither the map nor the leftover list, so it vanished without a
+  // trace — Kimmie caught it with a red pen on the Jade sheets). Map the
+  // spelling variants seen across the letter libraries; fillMap reads a
+  // missing column as 0, so extra aliases are harmless.
   fillMap(row, cs.formOnly.blueFlashing as Record<string, number>, {
+    BlueFlashingP400: "p400",
+    "BlueFlashingP-400": "p400",
     BlueFlashingP600: "p600",
   });
   fillMap(row, cs.formOnly.simpsonStp as Record<string, number>, {
@@ -312,12 +361,17 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
 }
 
 function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
-  // Sheet Metal Lines -> free-text additions on the Custom ticket.
+  // Sheet Metal Lines = the old form's Miscellaneous box. They used to land
+  // in customLines, which only print at the BOTTOM OF THE CUSTOM PICK TICKET
+  // — invisible on the cut sheet itself, so Kimmie read them as "not brought
+  // over". Route them into custom.miscellaneous instead: that's the sheet's
+  // Miscellaneous box, and ticket-rules already prints those rows on the
+  // Custom ticket too, so nothing is lost off the ticket either.
   for (let i = 1; i <= 12; i++) {
     const label = str(row[`Sheet Metal Line ${i}`]);
     if (!label) continue;
     const qty = num(row[`Sheet Metal Line ${i} Qty`]);
-    cs.customLines.push({ ticket: "custom", label, qty: qty || 1 });
+    cs.custom.miscellaneous.push(qty > 1 ? `${qty} — ${label}` : label);
   }
 
   const whRows = (
@@ -571,7 +625,7 @@ const failures: { id: number; error: string }[] = [];
 let leftoverTotal = 0;
 let emptySkipped = 0;
 
-function assembleSource(tables: Tables) {
+function assembleSource(tables: Tables, sourceName: string) {
   const customById = byId(tables.Custom_Duct);
   const stockById = byId(tables.Stock_Duct);
   const prefabById = byId(tables.PreFab);
@@ -582,7 +636,18 @@ function assembleSource(tables: Tables) {
     header: constantCols(tables.Header.rows),
   };
 
-  for (const h of tables.Header.rows) {
+  // Every column the mappers read this source, per table (the join keys are
+  // read by byId() on the raw rows, before wrapping — mark them by hand).
+  const joinKeys = ["Cut Sheet #", "Cut Sheet ."];
+  const seen = {
+    customDuct: new Set<string>(joinKeys),
+    stock: new Set<string>(joinKeys),
+    prefab: new Set<string>(joinKeys),
+    header: new Set<string>(joinKeys),
+  };
+
+  for (const hRaw of tables.Header.rows) {
+  const h = track(hRaw, seen.header);
   const id = SHEET_KEY(h);
   // Empty Access artifact rows (no builder, house, project, or lot) exist in
   // most letter exports — nothing worth importing.
@@ -619,9 +684,9 @@ function assembleSource(tables: Tables) {
   const custom = customById.get(id);
   const stock = stockById.get(id);
   const prefab = prefabById.get(id);
-  if (custom) mapCustomDuct(custom, cs, leftovers);
-  if (stock) mapStock(stock, cs, leftovers);
-  if (prefab) mapPreFab(prefab, cs, leftovers);
+  if (custom) mapCustomDuct(track(custom, seen.customDuct), cs, leftovers);
+  if (stock) mapStock(track(stock, seen.stock), cs, leftovers);
+  if (prefab) mapPreFab(track(prefab, seen.prefab), cs, leftovers);
 
   // Leftovers used to spam custom.miscellaneous (printed on the Custom
   // ticket!) - Kimmy read 7,000 identical "Legacy -" lines as corrupted
@@ -643,6 +708,11 @@ function assembleSource(tables: Tables) {
     updatedAt: stamp(h["Date Modified"]) ?? stamp(h.DateCreated),
   });
   }
+
+  auditUnmapped(sourceName, "Header", tables.Header, seen.header, CONSTANTS.header);
+  auditUnmapped(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, CONSTANTS.customDuct);
+  auditUnmapped(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, CONSTANTS.stock);
+  auditUnmapped(sourceName, "PreFab", tables.PreFab, seen.prefab, CONSTANTS.prefab);
 }
 
 for (const input of inputs) {
@@ -653,7 +723,7 @@ for (const input of inputs) {
     `${input}: ${tables.Header.rows.length} header rows` +
       (missing.length ? ` (no ${missing.join(", ")} file)` : ""),
   );
-  assembleSource(tables);
+  assembleSource(tables, input);
 }
 
 // Newest first, so when the same key appears in several sources (the Caruso

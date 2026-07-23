@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Printer } from "lucide-react";
 import { flushPendingSaves } from "@/lib/print-flush";
+import { printPdfInDialog } from "@/lib/print-client";
 
 type Props = {
   cutsheetId: number;
@@ -25,8 +26,6 @@ type Props = {
 // destination printer (Clinton / Seaford / desk) in the dialog.
 export function PrintPacketButton({ cutsheetId, kind, label, primary = false, formId, saveAction }: Props) {
   const [busy, setBusy] = useState(false);
-  const frameRef = useRef<HTMLIFrameElement | null>(null);
-  const urlRef = useRef<string | null>(null);
 
   const print = async () => {
     setBusy(true);
@@ -40,35 +39,7 @@ export function PrintPacketButton({ cutsheetId, kind, label, primary = false, fo
         }
       }
       await flushPendingSaves();
-      const res = await fetch(`/api/pdf/${cutsheetId}/packet?kind=${kind}`);
-      if (!res.ok) throw new Error(`Could not build the packet (${res.status})`);
-      const blob = await res.blob();
-
-      // Replace any iframe left from a previous print.
-      if (frameRef.current) frameRef.current.remove();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-
-      const url = URL.createObjectURL(blob);
-      const frame = document.createElement("iframe");
-      frame.style.position = "fixed";
-      frame.style.right = "0";
-      frame.style.bottom = "0";
-      frame.style.width = "0";
-      frame.style.height = "0";
-      frame.style.border = "0";
-      frame.src = url;
-      await new Promise<void>((resolve, reject) => {
-        frame.onload = () => resolve();
-        frame.onerror = () => reject(new Error("Could not load the packet for printing"));
-        document.body.appendChild(frame);
-      });
-      frameRef.current = frame;
-      urlRef.current = url;
-      // Give the embedded PDF viewer a beat to finish rendering before the
-      // print call, then hand off to the browser's print dialog.
-      await new Promise((r) => setTimeout(r, 300));
-      frame.contentWindow?.focus();
-      frame.contentWindow?.print();
+      await printPdfInDialog(`/api/pdf/${cutsheetId}/packet?kind=${kind}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Printing failed.");
     } finally {

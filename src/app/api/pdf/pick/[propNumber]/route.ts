@@ -32,7 +32,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ propNumb
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
-  const printUrl = `${proto}://${host}/print/pick/${encodeURIComponent(prop)}`;
+  // ?zone=N narrows the tickets to one zone's sheets (see the print page).
+  const zone = (new URL(req.url).searchParams.get("zone") ?? "").trim();
+  const printUrl = `${proto}://${host}/print/pick/${encodeURIComponent(prop)}${
+    zone ? `?zone=${encodeURIComponent(zone)}` : ""
+  }`;
 
   const pdf = await renderPdfFromUrl(printUrl, { format: "Letter" });
   const download = new URL(req.url).searchParams.get("download") === "1";

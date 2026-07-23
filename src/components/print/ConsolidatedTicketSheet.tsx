@@ -6,6 +6,10 @@ type Props = {
   // supplies the header; the rows are summed across all of them.
   sheets: Cutsheet[];
   ticket: TicketKind;
+  // Set when the ticket is consolidated over ONE zone's sheets instead of the
+  // whole house (the print-one-zone workflow). Flips the banner so the shop
+  // never mistakes a zone pull for the full house.
+  zone?: string;
   pageBreakBefore?: boolean;
 };
 
@@ -35,7 +39,7 @@ function commonModel(sheets: Cutsheet[]): string {
   return prefix.length >= 3 ? prefix : names[0];
 }
 
-export function ConsolidatedTicketSheet({ sheets, ticket, pageBreakBefore = false }: Props) {
+export function ConsolidatedTicketSheet({ sheets, ticket, zone, pageBreakBefore = false }: Props) {
   const rows = buildConsolidatedTicket(sheets, ticket);
   const h = sheets[0].header;
 
@@ -62,8 +66,9 @@ export function ConsolidatedTicketSheet({ sheets, ticket, pageBreakBefore = fals
         <div>
           <h1 className="text-2xl font-bold uppercase tracking-tight">{TICKET_TITLES[ticket]}</h1>
           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600">
-            Whole house · {sheets.length} cutsheet{sheets.length === 1 ? "" : "s"}
-            {zones.length > 0 ? ` · Zone${zones.length === 1 ? "" : "s"} ${zones.join(", ")}` : ""}
+            {zone ? `Zone ${zone} only` : "Whole house"} · {sheets.length} cutsheet
+            {sheets.length === 1 ? "" : "s"}
+            {!zone && zones.length > 0 ? ` · Zone${zones.length === 1 ? "" : "s"} ${zones.join(", ")}` : ""}
           </p>
         </div>
         <div className="text-right text-xs text-neutral-500">
@@ -72,10 +77,13 @@ export function ConsolidatedTicketSheet({ sheets, ticket, pageBreakBefore = fals
         </div>
       </header>
 
-      {/* The shop has to know this ticket is already summed across every zone,
-          so they don't go hunting for a per-zone ticket that no longer exists. */}
+      {/* The shop has to know at a glance what this ticket covers: the whole
+          house (already summed across every zone — don't go hunting for
+          per-zone tickets) or a single zone pull (don't build the rest). */}
       <div className="mb-5 border-2 border-black bg-neutral-100 px-3 py-2 text-center text-[12pt] font-bold uppercase tracking-wide">
-        This includes all items across all zones
+        {zone
+          ? `Zone ${zone} only — this is not the whole house`
+          : "This includes all items across all zones"}
       </div>
 
       {headerPairs.length > 0 && (
