@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, degrees } from "pdf-lib";
 import { db } from "@/lib/db";
 import { houseSheets } from "@/lib/house";
 import { renderPdfFromUrl } from "@/lib/pdf";
@@ -27,9 +27,12 @@ const LGL_LONG = 72 * 14;
 //
 // A packet covers the WHOLE HOUSE: every cutsheet sharing the property number
 // (all zones + option sheets), grouped by zone — each sheet's Cut Sheets then
-// its fittings pages, zone after zone, single copy of everything — and, on the
-// shop packet, the three consolidated pick tickets at the end:
-//   ?kind=shop    (default) - [Cut Sheets -> Fittings] per zone -> Pick Tickets
+// its fittings pages, zone after zone — and, on the shop packet, the three
+// consolidated pick tickets at the end. The shop packet prints each sheet's
+// block TWICE (Cut Sheets, Fittings, then a copy of both, per Kimmie July
+// 2026) so the stack splits into handout copies in one pass at the printer;
+// each doc renders once and the pages embed twice. Foreman stays single-copy:
+//   ?kind=shop    (default) - [Cut Sheets -> Fittings -> copy] per zone -> Pick Tickets
 //   ?kind=foreman           - [Cut Sheets -> Fittings] per zone -> Plans
 //   ?zone=N                 - only that zone's sheets, with pick tickets
 //                             consolidated over just that zone (the
@@ -39,8 +42,10 @@ const LGL_LONG = 72 * 14;
 // property number doesn't name one real house falls back to its own per-sheet
 // documents, the exact packet the shop got before consolidation existed.
 // HTML docs render via Puppeteer (reused browser); uploaded plan PDFs are
-// embedded with pdf-lib. Letter tickets center on Legal; landscape plan pages
-// go on landscape Legal, scaled to fit.
+// embedded with pdf-lib. EVERY output page is portrait Legal (8.5x14) —
+// Letter tickets center on it, and landscape plan pages rotate 90° onto it —
+// so no printer ever reaches for the 11x17 tray (the office printers don't
+// have one; the whole packet must run on 8.5x14).
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await getCurrentUser();
   if (!me) return new NextResponse("unauthorized", { status: 401 });
@@ -99,14 +104,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return (img?.n ?? 0) > 0;
   };
 
-  // Render order = merge order: each sheet's Cut Sheets then its fittings,
-  // zone by zone; the shop packet closes with the consolidated pick tickets.
+  // Each doc renders exactly once (docUrls is the render list); embedOrder is
+  // the page-merge list of docUrls indices. On the shop packet each sheet's
+  // whole block repeats — Cut Sheets, Fittings, Cut Sheets, Fittings — so the
+  // stack splits into handout copies in one pass at the printer. Foreman
+  // embeds every block once. Pick tickets close the shop packet, single copy.
   const docUrls: Array<{ url: string; opts: Parameters<typeof renderPdfFromUrl>[1] }> = [];
+  const embedOrder: number[] = [];
   for (const sid of sheetIds) {
-    docUrls.push({ url: `${base}/print/filled/${sid}`, opts: LEGAL });
-    if (hasFittings(sid)) docUrls.push({ url: `${base}/print/fittings/${sid}`, opts: LEGAL });
+    const block: number[] = [];
+    block.push(docUrls.push({ url: `${base}/print/filled/${sid}`, opts: LEGAL }) - 1);
+    if (hasFittings(sid))
+      block.push(docUrls.push({ url: `${base}/print/fittings/${sid}`, opts: LEGAL }) - 1);
+    embedOrder.push(...block);
+    if (kind === "shop") embedOrder.push(...block);
   }
-  if (kind === "shop") docUrls.push({ url: pickUrl, opts: { format: "Letter" as const } });
+  if (kind === "shop")
+    embedOrder.push(docUrls.push({ url: pickUrl, opts: { format: "Letter" as const } }) - 1);
 
   // Bounded concurrency: an 8-zone house is ~17 documents, and rendering them
   // all at once would stack that many Chromium pages on the small prod box.
@@ -131,21 +145,39 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const src = await PDFDocument.load(source, { ignoreEncryption: true });
     const pages = await out.embedPdf(src, src.getPageIndices());
     for (const ep of pages) {
+      // EVERY output page is portrait Legal (8.5x14). Landscape sources
+      // (11x17 architectural plans, mostly) used to go on landscape-Legal
+      // pages, but print drivers see a 14in-wide page and reach for the
+      // 11x17 tray the office printers don't have — so rotate the content
+      // 90° onto the same portrait page as everything else instead.
+      const page = out.addPage([LGL, LGL_LONG]);
       const landscape = ep.width > ep.height;
-      const pageW = landscape ? LGL_LONG : LGL;
-      const pageH = landscape ? LGL : LGL_LONG;
-      const page = out.addPage([pageW, pageH]);
-      const scale = Math.min(pageW / ep.width, pageH / ep.height, 1);
-      const w = ep.width * scale;
-      const hgt = ep.height * scale;
-      page.drawPage(ep, { x: (pageW - w) / 2, y: (pageH - hgt) / 2, width: w, height: hgt });
+      if (landscape) {
+        const scale = Math.min(LGL / ep.height, LGL_LONG / ep.width, 1);
+        const w = ep.width * scale;
+        const hgt = ep.height * scale;
+        // drawPage rotates about (x, y): after a 90° CCW rotation the content
+        // spans [x - hgt, x] horizontally and [y, y + w] vertically.
+        page.drawPage(ep, {
+          x: (LGL + hgt) / 2,
+          y: (LGL_LONG - w) / 2,
+          width: w,
+          height: hgt,
+          rotate: degrees(90),
+        });
+      } else {
+        const scale = Math.min(LGL / ep.width, LGL_LONG / ep.height, 1);
+        const w = ep.width * scale;
+        const hgt = ep.height * scale;
+        page.drawPage(ep, { x: (LGL - w) / 2, y: (LGL_LONG - hgt) / 2, width: w, height: hgt });
+      }
     }
   };
 
-  for (const buf of docs) await addOnLegal(buf);
+  for (const i of embedOrder) await addOnLegal(docs[i]);
 
-  // Plans ride only in the foreman packet, scaled from 11x17 onto Legal —
-  // gathered from every sheet in the packet, in the same zone order.
+  // Plans ride only in the foreman packet, rotated/scaled onto portrait
+  // Legal — gathered from every sheet in the packet, in the same zone order.
   if (kind === "foreman") {
     for (const sid of sheetIds) {
       const plans = db

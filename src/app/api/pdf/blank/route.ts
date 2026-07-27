@@ -6,10 +6,9 @@ import { requireApiUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Renders /print/blank at 11" × 17" (Tabloid portrait) for the print-shop
-// pad master. The shop's printer has 11x17 loaded so we use all of it for
-// readability instead of cramming on Legal. Tight margins so the design
-// gets close to the trim edge.
+// Renders /print/blank on Legal (8.5" × 14" portrait) for the print-shop
+// pad master — the office standardized on 8.5x14 for everything. Tight
+// margins so the design gets close to the trim edge.
 export async function GET(req: Request) {
   const me = await requireApiUser();
   if (me instanceof Response) return me;

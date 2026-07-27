@@ -20,7 +20,8 @@ type Props = {
 };
 
 // House plans: PDF or image uploads (BMP/PNG/JPG convert to PDF server-side).
-// Stored as kind='plan' and appended to the print packet normalized to 11x17.
+// Stored as kind='plan' and appended to the print packet normalized to
+// portrait Legal (8.5x14) like every other packet page.
 // Kept separate from the Attachments (fittings/photos/docs) section so the two
 // upload paths and print destinations stay distinct.
 export function PlansCard({ cutsheetId, plans, className }: Props) {
@@ -85,7 +86,7 @@ export function PlansCard({ cutsheetId, plans, className }: Props) {
       <CardContent>
         {plans.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No plans yet. Add house plans (PDF, BMP, PNG, or JPG) — they print on 11×17 in the shop packet.
+            No plans yet. Add house plans (PDF, BMP, PNG, or JPG) — they print on 8.5×14 in the foreman packet.
           </p>
         ) : (
           <ul className="divide-y rounded-md border">
@@ -114,7 +115,7 @@ export function PlansCard({ cutsheetId, plans, className }: Props) {
             ))}
           </ul>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">PDF, BMP, PNG, or JPG · 50 MB max each · printed on 11×17</p>
+        <p className="mt-3 text-xs text-muted-foreground">PDF, BMP, PNG, or JPG · 50 MB max each · printed on 8.5×14</p>
       </CardContent>
     </Card>
   );
