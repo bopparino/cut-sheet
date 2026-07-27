@@ -485,11 +485,23 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
   fillMap(row, cs.formOnly.simpsonStp as Record<string, number>, {
     "18InSimpsonStr": "stp18", "24InSimpsonStr": "stp24",
   });
+  // 3¼-inch stack duct in 115" sticks has no stock row on the new form —
+  // each size becomes a Custom Duct row (per Austin July 2026: "3x14x115
+  // Duct: 1" = qty 1, 3¼ wide × 14 high × 115 long). The Access "3" prefix
+  // is the same 3¼ the 60-inch list maps (see DUCT60_MAP "3x10x60" →
+  // "3.25x10"). 770 values across the corpus were hiding in legacy notes.
+  for (const [col, hgt] of [
+    ["3x8x115 Duct", "8"], ["3x10x115 Duct", "10"],
+    ["3x12x115 Duct", "12"], ["3x14x115 Duct", "14"],
+  ] as const) {
+    const n = num(row[col]);
+    if (n > 0) cs.custom.customDuct.push({ qty: n, w: "3.25", h: hgt, l: "115", sl: "N" });
+  }
+
   collectLeftovers(
     row,
     [
       "12 Inch Drives",
-      "3x8x115 Duct", "3x10x115 Duct", "3x12x115 Duct", "3x14x115 Duct",
       "3x10 Round",
       "3inLouveredWallCap", "4inLouveredWallCap", "6InLouveredWallCap",
       "3inBirdCageWallCap",
@@ -598,6 +610,35 @@ function placeMiscLine(cs: Cutsheet, label: string, qty: number): boolean {
     if (extra.length === 0 && sizes.length <= 1) {
       const size = sizes[0] ?? (toks.includes("@730") ? "6" : "");
       if (size) return bump(cs.formOnly.fans as Record<string, number>, `roofJ${size}`);
+    }
+    return false;
+  }
+
+  // Mid Atlantic wall caps → builders-edge box ('4" MID ATLANTIC', '6" MID
+  // ATLANTIC W/C', 'MID ATLANTIC W/C 4"'). Lines almost never specify the
+  // column; per Austin July 2026 the box reads Metal on the left, Screen
+  // (plastic) on the right, and an unspecified line is the default = METAL.
+  // An explicit "W/SCREEN" goes to the Screen column. Sizes beyond 4/6 stay
+  // in Misc (the box has no row for them).
+  if (/\bMID ?ATLANTICS?\b/.test(t)) {
+    const screen = /\bSCREEN\b/.test(t);
+    const rest = t
+      .replace(/\bMID ?ATLANTICS?\b/, " ")
+      .replace(/\bW ?\/? ?SCREEN\b/g, " ")
+      .replace(/\bSCREEN\b/g, " ")
+      .replace(/\bW ?\/ ?C(?:AP)?\b/g, " ")
+      .replace(/\bWALL ?CAPS?\b/g, " ")
+      .replace(/\bCAPS?\b/g, " ")
+      .replace(/"/g, " ")
+      .replace(/\bIN(?:CH)?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const m2 = rest.match(/^(\d{1,2})$/);
+    if (m2) {
+      return bump(
+        cs.formOnly.midAtlanticWallCaps as Record<string, number>,
+        `buildersEdge${screen ? "Screen" : "Metal"}${m2[1]}`,
+      );
     }
     return false;
   }
