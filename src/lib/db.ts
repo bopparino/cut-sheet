@@ -154,7 +154,8 @@ function migrate(db: Database.Database): void {
 
   if (version < 5) {
     // Plans: house-plan PDFs get their own attachment kind so they can be
-    // uploaded/listed separately and appended to the print packet at 11x17.
+    // uploaded/listed separately and appended to the print packet (normalized
+    // to portrait Legal at merge time).
     // SQLite can't alter a CHECK in place - rebuild the table only if the
     // stored DDL doesn't already allow 'plan'.
     const tableInfo = db

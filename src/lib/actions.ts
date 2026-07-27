@@ -157,9 +157,12 @@ export async function createCutsheet(formData: FormData) {
   redirect(`/form/${Number(result.lastInsertRowid)}`);
 }
 
-// Cookie-cutter houses: clone an existing cutsheet's data into a new row.
-// Photos / documents stay on the original - the user is duplicating the
-// numeric data, not the attached evidence.
+// Cookie-cutter houses: clone an existing cutsheet 1:1 into a new row —
+// the JSON data AND every attachment (legacy fittings drawings, plans,
+// photos, documents), so the clone's fittings page renders exactly like the
+// original's (per Kimmie July 2026: "cloning will not bring over the
+// fittings"). Attachment blobs are copied, not shared: deleting one off the
+// clone can never strip it off the original.
 export async function cloneCutsheet(id: number) {
   const row = db
     .prepare<[number], { data: string }>(
@@ -175,8 +178,17 @@ export async function cloneCutsheet(id: number) {
   const result = db
     .prepare("INSERT INTO cutsheets (data, created_by, updated_by) VALUES (?, ?, ?)")
     .run(JSON.stringify(parsed), me?.id ?? null, me?.id ?? null);
+  const newId = Number(result.lastInsertRowid);
+  // ORDER BY id keeps the copies' relative order (fittings pages tile legacy
+  // drawings in created_at-then-id order, and every copy shares one
+  // created_at, so the fresh ids are the tiebreaker that preserves layout).
+  db.prepare(
+    `INSERT INTO attachments (cutsheet_id, kind, filename, mime, size, blob)
+     SELECT ?, kind, filename, mime, size, blob FROM attachments
+     WHERE cutsheet_id = ? ORDER BY id ASC`,
+  ).run(newId, id);
   revalidatePath("/search");
-  redirect(`/form/${Number(result.lastInsertRowid)}`);
+  redirect(`/form/${newId}`);
 }
 
 export async function updateCutsheet(id: number, formData: FormData) {
@@ -469,7 +481,7 @@ export async function uploadAttachment(cutsheetId: number, formData: FormData) {
 const MAX_PLAN_BYTES = 50 * 1024 * 1024; // plans can be multi-page PDFs
 
 // Image plans convert to a single-page PDF at upload time, so everything
-// downstream - the packet merge, the 11x17 normalization, the attachment
+// downstream - the packet merge, the portrait-Legal normalization, the attachment
 // viewer - only ever sees plan PDFs. BMP is the format the shop actually
 // produces; PNG/JPG ride along since the conversion path is identical.
 const PLAN_IMAGE_MIMES: Record<string, string> = {
@@ -480,7 +492,7 @@ const PLAN_IMAGE_MIMES: Record<string, string> = {
 };
 
 // House plans (1-8 pages each), stored as kind='plan'. They're normalized to
-// 11x17 and appended to the print packet, and listed in their own Plans
+// portrait Legal (8.5x14) in the print packet, and listed in their own Plans
 // section separate from fitting/photo attachments.
 export async function uploadPlan(cutsheetId: number, formData: FormData) {
   const file = formData.get("file");

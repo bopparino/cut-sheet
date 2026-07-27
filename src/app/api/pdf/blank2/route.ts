@@ -6,8 +6,8 @@ import { requireApiUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Renders /print/blank2 (the updated two-page pad revision) at 11" × 17"
-// Tabloid portrait. Mirrors /api/pdf/blank exactly - same paper, same tight
+// Renders /print/blank2 (the updated two-page pad revision) on Legal
+// (8.5" × 14" portrait). Mirrors /api/pdf/blank exactly - same paper, same tight
 // margins - so the new revision drops in alongside the old master without any
 // printer-side changes. Output is a true vector PDF (Chromium renders the HTML
 // print page), so it stays crisp at any scale instead of pixelating like an

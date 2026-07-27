@@ -98,7 +98,7 @@ export async function renderPdfFromUrl(
 }
 
 // Wrap an uploaded image in a single-page PDF (page size = pixel size at
-// 72dpi; the packet route rescales to 11x17 anyway). PNG/JPEG embed directly
+// 72dpi; the packet route rescales onto portrait Legal anyway). PNG/JPEG embed directly
 // via pdf-lib; anything else (BMP is the one the shop actually uses) is
 // re-encoded to PNG first, using the already-running Chromium as the decoder
 // so we don't grow a native image dependency just for BMP.

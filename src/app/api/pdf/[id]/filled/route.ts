@@ -7,7 +7,7 @@ import { requireApiUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Digitally-filled cut sheet → 11x17 Tabloid PDF. Renders /print/filled/[id]
+// Digitally-filled cut sheet → 8.5x14 Legal PDF. Renders /print/filled/[id]
 // (the new cut-sheet design populated with this cutsheet's values) the same
 // way /api/pdf/blank2 renders the blank master, so the filled copy prints
 // identically - just with the numbers in. Vector output, not an image.
