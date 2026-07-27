@@ -19,7 +19,7 @@
  * (cutsheet, filename) on the server, so re-pushes refresh rather than
  * duplicate.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const argv = process.argv.slice(2);
@@ -28,14 +28,24 @@ const drawingsIdx = argv.indexOf("--drawings");
 const drawingsDir = drawingsIdx >= 0 ? argv[drawingsIdx + 1] : null;
 // --force-edited 3723,3724,... : cutsheet ids whose edited-sheet guard the
 // admin has reviewed and chosen to override (see the server route).
+// --force-edited all : override the guard on EVERY sheet in the bundle - the
+// full-catch-up mode (July 2026: protected sheets never received the R8 /
+// misc-parser refresh and drifted stale). Access wins everywhere; app-side
+// FORM edits on imported sheets are overwritten (attachments survive).
 const forceIdx = argv.indexOf("--force-edited");
+const forceAllEdited = forceIdx >= 0 && (argv[forceIdx + 1] ?? "").trim().toLowerCase() === "all";
 const forceEditedIds =
-  forceIdx >= 0
+  forceIdx >= 0 && !forceAllEdited
     ? (argv[forceIdx + 1] ?? "")
         .split(",")
         .map((s) => Number(s.trim()))
         .filter((n) => Number.isInteger(n))
     : undefined;
+if (forceAllEdited) {
+  console.log(
+    "FORCE-ALL: the edited-sheet guard is OFF for this push - Access overwrites every matched sheet.",
+  );
+}
 const positional = argv.filter(
   // drawingsIdx is -1 when --drawings is absent; -1 + 1 = 0 was silently
   // eating the first positional arg (the bundle path).
@@ -82,6 +92,7 @@ async function post(body: unknown, what: string) {
     attached?: number;
     unmatched?: number;
     unknownSkipped?: number;
+    unknownKeys?: string[];
     skippedEdited?: number[];
   };
 }
@@ -93,16 +104,18 @@ let imported = 0;
 let updated = 0;
 let skipped = 0;
 let unknownSkipped = 0;
+const unknownKeys: string[] = [];
 const skippedEdited: number[] = [];
 for (let i = 0; i < sheets.length; i += SHEET_CHUNK) {
   const out = await post(
-    { mode, forceEditedIds, sheets: sheets.slice(i, i + SHEET_CHUNK) },
+    { mode, forceEditedIds, forceAllEdited, sheets: sheets.slice(i, i + SHEET_CHUNK) },
     `sheet chunk ${i / SHEET_CHUNK + 1}`,
   );
   imported += out.imported;
   updated += out.updated ?? 0;
   skipped += out.skipped;
   unknownSkipped += out.unknownSkipped ?? 0;
+  unknownKeys.push(...(out.unknownKeys ?? []));
   skippedEdited.push(...(out.skippedEdited ?? []));
   console.log(
     `sheets ${i / SHEET_CHUNK + 1}/${Math.ceil(sheets.length / SHEET_CHUNK)}: ` +
@@ -115,6 +128,16 @@ if (unknownSkipped > 0) {
     `${unknownSkipped} sheets not in the server's import ledger were left alone ` +
       `(update mode never inserts).`,
   );
+  // The full key list is what makes drift diagnosable: a sheet whose
+  // prop/builder was corrected in Access after import lands here on EVERY
+  // refresh until reconciled — and its app copy silently goes stale.
+  const outFile = `unknown-keys-${new Date().toISOString().slice(0, 10)}.txt`;
+  writeFileSync(outFile, unknownKeys.join("\n") + "\n");
+  console.log(
+    `  first ${Math.min(15, unknownKeys.length)}: ${unknownKeys.slice(0, 15).join(" | ")}` +
+      (unknownKeys.length > 15 ? ` …` : ""),
+  );
+  console.log(`  full list written to ${outFile} (prop|CutSheet#|builder per line)`);
 }
 if (skippedEdited.length > 0) {
   console.log(

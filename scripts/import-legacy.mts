@@ -510,9 +510,10 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
  * a wrong box is worse than a text line. Patterns and their frequencies come
  * from a scan of all 6,660 Sheet Metal lines in the July 2026 bundle.
  * Deliberately NOT matched (fuzzy buckets, revisit with Kimmie if wanted):
- * media cabs / Air Bear (filter racks?), fans (AE80/SIG110/ZB110), roof
- * jacks, Mid Atlantic caps (metal vs screen ambiguous), "BY PASS" dampers
- * (different product than a volume damper), bare "FRESH AIR" with no model.
+ * media cabs / Air Bear (filter racks?), fans (AE80/SIG110/ZB110), Mid
+ * Atlantic caps (metal vs screen ambiguous), "BY PASS" dampers (different
+ * product than a volume damper), bare "FRESH AIR" with no model. Roof jacks
+ * WERE in this list until the shop confirmed 730 = 6" (July 2026).
  */
 function placeMiscLine(cs: Cutsheet, label: string, qty: number): boolean {
   // Normalize: uppercase, unglue "4IN" / "8X8", collapse whitespace.
@@ -575,6 +576,28 @@ function placeMiscLine(cs: Cutsheet, label: string, qty: number): boolean {
       /^(?:(?:APRIL|APRILE|APRILAIR|APRILAIRE|AIR|AIRE|FRESH|FRESHAIR|F ?\/? ?A|A ?\/? ?A|AA|BM|DAMPERS?) ?)*$/;
     if (FA_WORDS.test(rest)) {
       return bump(cs.formOnly.freshAirDampers as Record<string, number>, m[1]);
+    }
+    return false;
+  }
+
+  // Roof jacks → Fans box Roof J 6/8/10 ('6" 730 ROOF JACK', '730 BLACK
+  // ROOF JACKS', '6 IN BLK ROOF JACKS'). Confirmed with the shop July 2026:
+  // "730" IS the 6-inch roof jack model, and BLACK/BLK is finish, not a
+  // different product. A size outside 6/8/10 stays in Misc.
+  if (/\bROOF ?JACKS?\b/.test(t)) {
+    const rest = t
+      .replace(/\bROOF ?JACKS?\b/, " ")
+      .replace(/\b(?:BLACK|BLK|BROAN)\b/g, " ")
+      .replace(/\b730\b/g, " @730 ")
+      .replace(/"|\bIN(?:CH)?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const toks = rest ? rest.split(" ") : [];
+    const sizes = toks.filter((x) => /^\d{1,2}$/.test(x));
+    const extra = toks.filter((x) => !/^\d{1,2}$/.test(x) && x !== "@730");
+    if (extra.length === 0 && sizes.length <= 1) {
+      const size = sizes[0] ?? (toks.includes("@730") ? "6" : "");
+      if (size) return bump(cs.formOnly.fans as Record<string, number>, `roofJ${size}`);
     }
     return false;
   }
