@@ -294,6 +294,42 @@ function migrate(db: Database.Database): void {
     `);
     db.pragma("user_version = 9");
   }
+
+  if (version < 10) {
+    // The shop's redrawn July 2026 master sheet added a plain-box drawing at
+    // position 26, shifting the catalog tail: old f26 (latch box) is now f27,
+    // old f27 (merged angle pair) is now f28, old f28 (plate) is now f29.
+    // Renumber the picked fittings on every existing sheet so each row keeps
+    // pointing at the SAME drawing it was placed on. Descending order so the
+    // renames can't collide. System migration: updated_at/updated_by stay
+    // untouched — this is not a user edit.
+    const remap: Array<[string, string]> = [["f28", "f29"], ["f27", "f28"], ["f26", "f27"]];
+    const rows = db
+      .prepare<[], { id: number; data: string }>("SELECT id, data FROM cutsheets")
+      .all();
+    const write = db.prepare("UPDATE cutsheets SET data = ? WHERE id = ?");
+    for (const row of rows) {
+      let parsed: { fittings?: Array<{ type?: string }> };
+      try {
+        parsed = JSON.parse(row.data);
+      } catch {
+        continue; // schema-invalid rows are handled elsewhere; never brick bootstrap
+      }
+      const fittings = parsed.fittings;
+      if (!Array.isArray(fittings)) continue;
+      let touched = false;
+      for (const [from, to] of remap) {
+        for (const f of fittings) {
+          if (f && f.type === from) {
+            f.type = to;
+            touched = true;
+          }
+        }
+      }
+      if (touched) write.run(JSON.stringify(parsed), row.id);
+    }
+    db.pragma("user_version = 10");
+  }
 }
 
 // Lazy: open on first access. `next build` imports every route module to

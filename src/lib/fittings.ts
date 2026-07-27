@@ -1,9 +1,13 @@
 // The fittings catalog. One entry per drawing, one image file per fitting at
-// public/fittings/f<N>.png (500x500, white background, hand-trimmed by Austin
-// in Photoshop from the shop's master sheet). To improve a drawing, overwrite
-// its file - nothing here needs to change. Fittings 27 and 28 from the master
-// sheet were one fitting all along (two views sharing one QTY block), so the
-// catalog is 28: f27 is the merged angle pair, f28 is the plate.
+// public/fittings/f<N>.png (800x800, white background — redrawn set supplied
+// by the shop July 2026, replacing the original 500x500 Photoshop trims). To
+// improve a drawing, overwrite its file - nothing here needs to change.
+// Numbering matches the shop's CURRENT 29-drawing master sheet 1:1. The old
+// catalog was 28: the 2026 master added a plain-box drawing at position 26,
+// shifting the tail (old f26 latch-box -> f27, old f27 merged angle pair ->
+// f28, old f28 plate -> f29); migration v10 in db.ts renumbered the picked
+// fittings on existing sheets to match. f28 is still the merged angle pair
+// (two views sharing one QTY block).
 //
 // Names are "Fitting N" on purpose: there is no industry-standard name for
 // these - every shop guy calls them something different - so the drawing IS
@@ -16,12 +20,12 @@ export type FittingDef = {
   id: string;
   label: string;
   src: string;
-  // width / height of the image file. All current files are 500x500 squares;
+  // width / height of the image file. All current files are 800x800 squares;
   // per-def so a non-square drawing can join later without breaking layout.
   aspect: number;
 };
 
-export const FITTING_COUNT = 28;
+export const FITTING_COUNT = 29;
 
 export const FITTINGS: FittingDef[] = Array.from({ length: FITTING_COUNT }, (_, i) => ({
   id: `f${i + 1}`,
