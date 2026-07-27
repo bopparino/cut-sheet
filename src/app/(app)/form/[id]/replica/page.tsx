@@ -7,6 +7,8 @@ import { CutSheetReplica } from "@/components/cutsheet/replica/CutSheetReplica";
 import { AttachmentsCard, type AttachmentItem } from "@/components/cutsheet/AttachmentsCard";
 import { FittingsCard } from "@/components/cutsheet/FittingsCard";
 import { PlansCard, type PlanItem } from "@/components/cutsheet/PlansCard";
+import { LegacyNotesCard } from "@/components/cutsheet/LegacyNotesCard";
+import { getCurrentUser } from "@/lib/auth";
 import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
 import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
@@ -113,6 +115,10 @@ export default async function ShopReplicaPage({
   const save = updateCutSheetReplica.bind(null, numeric);
   const title = (d.name || "").trim() || `Cutsheet #${row.id}`;
 
+  // Admin-only: surface the hidden legacy-import notes (see LegacyNotesCard).
+  const me = await getCurrentUser();
+  const legacyNotes = me?.role === "admin" ? d.formOnly.legacyNotes : [];
+
   return (
     <div key={row.id}>
       <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background/85 px-6 py-3 backdrop-blur">
@@ -197,6 +203,7 @@ export default async function ShopReplicaPage({
         <FittingsCard cutsheetId={numeric} fittings={d.fittings} />
         <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
         <PlansCard cutsheetId={numeric} plans={plans} />
+        <LegacyNotesCard notes={legacyNotes} />
       </div>
     </div>
   );

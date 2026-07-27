@@ -60,12 +60,30 @@ if (emitIdx >= 0 && !emitPath) {
   console.error("--emit needs a file path");
   process.exit(1);
 }
+// --audit-report <file>: alongside whatever else the run does, write a JSON
+// coverage report classifying EVERY source column (mapped-to-box, preserved
+// as hidden legacy notes, printed misc text, form-default dropped,
+// deliberately dropped, unmapped) with data counts, non-numeric value
+// counts (silent num()=0 hazards), and samples — plus Sheet-Metal-line
+// parser stats. This is the "what doesn't pull over" X-ray.
+const auditIdx = args.indexOf("--audit-report");
+const auditPath = auditIdx >= 0 ? args[auditIdx + 1] : null;
+if (auditIdx >= 0 && !auditPath) {
+  console.error("--audit-report needs a file path");
+  process.exit(1);
+}
 const inputs = args.filter(
-  (a, i) => a !== "--force" && a !== "--emit" && a !== "--update" && i !== emitIdx + 1,
+  (a, i) =>
+    a !== "--force" &&
+    a !== "--emit" &&
+    a !== "--update" &&
+    a !== "--audit-report" &&
+    i !== (emitIdx >= 0 ? emitIdx + 1 : -1) &&
+    i !== (auditIdx >= 0 ? auditIdx + 1 : -1),
 );
 if (inputs.length === 0) {
   console.error(
-    "usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force] [--emit bundle.json]",
+    "usage: npx tsx scripts/import-legacy.ts <dir-or-json> [more...] [--force] [--emit bundle.json] [--audit-report report.json]",
   );
   process.exit(1);
 }
@@ -190,11 +208,18 @@ function constantCols(rows: Row[]): Set<string> {
       const v = str(r[col]);
       counts.set(v, (counts.get(v) ?? 0) + 1);
     }
-    const top = Math.max(...counts.values());
+    let top = 0;
+    let topVal = "";
+    for (const [v, n] of counts) if (n > top) { top = n; topVal = v; }
     // Small sources can't establish a "default" statistically - require a
     // strict constant below 20 rows.
     const threshold = rows.length < 20 ? 1 : 0.9;
-    if (top >= rows.length * threshold) out.add(col);
+    // Only a repeated NON-EMPTY value is a form default ("3 Inch Wall Cap"
+    // = 1 on every sheet). A column that's 90% empty/zero with a handful of
+    // real values is sparse DATA, not a default - suppressing it dropped
+    // those minority values silently (audit of July 2026: 174 real values,
+    // e.g. 36 sheets with a 3"x14' non-insulated flex).
+    if (top >= rows.length * threshold && topVal !== "" && topVal !== "0") out.add(col);
   }
   return out;
 }
@@ -207,6 +232,36 @@ let CONSTANTS = {
   prefab: new Set<string>(),
   header: new Set<string>(),
 };
+
+// Columns preserved verbatim as hidden formOnly.legacyNotes lines ("Legacy —
+// col: value") — stored, never printed, invisible in the UI. Named here (not
+// inline at the call sites) so the --audit-report classifier can tell "kept
+// as hidden text" apart from "mapped to a real box".
+const HEADER_NOTE_COLS = [
+  "Comments", "Creation Notes", "Cut Sheet Cloned From", "AsBuilts Reviewed by Initials",
+];
+const CUSTOM_NOTE_COLS = ["14x24SLRP-L", "DPL", "DPW", "DPQ"];
+const PREFAB_NOTE_COLS = [
+  "6x5OvalToRoundEll", "7x6OvalToRoundEll",
+  "3 Inch Round Ell",
+  "8x31/4x5 Ell Boots", "8x31/4x5 End Boots", "8x31/4x5 Straight Boots",
+  "12x4x8 Straight Boots",
+  "5 Inch  Ell Vertical", "6 Inch  Ell Vertical", "7 Inch  Ell Vertical",
+  "8 Inch Flat Ell Flat",
+  "CustomFan2", "CustomFan3",
+  "3 Inch Wall Cap", "4 Inch Wall Cap", "5 Inch Wall Cap", "6 Inch Wall Cap",
+  "7 Inch Wall Cap", "8 Inch Wall Cap", "10x31/4 Inch Wall Cap",
+  "6 Inch Screen  Cap", "7 Inch Screen  Cap", "8 Inch Screen Cap",
+  "3 Inch x 14 Foot Non-Insulated Flex",
+  "B_Vent Diameter", "Furn-Conn-Diameter",
+  "B-vent-6in-PC", "B-Vent-45-Deg", "BV-Redr",
+  "Furn-Conn-5ft-PC", "Furn-Conn-3ft-PC", "Furn-Conn-2ft-PC", "Furn-Conn-1ft-PC",
+  "Furn-Conn-6in-PC", "Furn-Conn-1inc-Adj-PC", "Furn-Conn-45-Deg",
+  "Furn-Conn-60-Deg", "Furn-Conn-90-Deg",
+  "5x36 Flex B-vent", "5x60 Flex B-vent",
+];
+// Free-text columns that become printed text lists on the form (not boxes).
+const FREE_TEXT_COLS = ["Wall Registers", "Grilles", "Filters Grills", "Floor Registers"];
 
 /** Push "Legacy — col: value" for every present value in `cols`. */
 function collectLeftovers(
@@ -241,6 +296,9 @@ const track = (row: Row, seen: Set<string>): Row =>
 // Columns dropped ON PURPOSE (decided with the shop) — the audit stays quiet.
 const DELIBERATELY_DROPPED = new Set([
   "Angles", // not on the new cut sheet; shop confirmed it's dead (July 2026)
+  // CD duct-board flags: DuctBoard is retired, and the whole corpus holds
+  // only "N"/"#" — never one "Y" across 39,642 values (audited July 2026).
+  ...Array.from({ length: 12 }, (_, i) => `CD ${i + 1} DB`),
 ]);
 
 function auditUnmapped(
@@ -249,18 +307,60 @@ function auditUnmapped(
   table: { headers: string[]; rows: Row[] } | undefined,
   seen: Set<string>,
   constants: Set<string>,
+  imported: Set<number>,
 ) {
   if (!table) return;
   const flagged: string[] = [];
   for (const col of table.headers) {
     if (seen.has(col) || constants.has(col) || DELIBERATELY_DROPPED.has(col)) continue;
+    // Only rows that actually import count: an empty Access artifact row
+    // (skipped whole, by design) carries form residue — dates, "N" flags —
+    // that used to flag its columns every single run (the 2023 Q noise).
     let n = 0;
-    for (const r of table.rows) if (present(r[col])) n++;
+    for (const r of table.rows) if (imported.has(SHEET_KEY(r)) && present(r[col])) n++;
     if (n > 0) flagged.push(`${col} — data on ${n} row${n === 1 ? "" : "s"}`);
   }
   if (flagged.length > 0) {
     console.warn(`⚠ ${source} / ${tableName}: UNMAPPED columns with data (values are NOT imported):`);
     for (const f of flagged) console.warn(`    ${f}`);
+  }
+}
+
+// Text-by-design columns the numeric tripwire must ignore: flags, W/H/L
+// dimensions, and the free-text/note/retired sets handled elsewhere.
+const NUMERIC_EXEMPT = /( SL| DB)$|Width$|Height$|Length$|^B-vent-CCF$/;
+
+// Warn (never block, per Austin July 2026) when a column consumed as a
+// NUMBER holds values Number() can't parse — num() coerces those to 0 with
+// no trace. This is how "12/12" in the CCF box vanished for a month.
+function warnNonNumeric(
+  source: string,
+  tableName: string,
+  table: { headers: string[]; rows: Row[] } | undefined,
+  seen: Set<string>,
+  imported: Set<number>,
+) {
+  if (!table || tableName === "Header") return; // header consumption is all text
+  const noteish = new Set([
+    ...CUSTOM_NOTE_COLS, ...PREFAB_NOTE_COLS, ...FREE_TEXT_COLS,
+    ...Object.keys(RETIRED_STOCK_MISC), ...Object.keys(RETIRED_PREFAB_MISC),
+  ]);
+  for (const col of table.headers) {
+    if (!seen.has(col) || noteish.has(col) || NUMERIC_EXEMPT.test(col)) continue;
+    if (/^Sheet Metal Line \d+$/.test(col)) continue;
+    const bad: string[] = [];
+    for (const r of table.rows) {
+      if (!imported.has(SHEET_KEY(r)) || !present(r[col])) continue;
+      const s = str(r[col]);
+      // "####…" is Access column-overflow debris; zeroing it is correct.
+      if (/^#+$/.test(s)) continue;
+      if (Number.isNaN(Number(s)) && !bad.includes(s) && bad.length < 4) bad.push(s);
+    }
+    if (bad.length > 0) {
+      console.warn(
+        `⚠ ${source} / ${tableName} / ${col}: non-numeric value(s) import as 0: ${bad.map((b) => JSON.stringify(b)).join(", ")}`,
+      );
+    }
   }
 }
 
@@ -540,11 +640,12 @@ function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
     const w = str(row[`CD ${i} Width`]);
     const h = str(row[`CD ${i} Height`]);
     const l = str(row[`CD ${i} Length`]);
+    // SL reads BEFORE the empty-row skip so the audit proxy sees the column
+    // on every row — a lone "N" on an otherwise blank CD 11 used to flag the
+    // whole column as unmapped data.
+    const sl = str(row[`CD ${i} SL`]).toUpperCase() === "Y" ? "Y" : "N";
     if (qty === 0 && !w && !h && !l) continue;
-    cs.custom.customDuct.push({
-      qty, w, h, l,
-      sl: str(row[`CD ${i} SL`]).toUpperCase() === "Y" ? "Y" : "N",
-    });
+    cs.custom.customDuct.push({ qty, w, h, l, sl });
   }
 
   // Sheet Metal Lines = the old form's Miscellaneous box. They used to land
@@ -562,7 +663,11 @@ function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
     const label = str(row[`Sheet Metal Line ${i}`]);
     if (!label) continue;
     const qty = num(row[`Sheet Metal Line ${i} Qty`]);
-    if (placeMiscLine(cs, label, qty || 1)) continue;
+    if (placeMiscLine(cs, label, qty || 1)) {
+      auditReport.sheetMetal.placed++;
+      continue;
+    }
+    auditReport.sheetMetal.kept.push(label);
     cs.custom.miscellaneous.push(qty > 1 ? `${qty} — ${label}` : label);
   }
 
@@ -583,7 +688,7 @@ function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
   if (small > 1) leftovers.push(`Legacy — Small Plenum Package qty: ${small}`);
   if (large > 1) leftovers.push(`Legacy — Large Plenum Package qty: ${large}`);
 
-  collectLeftovers(row, ["14x24SLRP-L", "DPL", "DPW", "DPQ"], leftovers, CONSTANTS.customDuct);
+  collectLeftovers(row, CUSTOM_NOTE_COLS, leftovers, CONSTANTS.customDuct);
 }
 
 function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
@@ -712,10 +817,25 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
   fillMap(row, cs.formOnly.bVent as Record<string, number>, {
     "B-vent-5ft-PC": "pc5", "B-vent-3ft-PC": "pc3", "B-vent-2ft-PC": "pc2",
     "B-vent-1ft- PC": "pc1", "B-Vent-60-Deg": "deg60", "B-Vent-90-Deg": "deg90",
-    "B-vent-CCF": "ccf",
     // The new form has one Tee field; size detail is lost by design ("loose" migration).
     "6x6x6 BV-Tee": "tee", "5x5x5 BV-Tee": "tee", "4x4x4 BV Tee": "tee",
   });
+  // B-vent CCF is a numeric box the shop half-uses as free text: 44 of the 48
+  // data values in the July 2026 corpus are things like "12/12" (roof pitch)
+  // or "1-1-1", which num() used to silently zero. Numbers go to the box;
+  // text goes to the sheet's PRINTED Misc box so the shop still sees it.
+  // Pure "#" runs are Access column-overflow debris, not data.
+  {
+    const ccfRaw = str(row["B-vent-CCF"]);
+    if (ccfRaw && !/^#+$/.test(ccfRaw)) {
+      const n = Number(ccfRaw);
+      if (Number.isFinite(n)) {
+        (cs.formOnly.bVent as Record<string, number>).ccf += Math.max(0, Math.floor(n));
+      } else {
+        cs.custom.miscellaneous.push(`B-Vent CCF — ${ccfRaw}`);
+      }
+    }
+  }
   fillMap(row, cs.formOnly.flexBVent as Record<string, number>, {
     "4x36 Flex B-vent": "4x36", "4x60 Flex B-vent": "4x60",
   });
@@ -723,30 +843,7 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
   cs.formOnly.panningMetal36x36 = num(row.PanningMetal);
   cs.formOnly.condRegs8x6 = num(row.ConditioningRegister8x6);
 
-  collectLeftovers(
-    row,
-    [
-      "6x5OvalToRoundEll", "7x6OvalToRoundEll",
-      "3 Inch Round Ell",
-      "8x31/4x5 Ell Boots", "8x31/4x5 End Boots", "8x31/4x5 Straight Boots",
-      "12x4x8 Straight Boots",
-      "5 Inch  Ell Vertical", "6 Inch  Ell Vertical", "7 Inch  Ell Vertical",
-      "8 Inch Flat Ell Flat",
-      "CustomFan2", "CustomFan3",
-      "3 Inch Wall Cap", "4 Inch Wall Cap", "5 Inch Wall Cap", "6 Inch Wall Cap",
-      "7 Inch Wall Cap", "8 Inch Wall Cap", "10x31/4 Inch Wall Cap",
-      "6 Inch Screen  Cap", "7 Inch Screen  Cap", "8 Inch Screen Cap",
-      "3 Inch x 14 Foot Non-Insulated Flex",
-      "B_Vent Diameter", "Furn-Conn-Diameter",
-      "B-vent-6in-PC", "B-Vent-45-Deg", "BV-Redr",
-      "Furn-Conn-5ft-PC", "Furn-Conn-3ft-PC", "Furn-Conn-2ft-PC", "Furn-Conn-1ft-PC",
-      "Furn-Conn-6in-PC", "Furn-Conn-1inc-Adj-PC", "Furn-Conn-45-Deg",
-      "Furn-Conn-60-Deg", "Furn-Conn-90-Deg",
-      "5x36 Flex B-vent", "5x60 Flex B-vent",
-    ],
-    leftovers,
-    CONSTANTS.prefab,
-  );
+  collectLeftovers(row, PREFAB_NOTE_COLS, leftovers, CONSTANTS.prefab);
 }
 
 // ----- assemble -----------------------------------------------------------
@@ -773,6 +870,104 @@ const failures: { id: number; error: string }[] = [];
 let leftoverTotal = 0;
 let emptySkipped = 0;
 
+// ----- audit report (--audit-report) --------------------------------------
+
+type AuditCol = {
+  class:
+    | "mapped"            // values land somewhere (see dest)
+    | "form-default"      // >=90%-identical Access form default — dropped
+    | "deliberately-dropped"
+    | "UNMAPPED-WITH-DATA" // the silent-loss case the audit warns about
+    | "unmapped-empty"
+    | "table-skipped";    // whole table not imported (DuctBoard etc.)
+  dest: string; // box | header | legacy-notes-hidden | misc-box-text | text-list | sheet-metal
+  dataRows: number;
+  nonNumeric: number; // present values Number() can't parse -> num() coerces to 0
+  samples: string[];
+};
+const auditReport: {
+  sources: Record<string, Record<string, { rows: number; columns: Record<string, AuditCol> }>>;
+  sheetMetal: { placed: number; kept: string[] };
+  totals: Record<string, number>;
+} = { sources: {}, sheetMetal: { placed: 0, kept: [] }, totals: {} };
+
+function recordAuditSource(
+  source: string,
+  tables: Tables,
+  seen: Record<"header" | "customDuct" | "stock" | "prefab", Set<string>>,
+  imported: Set<number>,
+) {
+  if (!auditPath) return;
+  const SEEN_KEY: Record<string, "header" | "customDuct" | "stock" | "prefab"> = {
+    Header: "header", Custom_Duct: "customDuct", Stock_Duct: "stock", PreFab: "prefab",
+  };
+  const CONST_KEY: Record<string, Set<string>> = {
+    Header: CONSTANTS.header, Custom_Duct: CONSTANTS.customDuct,
+    Stock_Duct: CONSTANTS.stock, PreFab: CONSTANTS.prefab,
+  };
+  const NOTE_COLS: Record<string, Set<string>> = {
+    Header: new Set(HEADER_NOTE_COLS), Custom_Duct: new Set(CUSTOM_NOTE_COLS),
+    Stock_Duct: new Set(), PreFab: new Set(PREFAB_NOTE_COLS),
+  };
+  const RETIRED_COLS: Record<string, Set<string>> = {
+    Header: new Set(), Custom_Duct: new Set(),
+    Stock_Duct: new Set(Object.keys(RETIRED_STOCK_MISC)),
+    PreFab: new Set(Object.keys(RETIRED_PREFAB_MISC)),
+  };
+  const out: Record<string, { rows: number; columns: Record<string, AuditCol> }> = {};
+  for (const [tName, table] of Object.entries(tables)) {
+    const isSection = tName in SEEN_KEY;
+    const seenSet = isSection ? seen[SEEN_KEY[tName]] : new Set<string>();
+    const constSet = isSection ? CONST_KEY[tName] : new Set<string>();
+    const cols: Record<string, AuditCol> = {};
+    for (const col of table.headers) {
+      let dataRows = 0;
+      let nonNumeric = 0;
+      const samples: string[] = [];
+      for (const r of table.rows) {
+        if (isSection && !imported.has(SHEET_KEY(r))) continue;
+        const v = r[col];
+        if (!present(v)) continue;
+        dataRows++;
+        const s = str(v);
+        if (Number.isNaN(Number(s))) nonNumeric++;
+        const trimmed = s.length > 60 ? `${s.slice(0, 60)}…` : s;
+        if (samples.length < 3 && !samples.includes(trimmed)) samples.push(trimmed);
+      }
+      let cls: AuditCol["class"];
+      let dest = "";
+      if (!isSection) {
+        cls = "table-skipped";
+      } else if (NOTE_COLS[tName].has(col)) {
+        // A form-default note column is SKIPPED by collectLeftovers.
+        cls = constSet.has(col) ? "form-default" : "mapped";
+        if (cls === "mapped") dest = "legacy-notes-hidden";
+      } else if (RETIRED_COLS[tName].has(col)) {
+        cls = "mapped";
+        dest = "misc-box-text";
+      } else if (tName === "PreFab" && FREE_TEXT_COLS.includes(col)) {
+        cls = "mapped";
+        dest = "text-list";
+      } else if (tName === "Custom_Duct" && /^Sheet Metal Line \d+/.test(col)) {
+        cls = "mapped";
+        dest = "sheet-metal";
+      } else if (seenSet.has(col)) {
+        cls = "mapped";
+        dest = tName === "Header" ? "header" : "box";
+      } else if (constSet.has(col)) {
+        cls = "form-default";
+      } else if (DELIBERATELY_DROPPED.has(col)) {
+        cls = "deliberately-dropped";
+      } else {
+        cls = dataRows > 0 ? "UNMAPPED-WITH-DATA" : "unmapped-empty";
+      }
+      cols[col] = { class: cls, dest, dataRows, nonNumeric, samples };
+    }
+    out[tName] = { rows: table.rows.length, columns: cols };
+  }
+  auditReport.sources[source] = out;
+}
+
 function assembleSource(tables: Tables, sourceName: string) {
   const customById = byId(tables.Custom_Duct);
   const stockById = byId(tables.Stock_Duct);
@@ -795,6 +990,10 @@ function assembleSource(tables: Tables, sourceName: string) {
     header: new Set<string>(joinKeys),
   };
 
+  // Keys of rows that actually import this source — the audit only counts
+  // data on these (skipped artifact rows carry meaningless form residue).
+  const importedKeys = new Set<number>();
+
   for (const hRaw of tables.Header.rows) {
   const h = track(hRaw, seen.header);
   const id = SHEET_KEY(h);
@@ -804,6 +1003,7 @@ function assembleSource(tables: Tables, sourceName: string) {
     emptySkipped++;
     continue;
   }
+  importedKeys.add(id);
   const cs = emptyCutsheet();
   const leftovers: string[] = [];
 
@@ -830,12 +1030,7 @@ function assembleSource(tables: Tables, sourceName: string) {
   };
   // Cloned From / AsBuilts initials are header metadata with no home on the
   // new form — preserved as hidden legacyNotes, never printed.
-  collectLeftovers(
-    h,
-    ["Comments", "Creation Notes", "Cut Sheet Cloned From", "AsBuilts Reviewed by Initials"],
-    leftovers,
-    CONSTANTS.header,
-  );
+  collectLeftovers(h, HEADER_NOTE_COLS, leftovers, CONSTANTS.header);
 
   const custom = customById.get(id);
   const stock = stockById.get(id);
@@ -865,10 +1060,14 @@ function assembleSource(tables: Tables, sourceName: string) {
   });
   }
 
-  auditUnmapped(sourceName, "Header", tables.Header, seen.header, CONSTANTS.header);
-  auditUnmapped(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, CONSTANTS.customDuct);
-  auditUnmapped(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, CONSTANTS.stock);
-  auditUnmapped(sourceName, "PreFab", tables.PreFab, seen.prefab, CONSTANTS.prefab);
+  auditUnmapped(sourceName, "Header", tables.Header, seen.header, CONSTANTS.header, importedKeys);
+  auditUnmapped(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, CONSTANTS.customDuct, importedKeys);
+  auditUnmapped(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, CONSTANTS.stock, importedKeys);
+  auditUnmapped(sourceName, "PreFab", tables.PreFab, seen.prefab, CONSTANTS.prefab, importedKeys);
+  warnNonNumeric(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, importedKeys);
+  warnNonNumeric(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, importedKeys);
+  warnNonNumeric(sourceName, "PreFab", tables.PreFab, seen.prefab, importedKeys);
+  recordAuditSource(sourceName, tables, seen, importedKeys);
 }
 
 for (const input of inputs) {
@@ -886,6 +1085,24 @@ for (const input of inputs) {
 // year files overlap; templates were copied between letters) the freshest
 // Date Modified wins and older copies fall to the dedupe skip below.
 assembled.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+
+if (auditPath) {
+  auditReport.totals = {
+    assembled: assembled.length,
+    schemaFailures: failures.length,
+    emptyRowsSkipped: emptySkipped,
+    legacyNoteLines: leftoverTotal,
+    sheetMetalPlaced: auditReport.sheetMetal.placed,
+    sheetMetalKept: auditReport.sheetMetal.kept.length,
+  };
+  writeFileSync(auditPath, JSON.stringify(auditReport, null, 1));
+  console.log(
+    `audit report → ${auditPath} (${assembled.length} sheets; ` +
+      `${auditReport.sheetMetal.placed} sheet-metal lines placed in boxes, ` +
+      `${auditReport.sheetMetal.kept.length} kept as misc text; ` +
+      `${leftoverTotal} hidden legacy-note lines)`,
+  );
+}
 
 if (emitPath) {
   // Dedupe by key keeping the first (newest, thanks to the sort) copy. The
