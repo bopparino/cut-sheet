@@ -26,6 +26,10 @@ const BundleSchema = z.object({
   // REVIEWED (diffed against the incoming data) and chosen to refresh anyway.
   // Named ids only - there is deliberately no "force all" switch.
   forceEditedIds: z.array(z.number().int()).max(5000).optional(),
+  // Full-catch-up mode: override the edited-sheet guard on every matched
+  // sheet (Access wins everywhere). Added July 2026 when the guard turned
+  // out to be silently freezing protected sheets out of every refresh.
+  forceAllEdited: z.boolean().optional(),
   sheets: z
     .array(
       z.object({
@@ -114,6 +118,11 @@ export async function POST(req: Request) {
   // entry (never inserted in update mode - a refresh is not an import).
   const skippedEdited: number[] = [];
   let unknownSkipped = 0;
+  // The keys behind unknownSkipped (capped): a bare count made key drift
+  // undiagnosable — a sheet whose prop/builder was corrected in Access after
+  // import skips every refresh FOREVER, and nobody could tell WHICH sheet.
+  const unknownKeys: string[] = [];
+  const UNKNOWN_KEYS_CAP = 1000;
 
   const run = db.transaction(() => {
     const folder = (name: string, parentId: number | null): number => {
@@ -136,7 +145,12 @@ export async function POST(req: Request) {
           // is reported, not refreshed - unless the admin reviewed it and
           // named its id in forceEditedIds.
           const edit = editedBy.get(known.cutsheet_id) as { by: number | null } | undefined;
-          if (edit && edit.by != null && !bundle.forceEditedIds?.includes(known.cutsheet_id)) {
+          if (
+            edit &&
+            edit.by != null &&
+            !bundle.forceAllEdited &&
+            !bundle.forceEditedIds?.includes(known.cutsheet_id)
+          ) {
             skippedEdited.push(known.cutsheet_id);
           } else {
             updateSheet.run(JSON.stringify(s.cutsheet), s.updatedAt ?? null, known.cutsheet_id);
@@ -152,6 +166,7 @@ export async function POST(req: Request) {
         // that were never imported, or Access rows whose identity changed
         // since import) are counted and reported, never inserted.
         unknownSkipped++;
+        if (unknownKeys.length < UNKNOWN_KEYS_CAP) unknownKeys.push(s.key);
         continue;
       }
       const letterId = folder(builderLetter(s.builder), importsId);
@@ -188,6 +203,7 @@ export async function POST(req: Request) {
     attached,
     unmatched,
     unknownSkipped,
+    unknownKeys,
     skippedEdited,
   });
 }

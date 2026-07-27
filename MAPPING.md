@@ -32,6 +32,10 @@ the column. Nothing is dropped without a rule you can read on this page.
 - **B-vent CCF** is half-used as free text ("12/12", "1-1-1"). Numbers go to
   the CCF box; text prints as a "B-Vent CCF — …" Misc line. Meaning of the
   text values: open question for Kimmie.
+- **Roof jacks** (confirmed July 2026, via 2129 N Troy St): "730" is the
+  6" roof jack model and BLACK/BLK is finish, not a product. Sheet Metal
+  lines like `6" 730 ROOF JACK` / `730 BLACK ROOF JACKS` land in the Fans
+  box Roof J 6/8/10 by size (730 alone = 6"). Off-size jacks stay in Misc.
 - **Retired products** (48"/100" duct, 10' insulated flex, 3"/4" screen
   caps, Furn-Conn, BV-Tee sizes) print as Misc lines so a reprint matches
   what the shop originally built. Only the 2004–07 Server library has data
@@ -66,7 +70,6 @@ once answered:
 - A000HF fans (49) — what is this product?
 - W×H "WEC" / "W/EC" (~60) — wall end cap = End Caps row?
 - 4"/6" Mid Atlantic (~70) — lines never say metal vs screen; which default?
-- Roof jacks ("730", "BLK") — map to Roof J 6/8/10? Which sizes?
 - Aprilaire 1410/1210 cabinets — F/A box only knows 8126/8145.
 - Bare "FRESH AIR" (36) — default to 8126?
 - "BY PASS" dampers (28) — bypass ≠ volume damper; kept as text on purpose.
