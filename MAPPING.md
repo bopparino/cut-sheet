@@ -36,6 +36,14 @@ the column. Nothing is dropped without a rule you can read on this page.
   6" roof jack model and BLACK/BLK is finish, not a product. Sheet Metal
   lines like `6" 730 ROOF JACK` / `730 BLACK ROOF JACKS` land in the Fans
   box Roof J 6/8/10 by size (730 alone = 6"). Off-size jacks stay in Misc.
+- **3¼" × 115" stack duct** (confirmed July 2026): the Access columns
+  `3x8x115 / 3x10x115 / 3x12x115 / 3x14x115 Duct` become Custom Duct rows —
+  qty N, 3.25 wide × H high × 115 long (the "3" prefix is the same 3¼ the
+  60" list maps). 770 values across the corpus were hiding in legacy notes.
+- **Mid Atlantic wall caps** (confirmed July 2026): unspecified lines are
+  the default product = METAL (the box's left column); an explicit
+  "W/SCREEN" goes to Screen (plastic, right column). Sizes 4"/6" only;
+  anything else stays in Misc.
 - **Retired products** (48"/100" duct, 10' insulated flex, 3"/4" screen
   caps, Furn-Conn, BV-Tee sizes) print as Misc lines so a reprint matches
   what the shop originally built. Only the 2004–07 Server library has data
@@ -69,7 +77,6 @@ once answered:
   AE80-4 / SIG80-110 fan rows?
 - A000HF fans (49) — what is this product?
 - W×H "WEC" / "W/EC" (~60) — wall end cap = End Caps row?
-- 4"/6" Mid Atlantic (~70) — lines never say metal vs screen; which default?
 - Aprilaire 1410/1210 cabinets — F/A box only knows 8126/8145.
 - Bare "FRESH AIR" (36) — default to 8126?
 - "BY PASS" dampers (28) — bypass ≠ volume damper; kept as text on purpose.
