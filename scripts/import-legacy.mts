@@ -18,13 +18,18 @@
  * found-or-created by name, never duplicated. --force is only needed against
  * a non-empty DB that predates the legacy_imports ledger.
  *
- * Mapping decisions (per Austin, 2026-06-11):
+ * Mapping decisions (per Austin, 2026-06-11; flex/misc revised 2026-07-27):
  * - DuctBoard table is skipped entirely (no longer used).
- * - Insulated flex 14ft + 18ft both sum into Insulated Flex R4.
+ * - Insulated flex 14ft + 18ft both sum into Insulated Flex R8 (the columns
+ *   hold the unlabeled default product, which is R-8; R-4 only ever appears
+ *   hand-typed in the Sheet Metal lines).
  * - Legacy columns with no home in the new form become text lines in the
  *   Custom-PDF Miscellaneous list, prefixed "Legacy —", so nothing is
  *   silently lost.
- * - Sheet Metal Lines become customLines on the custom ticket.
+ * - Sheet Metal Lines that clearly name an item with a real box on the new
+ *   form (R-4 flex, W×H / round volume dampers, 8126/8145 fresh-air dampers,
+ *   blue flashing, bubble wrap) are placed into that box; everything else
+ *   lands in the sheet's Miscellaneous box.
  * - Folder layout: empty A-Z folders at the top level for day-to-day filing,
  *   plus IMPORTS > A-Z > <builder> holding the imported sheets, lettered by
  *   the builder's first character ("#" catch-all for non-letter builders).
@@ -397,20 +402,102 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
   );
 }
 
-function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
-  // Sheet Metal Lines = the old form's Miscellaneous box. They used to land
-  // in customLines, which only print at the BOTTOM OF THE CUSTOM PICK TICKET
-  // — invisible on the cut sheet itself, so Kimmie read them as "not brought
-  // over". Route them into custom.miscellaneous instead: that's the sheet's
-  // Miscellaneous box, and ticket-rules already prints those rows on the
-  // Custom ticket too, so nothing is lost off the ticket either.
-  for (let i = 1; i <= 12; i++) {
-    const label = str(row[`Sheet Metal Line ${i}`]);
-    if (!label) continue;
-    const qty = num(row[`Sheet Metal Line ${i} Qty`]);
-    cs.custom.miscellaneous.push(qty > 1 ? `${qty} — ${label}` : label);
+/**
+ * Conservative Sheet-Metal-line parser: if a line unambiguously names an item
+ * that has a real box on the new form, add its qty to that box and return
+ * true (the caller then drops the text line). Anything with extra words, an
+ * off-form size, or a fuzzy product match returns false and stays in Misc —
+ * a wrong box is worse than a text line. Patterns and their frequencies come
+ * from a scan of all 6,660 Sheet Metal lines in the July 2026 bundle.
+ * Deliberately NOT matched (fuzzy buckets, revisit with Kimmie if wanted):
+ * media cabs / Air Bear (filter racks?), fans (AE80/SIG110/ZB110), roof
+ * jacks, Mid Atlantic caps (metal vs screen ambiguous), "BY PASS" dampers
+ * (different product than a volume damper), bare "FRESH AIR" with no model.
+ */
+function placeMiscLine(cs: Cutsheet, label: string, qty: number): boolean {
+  // Normalize: uppercase, unglue "4IN" / "8X8", collapse whitespace.
+  const t = label
+    .toUpperCase()
+    .replace(/(\d)(IN\b|INCH\b)/g, "$1 $2")
+    .replace(/(\d)\s*X\s*(\d)/g, "$1 X $2")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Add to a qty map only when the size/key actually exists on the form.
+  const bump = (target: Record<string, number>, key: string): boolean => {
+    if (!(key in target)) return false;
+    target[key] = (target[key] ?? 0) + qty;
+    return true;
+  };
+
+  // R-4 insulated flex → Flex R4 column ("4 IN R-4 INS FLEX", "4IN R-4
+  // FLEX", "4 IN INS FLEX R-4", "6 IN R- 4 FLEX"). R-4 is always hand-typed
+  // in the lines — the Access flex COLUMNS are the R-8 default (see the
+  // insulatedFlexR8 mapping below).
+  const FLEX_WORD = /(?:R\s*-?\s*4|INS(?:UL(?:ATED)?)?\.?|FLEX)/;
+  let m = t.match(
+    new RegExp(
+      `^(\\d{1,2}) ?(?:IN|INCH|")? ?(${FLEX_WORD.source}(?: ${FLEX_WORD.source})*)$`,
+    ),
+  );
+  if (m && /R ?-? ?4/.test(m[2]) && /FLEX/.test(m[2])) {
+    return bump(cs.formOnly.insulatedFlexR4 as Record<string, number>, m[1]);
   }
 
+  // Rectangular volume dampers → Volume Dampers W/H box ("16 X 10 AA BM
+  // DAMPER", "8 X 20 AA DAMPERS", "A A 8 X 8 DAMPER"). Capped so a weird
+  // sheet can't grow the printed box past what the page absorbs; overflow
+  // stays in Misc.
+  const VD_WORD = "(?:A ?\\/? ?A|AA|BM|VOL(?:UME)?|MANUAL)";
+  m = t.match(
+    new RegExp(
+      `^(?:${VD_WORD} )*(\\d{1,2}(?:\\.\\d+)?) X (\\d{1,2}(?:\\.\\d+)?)(?: ${VD_WORD})* DAMPERS?$`,
+    ),
+  );
+  if (m) {
+    if (cs.custom.volumeDampers.length >= 6) return false;
+    cs.custom.volumeDampers.push({ qty, w: m[1], h: m[2] });
+    return true;
+  }
+
+  // Round volume dampers → round VD map ('10" ROUND DAMPERS', "12 IN ROUND
+  // VOLUME DAMPER"). "BY PASS" lines never match this shape and stay in Misc.
+  m = t.match(/^(\d{1,2}) ?(?:IN|INCH|")? ?(?:RND|ROUND) (?:VOL(?:UME)? )?DAMPERS?$/);
+  if (m) return bump(cs.custom.roundVolumeDampers as Record<string, number>, m[1]);
+
+  // Fresh-air damper models → F/A damper box ("8126 DAMPER", "APRIL AIR
+  // 8126", "FRESHAIR 8145", "F/A DAMPER 8145", bare "8126"). Only the two
+  // models the shop actually types; any extra words keep the line in Misc.
+  m = t.match(/\b(8126|8145)\b/);
+  if (m) {
+    const rest = t.replace(/\b(?:8126|8145)\b/, " ").replace(/\s+/g, " ").trim();
+    const FA_WORDS =
+      /^(?:(?:APRIL|APRILE|APRILAIR|APRILAIRE|AIR|AIRE|FRESH|FRESHAIR|F ?\/? ?A|A ?\/? ?A|AA|BM|DAMPERS?) ?)*$/;
+    if (FA_WORDS.test(rest)) {
+      return bump(cs.formOnly.freshAirDampers as Record<string, number>, m[1]);
+    }
+    return false;
+  }
+
+  // Blue flashing by size → P400/P600/P800/P1000 ('8" BLUE FLASHING').
+  m = t.match(/^(\d{1,2}) ?(?:IN|INCH|")? ?BLUE ?FLASHINGS?$/);
+  if (m) {
+    const key = ({ "4": "p400", "6": "p600", "8": "p800", "10": "p1000" } as Record<string, string>)[m[1]];
+    if (!key) return false;
+    return bump(cs.formOnly.blueFlashing as Record<string, number>, key);
+  }
+
+  // Bubble wrap → SD Misc extras ("ROLL BUBBLE WRAP", "BUBBLE WRAP").
+  if (/^(?:ROLLS? (?:OF )?)?BUBBLE ?WRAP$/.test(t)) {
+    const extras = cs.formOnly.sdMiscExtras as Record<string, number>;
+    extras.bubbleWrap = (extras.bubbleWrap ?? 0) + qty;
+    return true;
+  }
+
+  return false;
+}
+
+function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
   const whRows = (
     prefix: string,
     count: number,
@@ -458,6 +545,25 @@ function mapCustomDuct(row: Row, cs: Cutsheet, leftovers: string[]) {
       qty, w, h, l,
       sl: str(row[`CD ${i} SL`]).toUpperCase() === "Y" ? "Y" : "N",
     });
+  }
+
+  // Sheet Metal Lines = the old form's Miscellaneous box. They used to land
+  // in customLines, which only print at the BOTTOM OF THE CUSTOM PICK TICKET
+  // — invisible on the cut sheet itself, so Kimmie read them as "not brought
+  // over". Lines that clearly name an item with a real box on the new form
+  // are placed INTO that box (placeMiscLine, per Kimmie July 2026: "misc
+  // stuff that has boxes are not going in boxes"); everything else routes
+  // into custom.miscellaneous — that's the sheet's Miscellaneous box, and
+  // ticket-rules already prints those rows on the Custom ticket too, so
+  // nothing is lost off the ticket either. This loop MUST run after the
+  // whRows assignments above: placeMiscLine appends to volumeDampers, and
+  // the assignments would clobber those rows.
+  for (let i = 1; i <= 12; i++) {
+    const label = str(row[`Sheet Metal Line ${i}`]);
+    if (!label) continue;
+    const qty = num(row[`Sheet Metal Line ${i} Qty`]);
+    if (placeMiscLine(cs, label, qty || 1)) continue;
+    cs.custom.miscellaneous.push(qty > 1 ? `${qty} — ${label}` : label);
   }
 
   fillMap(row, cs.formOnly.filterRacks as Record<string, number>, {
@@ -576,9 +682,13 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
     "12 Inch x 14 Foot Non-Insulated Flex": "12",
     "14 Inch x 14 Foot Non-Insulated Flex": "14",
   });
-  // Per Austin: both insulated lengths sum into R4; R8 starts empty.
+  // The Access insulated-flex columns hold today's default product, which is
+  // R-8 (verified July 2026 across 2,863 sheets: not one Sheet Metal line
+  // ever says "R-8" — it's the unlabeled default — while 154 lines hand-note
+  // "R-4 flex" for the exception). So both lengths sum into the R8 row, and
+  // R4 is filled only by the parsed "R-4 flex" Sheet Metal lines above.
   for (const len of ["14", "18"]) {
-    fillMap(row, cs.formOnly.insulatedFlexR4 as Record<string, number>, {
+    fillMap(row, cs.formOnly.insulatedFlexR8 as Record<string, number>, {
       [`4 Inch x ${len} Foot Insulated Flex`]: "4",
       [`5 Inch x ${len} Foot Insulated Flex`]: "5",
       [`6 Inch x ${len} Foot Insulated Flex`]: "6",
