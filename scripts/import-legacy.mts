@@ -307,18 +307,60 @@ function auditUnmapped(
   table: { headers: string[]; rows: Row[] } | undefined,
   seen: Set<string>,
   constants: Set<string>,
+  imported: Set<number>,
 ) {
   if (!table) return;
   const flagged: string[] = [];
   for (const col of table.headers) {
     if (seen.has(col) || constants.has(col) || DELIBERATELY_DROPPED.has(col)) continue;
+    // Only rows that actually import count: an empty Access artifact row
+    // (skipped whole, by design) carries form residue — dates, "N" flags —
+    // that used to flag its columns every single run (the 2023 Q noise).
     let n = 0;
-    for (const r of table.rows) if (present(r[col])) n++;
+    for (const r of table.rows) if (imported.has(SHEET_KEY(r)) && present(r[col])) n++;
     if (n > 0) flagged.push(`${col} — data on ${n} row${n === 1 ? "" : "s"}`);
   }
   if (flagged.length > 0) {
     console.warn(`⚠ ${source} / ${tableName}: UNMAPPED columns with data (values are NOT imported):`);
     for (const f of flagged) console.warn(`    ${f}`);
+  }
+}
+
+// Text-by-design columns the numeric tripwire must ignore: flags, W/H/L
+// dimensions, and the free-text/note/retired sets handled elsewhere.
+const NUMERIC_EXEMPT = /( SL| DB)$|Width$|Height$|Length$|^B-vent-CCF$/;
+
+// Warn (never block, per Austin July 2026) when a column consumed as a
+// NUMBER holds values Number() can't parse — num() coerces those to 0 with
+// no trace. This is how "12/12" in the CCF box vanished for a month.
+function warnNonNumeric(
+  source: string,
+  tableName: string,
+  table: { headers: string[]; rows: Row[] } | undefined,
+  seen: Set<string>,
+  imported: Set<number>,
+) {
+  if (!table || tableName === "Header") return; // header consumption is all text
+  const noteish = new Set([
+    ...CUSTOM_NOTE_COLS, ...PREFAB_NOTE_COLS, ...FREE_TEXT_COLS,
+    ...Object.keys(RETIRED_STOCK_MISC), ...Object.keys(RETIRED_PREFAB_MISC),
+  ]);
+  for (const col of table.headers) {
+    if (!seen.has(col) || noteish.has(col) || NUMERIC_EXEMPT.test(col)) continue;
+    if (/^Sheet Metal Line \d+$/.test(col)) continue;
+    const bad: string[] = [];
+    for (const r of table.rows) {
+      if (!imported.has(SHEET_KEY(r)) || !present(r[col])) continue;
+      const s = str(r[col]);
+      // "####…" is Access column-overflow debris; zeroing it is correct.
+      if (/^#+$/.test(s)) continue;
+      if (Number.isNaN(Number(s)) && !bad.includes(s) && bad.length < 4) bad.push(s);
+    }
+    if (bad.length > 0) {
+      console.warn(
+        `⚠ ${source} / ${tableName} / ${col}: non-numeric value(s) import as 0: ${bad.map((b) => JSON.stringify(b)).join(", ")}`,
+      );
+    }
   }
 }
 
@@ -775,10 +817,25 @@ function mapPreFab(row: Row, cs: Cutsheet, leftovers: string[]) {
   fillMap(row, cs.formOnly.bVent as Record<string, number>, {
     "B-vent-5ft-PC": "pc5", "B-vent-3ft-PC": "pc3", "B-vent-2ft-PC": "pc2",
     "B-vent-1ft- PC": "pc1", "B-Vent-60-Deg": "deg60", "B-Vent-90-Deg": "deg90",
-    "B-vent-CCF": "ccf",
     // The new form has one Tee field; size detail is lost by design ("loose" migration).
     "6x6x6 BV-Tee": "tee", "5x5x5 BV-Tee": "tee", "4x4x4 BV Tee": "tee",
   });
+  // B-vent CCF is a numeric box the shop half-uses as free text: 44 of the 48
+  // data values in the July 2026 corpus are things like "12/12" (roof pitch)
+  // or "1-1-1", which num() used to silently zero. Numbers go to the box;
+  // text goes to the sheet's PRINTED Misc box so the shop still sees it.
+  // Pure "#" runs are Access column-overflow debris, not data.
+  {
+    const ccfRaw = str(row["B-vent-CCF"]);
+    if (ccfRaw && !/^#+$/.test(ccfRaw)) {
+      const n = Number(ccfRaw);
+      if (Number.isFinite(n)) {
+        (cs.formOnly.bVent as Record<string, number>).ccf += Math.max(0, Math.floor(n));
+      } else {
+        cs.custom.miscellaneous.push(`B-Vent CCF — ${ccfRaw}`);
+      }
+    }
+  }
   fillMap(row, cs.formOnly.flexBVent as Record<string, number>, {
     "4x36 Flex B-vent": "4x36", "4x60 Flex B-vent": "4x60",
   });
@@ -838,6 +895,7 @@ function recordAuditSource(
   source: string,
   tables: Tables,
   seen: Record<"header" | "customDuct" | "stock" | "prefab", Set<string>>,
+  imported: Set<number>,
 ) {
   if (!auditPath) return;
   const SEEN_KEY: Record<string, "header" | "customDuct" | "stock" | "prefab"> = {
@@ -867,6 +925,7 @@ function recordAuditSource(
       let nonNumeric = 0;
       const samples: string[] = [];
       for (const r of table.rows) {
+        if (isSection && !imported.has(SHEET_KEY(r))) continue;
         const v = r[col];
         if (!present(v)) continue;
         dataRows++;
@@ -931,6 +990,10 @@ function assembleSource(tables: Tables, sourceName: string) {
     header: new Set<string>(joinKeys),
   };
 
+  // Keys of rows that actually import this source — the audit only counts
+  // data on these (skipped artifact rows carry meaningless form residue).
+  const importedKeys = new Set<number>();
+
   for (const hRaw of tables.Header.rows) {
   const h = track(hRaw, seen.header);
   const id = SHEET_KEY(h);
@@ -940,6 +1003,7 @@ function assembleSource(tables: Tables, sourceName: string) {
     emptySkipped++;
     continue;
   }
+  importedKeys.add(id);
   const cs = emptyCutsheet();
   const leftovers: string[] = [];
 
@@ -996,11 +1060,14 @@ function assembleSource(tables: Tables, sourceName: string) {
   });
   }
 
-  auditUnmapped(sourceName, "Header", tables.Header, seen.header, CONSTANTS.header);
-  auditUnmapped(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, CONSTANTS.customDuct);
-  auditUnmapped(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, CONSTANTS.stock);
-  auditUnmapped(sourceName, "PreFab", tables.PreFab, seen.prefab, CONSTANTS.prefab);
-  recordAuditSource(sourceName, tables, seen);
+  auditUnmapped(sourceName, "Header", tables.Header, seen.header, CONSTANTS.header, importedKeys);
+  auditUnmapped(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, CONSTANTS.customDuct, importedKeys);
+  auditUnmapped(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, CONSTANTS.stock, importedKeys);
+  auditUnmapped(sourceName, "PreFab", tables.PreFab, seen.prefab, CONSTANTS.prefab, importedKeys);
+  warnNonNumeric(sourceName, "Custom_Duct", tables.Custom_Duct, seen.customDuct, importedKeys);
+  warnNonNumeric(sourceName, "Stock_Duct", tables.Stock_Duct, seen.stock, importedKeys);
+  warnNonNumeric(sourceName, "PreFab", tables.PreFab, seen.prefab, importedKeys);
+  recordAuditSource(sourceName, tables, seen, importedKeys);
 }
 
 for (const input of inputs) {
