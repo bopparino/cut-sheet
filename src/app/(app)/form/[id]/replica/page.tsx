@@ -200,7 +200,11 @@ export default async function ShopReplicaPage({
           </div>
         </CutsheetForm>
 
-        <FittingsCard cutsheetId={numeric} fittings={d.fittings} />
+        <FittingsCard
+          cutsheetId={numeric}
+          fittings={d.fittings}
+          drawings={attachments.filter((a) => a.kind === "image")}
+        />
         <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
         <PlansCard cutsheetId={numeric} plans={plans} />
         <LegacyNotesCard notes={legacyNotes} />

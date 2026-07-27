@@ -2,19 +2,30 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Pencil, Plus, X } from "lucide-react";
+import { ImagePlus, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FittingLabelEditor } from "@/components/cutsheet/FittingLabelEditor";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
 import { FITTINGS, FITTING_MAP } from "@/lib/fittings";
-import { saveFittings } from "@/lib/actions";
+import { saveFittings, uploadAttachment, deleteAttachment } from "@/lib/actions";
 import { registerPrintFlush } from "@/lib/print-flush";
 import type { FittingRow } from "@/lib/schema";
+
+export type DrawingItem = {
+  id: number;
+  filename: string;
+  size: number;
+};
 
 type Props = {
   cutsheetId: number;
   fittings: FittingRow[];
+  // The sheet's kind='image' attachments. Every one of these prints at the
+  // end of the fittings page (same rows the legacy Access drawings use), so
+  // they're surfaced HERE - Kimmie's custom Paint drawings belong to the
+  // fittings section in her head, not to a generic Attachments bucket.
+  drawings: DrawingItem[];
   className?: string;
 };
 
@@ -23,13 +34,49 @@ type Props = {
 // it large and place measurements directly on the correct sides (the digitized
 // Paint text tool - see FittingLabelEditor). Saves itself (debounced) like the
 // attachment cards - it lives outside the big replica form on purpose.
-export function FittingsCard({ cutsheetId, fittings, className }: Props) {
+// Custom one-off fittings still drawn in Paint upload via "Add Drawing" and
+// print on the fittings page after the picked catalog fittings.
+export function FittingsCard({ cutsheetId, fittings, drawings, className }: Props) {
   const [rows, setRows] = useState<FittingRow[]>(fittings);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editorFor, setEditorFor] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isUploading, startUpload] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Custom drawings: Paint (or anything) images upload as plain image
+  // attachments - the same rows the fittings print page already tiles - so
+  // the server needs nothing new. Mirrors PlansCard's upload pattern.
+  const uploadDrawings = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append("file", file);
+      startUpload(async () => {
+        try {
+          await uploadAttachment(cutsheetId, fd);
+          toast.success(`${file.name} added to the fittings page.`);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : String(err));
+        }
+      });
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const removeDrawing = (id: number, filename: string) => {
+    if (!confirm(`Remove ${filename} from the fittings page?`)) return;
+    startUpload(async () => {
+      try {
+        await deleteAttachment(cutsheetId, id);
+        toast.success(`${filename} removed.`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    });
+  };
 
   // pendingRef holds an un-fired (still-debounced) edit; inFlightRef holds a
   // save that has already dispatched. A flush must await BOTH - the debounce
@@ -118,9 +165,26 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
             {dirty || isPending ? "Saving…" : ""}
           </span>
         </CardTitle>
-        <Button size="sm" variant={pickerOpen ? "secondary" : "default"} onClick={() => setPickerOpen((o) => !o)}>
-          <Plus className="mr-1 h-4 w-4" /> {pickerOpen ? "Done Picking" : "Add Fittings"}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button asChild size="sm" variant="outline" disabled={isUploading}>
+            <label className="cursor-pointer" title="Upload a custom drawing (Paint file, photo of a sketch, any image) — it prints on the fittings page">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*,.png,.jpg,.jpeg,.bmp,.gif,.webp"
+                multiple
+                onChange={(e) => uploadDrawings(e.target.files)}
+                disabled={isUploading}
+                className="sr-only"
+              />
+              <ImagePlus className="mr-1 h-4 w-4" />
+              {isUploading ? "Uploading…" : "Add Drawing"}
+            </label>
+          </Button>
+          <Button size="sm" variant={pickerOpen ? "secondary" : "default"} onClick={() => setPickerOpen((o) => !o)}>
+            <Plus className="mr-1 h-4 w-4" /> {pickerOpen ? "Done Picking" : "Add Fittings"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {pickerOpen && (
@@ -152,12 +216,14 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
           </div>
         )}
 
-        {rows.length === 0 ? (
+        {rows.length === 0 && drawings.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No fittings yet. Hit &ldquo;Add Fittings&rdquo; and tap the drawings this house needs -
-            they print on the fittings sheet with the sizes you enter here.
+            they print on the fittings sheet with the sizes you enter here. For a custom one-off,
+            draw it in Paint (or snap a picture) and hit &ldquo;Add Drawing&rdquo; - it prints on
+            the fittings page too.
           </p>
-        ) : (
+        ) : rows.length === 0 ? null : (
           <ul className="divide-y rounded-md border">
             {rows.map((row, i) => {
               const def = FITTING_MAP.get(row.type);
@@ -229,6 +295,38 @@ export function FittingsCard({ cutsheetId, fittings, className }: Props) {
               );
             })}
           </ul>
+        )}
+
+        {drawings.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Custom drawings · print at the end of the fittings page
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {drawings.map((dr) => (
+                <div key={dr.id} className="group relative rounded-md border bg-white p-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/attachment/${dr.id}`}
+                    alt={dr.filename}
+                    className="aspect-square w-full rounded object-contain"
+                  />
+                  <p className="mt-1 truncate px-0.5 text-[10px] text-muted-foreground" title={dr.filename}>
+                    {dr.filename}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeDrawing(dr.id, dr.filename)}
+                    disabled={isUploading}
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Remove ${dr.filename}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </CardContent>
       {editorFor !== null && rows[editorFor] && FITTING_MAP.get(rows[editorFor].type) && (
