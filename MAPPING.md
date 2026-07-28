@@ -65,24 +65,36 @@ the column. Nothing is dropped without a rule you can read on this page.
   (1,538 sheets, deliberately not imported), the retired DuctBoard table
   (the converter doesn't extract it).
 
-## Open questions (the remaining ~7,200 misc text lines)
+## Shop-walk decisions (July 2026 — via Laron and the crew; vocabulary CLOSED)
 
-Counts from the July 2026 corpus; each becomes a one-line parser addition
-once answered:
+Every former open question, answered. Misc-text outcomes below are the
+DECIDED home, not a fallback:
 
-- Air Bear / media cabinets (~800 lines) — same thing as the Filter Racks
-  box (16x25 / 20x25 / L-Box)?
-- Broan ZB110/ZB110L (~470) — no box exists on the form; add one?
-- AE80 (~250) / SIG110 (~120) — fold every spelling into the existing
-  AE80-4 / SIG80-110 fan rows?
-- A000HF fans (49) — what is this product?
-- W×H "WEC" / "W/EC" (~60) — wall end cap = End Caps row?
-- Aprilaire 1410/1210 cabinets — F/A box only knows 8126/8145.
-- Bare "FRESH AIR" (36) — default to 8126?
-- "BY PASS" dampers (28) — bypass ≠ volume damper; kept as text on purpose.
-- B-vent CCF text values — what does "12/12" mean to the shop?
+- **Insulated flex, unmarked** — R8. The shop only started using R4 a few
+  months ago; "a job always had R8 unless specified" (Laron). Confirms the
+  columns→R8 / typed-R-4-lines→R4 rule.
+- **Air Bear / media cabinets** — NOT a filter rack; a distinct filter
+  cabinet product with no box on the form. Stays as Misc text.
+- **Broan ZB110 / ZB110L** — that product today IS the PTE 511 RK
+  (L = with light). Lines fold into the existing Fans rows: ZB110 →
+  PTE 511, ZB110L → PTEL 511. "PTE511RK"/"PTEL511RK" text lines too.
+- **AE80 (every spelling) and A000HF** — the standard 4" fan → AE 80-4 row.
+- **SIG110** — → SIG 80-110 row.
+- **W×H "WEC" / "W/EC"** — per-order custom box; Misc text is its home.
+- **Aprilaire 1410 / 1210 cabinets** — Misc text is their home.
+- **Bare "FRESH AIR" (no model)** — never mapped to a model; stays text.
+- **"BY PASS" dampers** — a different product (bypass has a damper blade;
+  a round volume damper has four quadrants). Stays text.
+- **B-vent CCF text ("12/12", "1-1-1")** — old habit; the printed
+  "B-Vent CCF — …" Misc line is the correct home.
+- **3" TP / BT dryer boxes** — dead product; deliberately dropped.
+
+## Still open (not import questions)
+
 - AsBuilts reviewer initials (1,825 values in legacy notes) — worth a real
-  field on the form?
+  field on the form someday?
+- The two D.R. Horton drifted keys (219541|1003050, 219613|1003042) —
+  ledger reconciliation.
 
 ## Running the audit
 

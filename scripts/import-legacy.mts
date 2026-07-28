@@ -296,6 +296,8 @@ const track = (row: Row, seen: Set<string>): Row =>
 // Columns dropped ON PURPOSE (decided with the shop) — the audit stays quiet.
 const DELIBERATELY_DROPPED = new Set([
   "Angles", // not on the new cut sheet; shop confirmed it's dead (July 2026)
+  // 3" dryer boxes: dead product, per the shop walk (July 2026).
+  "3InBoxTPDryerBox", "3InBoxBTDryerBox",
   // CD duct-board flags: DuctBoard is retired, and the whole corpus holds
   // only "N"/"#" — never one "Y" across 39,642 values (audited July 2026).
   ...Array.from({ length: 12 }, (_, i) => `CD ${i + 1} DB`),
@@ -506,7 +508,7 @@ function mapStock(row: Row, cs: Cutsheet, leftovers: string[]) {
       "3inLouveredWallCap", "4inLouveredWallCap", "6InLouveredWallCap",
       "3inBirdCageWallCap",
       "7InMetalWallCap", "7InMetalScreenWallCap",
-      "3InBoxTPDryerBox", "3InBoxBTDryerBox", "4InBoxPlasticDryerBox",
+      "4InBoxPlasticDryerBox",
       "60DegreeFurnaceConnector", "6x5BVentRed", "6x4BVentRed", "5x4BVentRed",
     ],
     leftovers,
@@ -590,6 +592,30 @@ function placeMiscLine(cs: Cutsheet, label: string, qty: number): boolean {
       return bump(cs.formOnly.freshAirDampers as Record<string, number>, m[1]);
     }
     return false;
+  }
+
+  // Fan models → Fans box (shop walk July 2026, via Laron): ZB110 IS
+  // today's PTE 511 RK — the L suffix means "with light" → PTEL. AE80 is
+  // the standard 4" fan and A000HF is the same unit. SIG110 = SIG 80-110.
+  // Any extra words beyond BROAN/FAN(S) keep the line in Misc.
+  {
+    const rest = t
+      .replace(/\bBROAN\b/g, " ")
+      .replace(/\bFANS?\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const FAN_MODELS: Array<[RegExp, string]> = [
+      [/^A ?E ?-? ?80(?: ?-? ?4"?)?$/, "AE80_4"],
+      [/^A000HF$/, "AE80_4"],
+      [/^SIG ?-? ?(?:80 ?-? ?)?110$/, "SIG80_110"],
+      [/^ZB ?-? ?110$/, "PTE511"],
+      [/^ZB ?-? ?110 ?L$/, "PTEL511"],
+      [/^PTE ?-? ?511 ?(?:RK)?$/, "PTE511"],
+      [/^PTEL ?-? ?511 ?(?:RK)?$/, "PTEL511"],
+    ];
+    for (const [re, key] of FAN_MODELS) {
+      if (re.test(rest)) return bump(cs.formOnly.fans as Record<string, number>, key);
+    }
   }
 
   // Roof jacks → Fans box Roof J 6/8/10 ('6" 730 ROOF JACK', '730 BLACK
