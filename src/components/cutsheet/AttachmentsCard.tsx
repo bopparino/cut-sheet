@@ -90,7 +90,8 @@ export function AttachmentsCard({ cutsheetId, attachments, className }: Props) {
       <CardContent>
         {attachments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No attachments yet. Add fitting drawings, photos, or documents — any file type.
+            No attachments yet. Add documents — any file type. Images upload as fitting
+            drawings and show in the Fittings section above.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">

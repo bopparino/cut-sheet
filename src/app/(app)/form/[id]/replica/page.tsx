@@ -205,7 +205,12 @@ export default async function ShopReplicaPage({
           fittings={d.fittings}
           drawings={attachments.filter((a) => a.kind === "image")}
         />
-        <AttachmentsCard cutsheetId={numeric} attachments={attachments} />
+        {/* Images (fitting drawings) live in the Fittings card's strip only —
+            listing them here too read as "added twice" (Kimmie, July 2026). */}
+        <AttachmentsCard
+          cutsheetId={numeric}
+          attachments={attachments.filter((a) => a.kind !== "image")}
+        />
         <PlansCard cutsheetId={numeric} plans={plans} />
         <LegacyNotesCard notes={legacyNotes} />
       </div>
