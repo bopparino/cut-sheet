@@ -15,6 +15,7 @@ import {
   OV_PIPE_SIZES,
   RND_ELL_SIZES,
   RND_PIPE_SIZES,
+  ROUND_END_CAPS_SIZES,
   SADDLE_TAP_SIZES,
   type Cutsheet,
 } from "@/lib/schema";
@@ -182,6 +183,15 @@ export function CutSheetReplica({ data }: { data: Cutsheet }) {
           </Section>
           <Section title="Con Regs" gapTop>
             <SingletonInputRow label="8x6" name="condRegs8x6" value={fo.condRegs8x6} />
+          </Section>
+          {/* Round End Caps + this page's own Miscellaneous box (shop request,
+              July 2026). `cutSheetMisc` — page 1's misc box already owns the
+              bare `miscellaneous` FormData prefix. */}
+          <Section title="Round End Caps" gapTop>
+            <QtyInputList prefix="roundEndCaps" sizes={ROUND_END_CAPS_SIZES} values={fo.roundEndCaps} label={(s) => `${s}"`} />
+          </Section>
+          <Section title="Miscellaneous" gapTop>
+            <MiscInputList prefix="cutSheetMisc" rows={5} initial={fo.cutSheetMisc} />
           </Section>
         </div>
         {/* Col 4 */}

@@ -19,6 +19,7 @@ import {
   RND_ELL_SIZES,
   RND_PIPE_SIZES,
   RND_SIZES,
+  ROUND_END_CAPS_SIZES,
   SADDLE_TAP_SIZES,
   SIMPSON_STP_KEYS,
   STRAIGHT_BOOT_BOXES_SIZES,
@@ -443,6 +444,21 @@ function CutPage({ data: d }: { data: Cutsheet }) {
           </Section>
           <Section title="Con Regs" gapTop>
             <VRow label="8x6" v={num(fo.condRegs8x6)} />
+          </Section>
+          {/* Round End Caps + this page's own Miscellaneous box (shop request,
+              July 2026). Misc renders like page 1's: 5 lines standard, more if
+              the data has more. */}
+          <Section title="Round End Caps" gapTop>
+            <VList items={ROUND_END_CAPS_SIZES.map((s) => ({ label: `${s}"`, v: num(fo.roundEndCaps[s]) }))} />
+          </Section>
+          <Section title="Miscellaneous" gapTop>
+            <div className="space-y-px text-[12pt]">
+              {Array.from({ length: Math.max(5, fo.cutSheetMisc.length) }).map((_, i) => (
+                <div key={i} className="min-h-[16pt] border-b border-black/30 font-medium">
+                  {fo.cutSheetMisc[i] ?? ""}
+                </div>
+              ))}
+            </div>
           </Section>
         </div>
         {/* Col 4 */}
