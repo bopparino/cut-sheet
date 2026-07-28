@@ -18,6 +18,7 @@ import {
   OV_PIPE_SIZES,
   RND_PIPE_SIZES,
   RND_SIZES,
+  ROUND_END_CAPS_SIZES,
   SADDLE_TAP_SIZES,
   SIMPSON_STP_KEYS,
   STRAIGHT_BOOT_BOXES_SIZES,
@@ -518,6 +519,15 @@ function CutPage() {
           </Section>
           <Section title="Con Regs" gapTop>
             <QtyList items={["8x6"]} />
+          </Section>
+          {/* Round End Caps + this page's own Miscellaneous box (shop request,
+              July 2026) — page 1 keeps the original Miscellaneous over in the
+              Custom Duct column. */}
+          <Section title="Round End Caps" gapTop>
+            <QtyList items={ROUND_END_CAPS_SIZES.map((s) => `${s}"`)} />
+          </Section>
+          <Section title="Miscellaneous" gapTop>
+            <BlankLines rows={5} />
           </Section>
         </div>
         {/* Col 4 */}

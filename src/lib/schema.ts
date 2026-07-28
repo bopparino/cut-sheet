@@ -138,6 +138,7 @@ export const TTO_SIZES = ["4", "5", "6", "7"] as const;
 export const BIRD_CAGE_SIZES = ["4", "6"] as const;
 export const FRESH_AIR_DAMPER_SIZES = ["8126", "8145", "P-180", "HY8150", "B150E75NT", "VTYIK1"] as const;
 export const GAL_REDR_SIZES = ["4x3", "5x4", "6x5", "7x6", "8x7", "6x4", "8x6", "10x8", "12x10", "14x12"] as const;
+export const ROUND_END_CAPS_SIZES = ["8", "10", "12", "14", "16"] as const;
 
 // Named-key maps (object keys, not size strings). Exported so the page and
 // the FormData reader can both iterate them in a consistent order.
@@ -232,6 +233,12 @@ const FormOnlySchema = z.object({
   flexBVent: z.object({ "4x36": qty, "4x60": qty }),
   panningMetal36x36: qty,
   condRegs8x6: qty,
+  // Round End Caps + the Cut Sheet page's own Miscellaneous box (shop request,
+  // July 2026 — they sit under Con Regs on page 2). Both self-default so every
+  // sheet saved before the section existed still parses (same pattern as
+  // trimMapOf: {} parses fine, TS just can't prove it for the mapped shape).
+  roundEndCaps: mapOf(ROUND_END_CAPS_SIZES).default({} as never),
+  cutSheetMisc: z.array(z.string()).default([]),
   wallRegs: z.array(z.string()).default([]),
   grills: z.array(z.string()).default([]),
   filterGrills: z.array(z.string()).default([]),
@@ -400,6 +407,7 @@ export function emptyCutsheet(): Cutsheet {
       straightBootBoxes: {},
       simpsonStp: {},
       sdMiscExtras: {},
+      roundEndCaps: {},
       uninsulatedFlex: {},
       insulatedFlexR4: {},
       insulatedFlexR8: {},
