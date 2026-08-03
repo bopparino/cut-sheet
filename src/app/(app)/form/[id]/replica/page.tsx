@@ -11,6 +11,7 @@ import { LegacyNotesCard } from "@/components/cutsheet/LegacyNotesCard";
 import { getCurrentUser } from "@/lib/auth";
 import { CloneCutsheetButton } from "@/components/cutsheet/CloneCutsheetButton";
 import { DeleteCutsheetButton } from "@/components/cutsheet/DeleteCutsheetButton";
+import { DismissDupFlagButton } from "@/components/cutsheet/DismissDupFlagButton";
 import { PrintPacketButton } from "@/components/cutsheet/PrintPacketButton";
 import { PrintZoneButton } from "@/components/cutsheet/PrintZoneButton";
 import { SendToSalesforceButton } from "@/components/cutsheet/SendToSalesforceButton";
@@ -182,16 +183,20 @@ export default async function ShopReplicaPage({
               : "border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn-fg)]"
           }`}
         >
-          {dup.kind === "exact" ? "EXACT DUPLICATE FOUND" : "POSSIBLE DUPLICATE"} — this sheet matches{" "}
-          <Link href={`/form/${dup.matchId}`} className="underline underline-offset-2">
-            cutsheet #{dup.matchId}
-          </Link>
-          . Flagged for review; nothing has been deleted.
+          <span>
+            {dup.kind === "exact" ? "EXACT DUPLICATE FOUND" : "POSSIBLE DUPLICATE"} — this sheet matches{" "}
+            <Link href={`/form/${dup.matchId}`} className="underline underline-offset-2">
+              cutsheet #{dup.matchId}
+            </Link>
+            . Flagged for review; nothing has been deleted. Fixing or deleting either sheet clears
+            this automatically.
+          </span>
+          <DismissDupFlagButton cutsheetId={numeric} />
         </div>
       ) : null}
 
       <div className="space-y-5 px-6 py-7">
-        <CutsheetForm formId={FORM_ID} action={save} className="space-y-6">
+        <CutsheetForm formId={FORM_ID} action={save} autosave className="space-y-6">
           <div className="overflow-x-auto rounded-xl border border-border bg-secondary p-4">
             <ShopCutSheetReplica data={d} builders={builders} />
           </div>
