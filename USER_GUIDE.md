@@ -2,7 +2,7 @@
 
 This is a plain guide to the Cut Sheet app. It is written for someone who is comfortable with paperwork but not with computers. Take your time. Nothing here can break the program, and anything you remove can be brought back.
 
-If you get stuck, the short version is this: you find a cut sheet or make a new one, you fill in the boxes, you save, and then you print it for the shop. Everything else is detail.
+If you get stuck, the short version is this: you find a cut sheet or make a new one, you fill in the boxes (it saves itself as you type), and then you print it for the shop. Everything else is detail.
 
 ---
 
@@ -39,7 +39,7 @@ When you open the app you land on the **Browse** screen. This is home base. On t
 - **New cutsheet.** Starts a fresh, blank cut sheet.
 - **Trash.** Where removed cut sheets wait, in case you need one back.
 
-You can click these at any time to move around. You will not lose your place in a dangerous way, but remember: if you are in the middle of typing on a cut sheet, save first (more on saving later).
+You can click these at any time to move around. You will not lose your place in a dangerous way, and the cut sheet saves itself as you type (more on saving later).
 
 ### The Browse screen, top to bottom
 
@@ -114,15 +114,11 @@ Near the top you will see Plenum Package with three choices: **Small**, **Large*
 
 The box at the very top left, above everything, is the cut sheet's name. Change it any time. It is what shows up in your lists.
 
-### Saving your work (important)
+### Saving your work
 
-When you finish, or any time you want to lock in your changes, click the black **Save** button in the top right corner.
+Good news: **the sheet now saves itself as you type.** Pause for a moment after typing and a little bubble appears in the bottom right corner — "Saving…", then "Autosaved" with the time. That is your confirmation the work is in. If you fill in boxes and walk away without clicking anything, your typing is kept.
 
-Here is the part to remember: **nothing is saved until you click Save.** If you type a bunch of numbers and then leave the page without clicking Save, that typing is gone. It works like a paper form you have not filed yet. So when in doubt, click Save. There is no harm in saving often.
-
-### The Trim Pull Sheet
-
-Below the two cut-sheet forms there is a third form, the **Trim Pull Sheet** — registers, grills, floor regs, and fans, split by zone plus basement. Type the counts in the zone boxes; the TOTAL column fills itself in when the sheet prints. Each section also has a few blank rows at the bottom for anything not pre-printed — type the item name and its counts. The Trim Pull Sheet saves with the same Save button and prints in the Foreman Packet.
+The black **Save** button in the top right corner is still there and still works. Click it whenever you want to be sure everything is locked in right now — for example just before you print or head out. And if the little bubble ever turns red and says autosave failed (a network hiccup, usually), click Save to put it through.
 
 ---
 
@@ -200,7 +196,10 @@ Every cut sheet you remove goes to the **Trash** (on the left menu) rather than 
 ## 11. Common questions
 
 **Do I have to save?**
-Yes. Click the Save button after you make changes. Nothing is kept until you do.
+Not anymore — the sheet saves itself as you type. Watch for the little "Autosaved" bubble in the bottom right corner. The Save button still works and is a fine habit before printing or leaving for the day.
+
+**A sheet has a red or yellow duplicate banner. What do I do?**
+The banner means the sheet matches another sheet (it names which one, with a link). Nothing has been deleted — the app is just asking a human to look. Three ways to resolve it, and all three make the banner go away on its own: fix whichever sheet is wrong (the banner clears when you edit and it no longer matches), delete the extra copy (it goes to the Trash, not gone forever), or — if both sheets are supposed to exist — click **Not a duplicate — clear flag** on the banner.
 
 **I cannot find my cut sheet.**
 Use the Search screen and type anything you remember: a lot number, a prop number, the builder, the model name. If a builder's name is spelled two different ways, its sheets end up split into two groups, so watch the spelling and use the builder suggestions when you type.
@@ -218,7 +217,7 @@ The app sends each page at its correct size. If a page comes out wrong, the prin
 That is expected. The shop makes more than one sheet per house.
 
 **Did I break something?**
-Almost certainly not. You cannot hurt the data by clicking around. The worst that happens is you leave a page without saving, and even then you only lose the typing you had not saved yet.
+Almost certainly not. You cannot hurt the data by clicking around. The sheet saves itself as you type, removed sheets sit safely in the Trash, and nothing is ever erased without asking you first.
 
 ---
 
@@ -234,8 +233,8 @@ Almost certainly not. You cannot hurt the data by clicking around. The worst tha
 - **Lot:** the lot number of the house in its community.
 - **Prop number:** the property number for the house. It prints on every document.
 - **Header:** the top of a cut sheet, with the job information.
-- **Save:** the button that keeps your changes. Use it often.
+- **Save:** the button that locks in your changes right now. The sheet also autosaves as you type — the button is for peace of mind.
 
 ---
 
-That is the whole app. Find it or make it, fill it in, save it, print it. Everything else you will pick up by doing it a few times. When you are unsure, click Save, and remember that the Trash holds anything you remove.
+That is the whole app. Find it or make it, fill it in, print it — it saves itself along the way. Everything else you will pick up by doing it a few times. When you are unsure, click Save for peace of mind, and remember that the Trash holds anything you remove.

@@ -66,6 +66,19 @@ function migrate(db: Database.Database): void {
       kind TEXT NOT NULL CHECK (kind IN ('exact', 'likely')),
       match_id INTEGER NOT NULL
     );
+
+    -- Human "not a duplicate" judgments (see src/lib/dupes.ts). content_hash
+    -- pins the judgment to the sheet content the human actually looked at:
+    -- while the sheet still hashes to it, no scan or re-check will flag the
+    -- sheet again; once the sheet is edited, the dismissal lapses at the next
+    -- scan. dismissed_by is a users.id kept FK-less on purpose - users is
+    -- created by migration v6 AFTER this bootstrap runs on a fresh DB.
+    CREATE TABLE IF NOT EXISTS dup_dismissals (
+      cutsheet_id INTEGER PRIMARY KEY REFERENCES cutsheets(id) ON DELETE CASCADE,
+      content_hash TEXT NOT NULL,
+      dismissed_by INTEGER,
+      dismissed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Versioned migrations. user_version defaults to 0 on fresh DBs and on

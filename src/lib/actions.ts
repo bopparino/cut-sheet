@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { dismissDupFlag, recheckDupFlags } from "@/lib/dupes";
 import { imageToPdf } from "@/lib/pdf";
 import { FITTING_MAP } from "@/lib/fittings";
 import {
@@ -282,6 +283,9 @@ export async function updateCutsheet(id: number, formData: FormData) {
   db.prepare(
     "UPDATE cutsheets SET data = ?, folder_id = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
   ).run(JSON.stringify(parsed), folderId, me?.id ?? null, id);
+  // Fixing a duplicate is an edit like any other - re-evaluate this sheet's
+  // flag (and its partners') now instead of waiting for the next admin scan.
+  recheckDupFlags([id]);
   revalidatePath(`/form/${id}`);
   revalidatePath("/search");
   revalidatePath("/browse");
@@ -383,9 +387,15 @@ export async function updateCutSheetReplica(id: number, formData: FormData) {
   db.prepare(
     "UPDATE cutsheets SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?",
   ).run(JSON.stringify(parsed), me?.id ?? null, id);
+  // A save that fixed a duplicate clears (or downgrades) the flag right away -
+  // this sheet's and its flagged partners'. Never creates a flag (see
+  // recheckDupFlags): a fresh clone autosaves before its new lot is typed and
+  // must not get a scary banner for still matching its source.
+  recheckDupFlags([id]);
   revalidatePath(`/form/${id}`);
   revalidatePath(`/form/${id}/replica`);
   revalidatePath("/search");
+  revalidatePath("/browse");
 }
 
 // Fittings save their own slice of the payload (the FittingsCard lives outside
@@ -422,7 +432,12 @@ export async function deleteCutsheet(id: number) {
   db.prepare(
     "UPDATE cutsheets SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL",
   ).run(id);
+  // Deleting the extra copy IS how a duplicate gets resolved - drop this
+  // sheet's flag and re-evaluate the partner's (it clears unless it still
+  // matches a third sheet).
+  recheckDupFlags([id]);
   revalidatePath("/search");
+  revalidatePath("/browse");
   revalidatePath("/admin/trash");
   redirect("/search");
 }
@@ -435,9 +450,25 @@ export async function restoreCutsheet(id: number) {
   revalidatePath("/admin/trash");
 }
 
+// "Not a duplicate" - the human judgment call the flag banner exists to ask
+// for. Clears this sheet's flag, records a dismissal pinned to its current
+// content (so the next admin re-scan doesn't resurrect the flag while the
+// sheet is unchanged), and re-evaluates the partner sheets' flags. Nothing is
+// deleted; FLAG-never-delete stands - this is the "a human decides" half.
+export async function clearDupFlag(id: number) {
+  const me = await getCurrentUser();
+  dismissDupFlag(id, me?.id ?? null);
+  revalidatePath(`/form/${id}`);
+  revalidatePath(`/form/${id}/replica`);
+  revalidatePath("/browse");
+}
+
 // Hard delete from the trash. Attachments cascade via the FK constraint.
 export async function permanentlyDeleteCutsheet(id: number) {
   db.prepare("DELETE FROM cutsheets WHERE id = ?").run(id);
+  // Own flag row cascaded with the sheet; partners flagged against it still
+  // need their flags re-evaluated.
+  recheckDupFlags([id]);
   revalidatePath("/admin/trash");
   revalidatePath("/search");
 }
@@ -692,6 +723,9 @@ export async function bulkDelete(formData: FormData) {
     }
   });
   tx();
+
+  // Bulk-deleting duplicates resolves them too - same as deleteCutsheet.
+  recheckDupFlags(cutsheetIds);
 
   revalidatePath("/browse");
   revalidatePath("/admin/trash");
