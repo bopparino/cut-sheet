@@ -15,7 +15,6 @@
 // (see FittingLabelSchema) - the catalog only supplies the artwork.
 
 import type { CSSProperties } from "react";
-import type { FittingRow } from "@/lib/schema";
 
 export type FittingDef = {
   id: string;
@@ -36,25 +35,6 @@ export const FITTINGS: FittingDef[] = Array.from({ length: FITTING_COUNT }, (_, 
 }));
 
 export const FITTING_MAP = new Map(FITTINGS.map((f) => [f.id, f]));
-
-// Qty left the fittings UI in Aug 2026 (Kimmie: one row = one fitting to
-// build). Sheets saved before then can still carry qty 2+ on a row, so every
-// reader expands those into identical single rows before display - a legacy
-// "Fitting 18, Qty 2" becomes two rows in the editor and two drawings on the
-// printed page, and nothing the shop was meant to build goes missing. The qty
-// field stays in the schema so pre-change blobs still parse; the DB row only
-// rewrites (already expanded) the next time the sheet's fittings are edited.
-export function expandFittingRows(rows: FittingRow[]): FittingRow[] {
-  return rows.flatMap((row) =>
-    Array.from({ length: Math.max(1, row.qty) }, () => ({
-      ...row,
-      qty: 1,
-      // Fresh label objects per copy - the editor patches rows independently
-      // and shared references would risk edits echoing across copies.
-      labels: row.labels.map((l) => ({ ...l })),
-    })),
-  );
-}
 
 // CSS for the drawing box: give the element this style plus the aspect ratio
 // from fittingAspect() and the drawing fills it edge to edge, so fractional

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FittingLabelEditor } from "@/components/cutsheet/FittingLabelEditor";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
-import { FITTINGS, FITTING_MAP, expandFittingRows } from "@/lib/fittings";
+import { FITTINGS, FITTING_MAP } from "@/lib/fittings";
 import { saveFittings, uploadAttachment, deleteAttachment } from "@/lib/actions";
 import { registerPrintFlush } from "@/lib/print-flush";
 import type { FittingRow } from "@/lib/schema";
@@ -37,9 +37,7 @@ type Props = {
 // Custom one-off fittings still drawn in Paint upload via "Add Drawing" and
 // print on the fittings page after the picked catalog fittings.
 export function FittingsCard({ cutsheetId, fittings, drawings, className }: Props) {
-  // No Qty column since Aug 2026: one row per fitting to build. Legacy rows
-  // saved with qty 2+ expand into duplicate rows here (see expandFittingRows).
-  const [rows, setRows] = useState<FittingRow[]>(() => expandFittingRows(fittings));
+  const [rows, setRows] = useState<FittingRow[]>(fittings);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editorFor, setEditorFor] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -243,6 +241,19 @@ export function FittingsCard({ cutsheetId, fittings, drawings, className }: Prop
                   <div className="w-24 shrink-0">
                     <div className="text-sm font-semibold">{def.label}</div>
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    Qty
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.qty}
+                      onChange={(e) => {
+                        const n = Math.trunc(Number(e.target.value));
+                        update(i, { qty: Number.isFinite(n) ? Math.max(0, n) : 0 });
+                      }}
+                      className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+                    />
+                  </label>
                   <label
                     className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
                     title="Sound lined — prints as SL YES/NO on the fittings sheet"
