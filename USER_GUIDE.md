@@ -129,9 +129,9 @@ Below the two forms is the **Fittings** section. This replaces the old Paint rou
 Here is the new routine:
 
 1. Click **+ Add Fittings**. The whole catalog of fitting drawings opens right there.
-2. Tap the drawing you need. It gets added to your list. Tap it again if the house needs another one of the same kind — a little counter on the drawing keeps track.
+2. Tap the drawing you need. It gets added to your list. If the house needs two of the same kind, tap it twice — every tap adds its own line, and a little counter on the drawing keeps track.
 3. Click **Done Picking** when you have them all.
-4. On each fitting in your list, fill in the quantity. Then click the little drawing (or the **Place sizes** button) — the drawing opens up big, just like pasting it into Paint. Click the side you want to size and type the number right there, exactly where you used to put it with the text tool. Click somewhere else for the next number. You can drag a number to nudge it, click it to change it, and add as many as the fitting needs — even the duct boards with eight or more.
+4. On each fitting in your list, click the little drawing (or the **Place sizes** button) — the drawing opens up big, just like pasting it into Paint. Click the side you want to size and type the number right there, exactly where you used to put it with the text tool. Click somewhere else for the next number. You can drag a number to nudge it, click it to change it, and add as many as the fitting needs — even the duct boards with eight or more.
 5. Click **Done** to close the drawing. There is also a notes box on every line for anything extra, like "drive both ends".
 
 What prints is exactly what you see: the numbers sit on the same sides of the drawing you put them on.
@@ -140,7 +140,7 @@ The fittings do not have names — nobody's fittings do, every shop guy calls th
 
 It saves by itself as you type — you will see a little "Saving…" appear and disappear. No Save button needed for fittings.
 
-When you print for the shop, every fitting you picked comes out on the fittings page: the drawing, the quantity nice and big, and the measurements in bold underneath.
+When you print for the shop, every fitting you picked comes out on the fittings page: the drawing with the measurements in bold underneath, one drawing per fitting to build.
 
 ### Attachments: pictures and files
 
