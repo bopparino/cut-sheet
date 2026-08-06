@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FittingLabelEditor } from "@/components/cutsheet/FittingLabelEditor";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
-import { FITTINGS, FITTING_MAP, expandFittingRows } from "@/lib/fittings";
+import { FITTINGS, FITTING_MAP } from "@/lib/fittings";
 import { saveFittings, uploadAttachment, deleteAttachment } from "@/lib/actions";
 import { registerPrintFlush } from "@/lib/print-flush";
 import type { FittingRow } from "@/lib/schema";
@@ -37,9 +37,7 @@ type Props = {
 // Custom one-off fittings still drawn in Paint upload via "Add Drawing" and
 // print on the fittings page after the picked catalog fittings.
 export function FittingsCard({ cutsheetId, fittings, drawings, className }: Props) {
-  // No Qty column since Aug 2026: one row per fitting to build. Legacy rows
-  // saved with qty 2+ expand into duplicate rows here (see expandFittingRows).
-  const [rows, setRows] = useState<FittingRow[]>(() => expandFittingRows(fittings));
+  const [rows, setRows] = useState<FittingRow[]>(fittings);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editorFor, setEditorFor] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -141,7 +139,9 @@ export function FittingsCard({ cutsheetId, fittings, drawings, className }: Prop
   useEffect(() => () => void flushRef.current(), []);
 
   const add = (type: string) => {
-    persist([...rows, { type, qty: 1, sl: false, labels: [], notes: "" }]);
+    // qty 0 = the blank Qty box (Kimmie, Aug 2026): a fresh pick shows no
+    // prefilled count, and a blank box prints the drawing with no × N.
+    persist([...rows, { type, qty: 0, sl: false, labels: [], notes: "" }]);
   };
   const update = (i: number, patch: Partial<FittingRow>) => {
     persist(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -243,6 +243,25 @@ export function FittingsCard({ cutsheetId, fittings, drawings, className }: Prop
                   <div className="w-24 shrink-0">
                     <div className="text-sm font-semibold">{def.label}</div>
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    Qty
+                    {/* Text input, not type=number: the old controlled number
+                        box could never be emptied (clearing snapped back to a
+                        digit), so typing "2" needed the "02" workaround
+                        (Kimmie, Aug 2026). qty 0 renders as a blank box, and
+                        blank stores as 0 - which the printed page shows as no
+                        count at all. */}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={row.qty === 0 ? "" : String(row.qty)}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
+                        update(i, { qty: digits === "" ? 0 : parseInt(digits, 10) });
+                      }}
+                      className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+                    />
+                  </label>
                   <label
                     className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
                     title="Sound lined — prints as SL YES/NO on the fittings sheet"
