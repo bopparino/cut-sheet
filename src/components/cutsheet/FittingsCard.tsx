@@ -139,7 +139,9 @@ export function FittingsCard({ cutsheetId, fittings, drawings, className }: Prop
   useEffect(() => () => void flushRef.current(), []);
 
   const add = (type: string) => {
-    persist([...rows, { type, qty: 1, sl: false, labels: [], notes: "" }]);
+    // qty 0 = the blank Qty box (Kimmie, Aug 2026): a fresh pick shows no
+    // prefilled count, and a blank box prints the drawing with no × N.
+    persist([...rows, { type, qty: 0, sl: false, labels: [], notes: "" }]);
   };
   const update = (i: number, patch: Partial<FittingRow>) => {
     persist(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -243,13 +245,19 @@ export function FittingsCard({ cutsheetId, fittings, drawings, className }: Prop
                   </div>
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     Qty
+                    {/* Text input, not type=number: the old controlled number
+                        box could never be emptied (clearing snapped back to a
+                        digit), so typing "2" needed the "02" workaround
+                        (Kimmie, Aug 2026). qty 0 renders as a blank box, and
+                        blank stores as 0 - which the printed page shows as no
+                        count at all. */}
                     <input
-                      type="number"
-                      min={0}
-                      value={row.qty}
+                      type="text"
+                      inputMode="numeric"
+                      value={row.qty === 0 ? "" : String(row.qty)}
                       onChange={(e) => {
-                        const n = Math.trunc(Number(e.target.value));
-                        update(i, { qty: Number.isFinite(n) ? Math.max(0, n) : 0 });
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 3);
+                        update(i, { qty: digits === "" ? 0 : parseInt(digits, 10) });
                       }}
                       className="h-8 w-14 rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
                     />
