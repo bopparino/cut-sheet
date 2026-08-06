@@ -306,7 +306,10 @@ const CustomLineSchema = z.object({
 // are the measurements, each click-placed at a position ON the drawing (x/y
 // are fractions of the drawing box) - the position is the information: it says
 // WHICH side the number belongs to, like Kimmie's Paint text tool did. Rows
-// print on the fittings sheet; qty 0 rows still print.
+// print on the fittings sheet. `qty` is legacy-only as of Aug 2026 (Kimmie:
+// one row = one fitting, no Qty in the UI or on the printed page) - it stays
+// in the schema so pre-change blobs parse, and readers run expandFittingRows
+// (src/lib/fittings.ts) so an old qty 2+ row shows as that many rows.
 export const FittingLabelSchema = z.object({
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),

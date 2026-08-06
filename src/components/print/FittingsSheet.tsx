@@ -1,6 +1,6 @@
 import type { Cutsheet } from "@/lib/schema";
 import { LEGAL_PAGE_CSS } from "@/components/cutsheet/replica/LegalScalePage";
-import { FITTING_MAP } from "@/lib/fittings";
+import { FITTING_MAP, expandFittingRows } from "@/lib/fittings";
 import { FittingThumb } from "@/components/cutsheet/FittingThumb";
 
 export type FittingImage = { id: number; filename: string };
@@ -20,8 +20,10 @@ const PER_PAGE = 12;
 
 // Printable contact sheet of the cutsheet's fittings. Two sources tile onto
 // the same Legal (8.5×14) grid: fittings picked from the catalog (drawing +
-// qty + per-side measurements, replacing the MS Paint ritual) come first,
-// then any legacy attached images (via the /api/attachment/[id] blob route).
+// per-side measurements, replacing the MS Paint ritual) come first, then any
+// legacy attached images (via the /api/attachment/[id] blob route). No Qty
+// on this page (Kimmie, Aug 2026): one drawing = one fitting to build, so
+// legacy qty 2+ rows expand into repeated drawings via expandFittingRows.
 // The warehouse builds 15-20 fittings per house off this sheet.
 export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }: Props) {
   const h = cutsheet.header;
@@ -30,7 +32,7 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
   const legacyImages = images.filter((img) => img.filename.includes("(Access)"));
   const photoImages = images.filter((img) => !img.filename.includes("(Access)"));
 
-  const picked = cutsheet.fittings
+  const picked = expandFittingRows(cutsheet.fittings)
     .map((row) => ({ row, def: FITTING_MAP.get(row.type) }))
     .filter((x): x is { row: (typeof cutsheet.fittings)[number]; def: NonNullable<ReturnType<typeof FITTING_MAP.get>> } => Boolean(x.def));
 
@@ -38,9 +40,6 @@ export function FittingsSheet({ cutsheet, cutsheetId, images, embedded = false }
     ...picked.map(({ row, def }, i) => (
       <figure key={`f${i}`} className="flex h-[2.9in] flex-col overflow-hidden rounded border border-black">
         <div className="relative flex min-h-0 flex-1 items-center justify-center bg-white p-1">
-          <span className="absolute left-2 top-1 z-10 text-[14pt] font-bold">
-            {row.qty > 0 ? `× ${row.qty}` : ""}
-          </span>
           {/* Measurements print exactly where they were placed on the drawing
               in the editor - the position says which side the number is for.
               zoom leaves a gutter so edge-anchored sizes don't clip. */}
