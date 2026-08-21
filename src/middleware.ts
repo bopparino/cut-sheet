@@ -23,8 +23,10 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Match everything except the login page, the Railway healthcheck endpoint,
-  // Next internals, and static files (anything with a dot, e.g. favicon.ico or
-  // images). /api/health must stay open: Railway's healthcheck sends no session
-  // cookie, so gating it would 401 every check and the deploy never goes live.
-  matcher: ["/((?!login|api/health|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // the Ariya read API, Next internals, and static files (anything with a dot,
+  // e.g. favicon.ico or images). /api/health must stay open: Railway's
+  // healthcheck sends no session cookie, so gating it would 401 every check
+  // and the deploy never goes live. /api/ariya does its own Bearer-token auth
+  // (see src/lib/ariya.ts) — Ariya is a service, it has no session cookie.
+  matcher: ["/((?!login|api/health|api/ariya|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
