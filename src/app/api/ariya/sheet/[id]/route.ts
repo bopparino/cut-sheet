@@ -15,9 +15,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const numId = Number(id);
   if (!Number.isInteger(numId)) return Response.json({ error: "Bad id" }, { status: 400 });
 
+  // Archived (trashed) sheets stay fetchable on purpose — the 2026-08 cleanup
+  // moved the whole legacy library to the trash, and that history is most of
+  // what Ariya exists to answer about.
   const row = db
-    .prepare<[number], { id: number; data: string; created_at: string; updated_at: string }>(
-      "SELECT id, data, created_at, updated_at FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+    .prepare<[number], { id: number; data: string; created_at: string; updated_at: string; deleted_at: string | null }>(
+      "SELECT id, data, created_at, updated_at, deleted_at FROM cutsheets WHERE id = ?",
     )
     .get(numId);
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
@@ -37,6 +40,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   return Response.json({
     id: row.id,
+    archived: row.deleted_at != null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     data,

@@ -41,6 +41,11 @@ export type AriyaFilters = {
   createdFrom?: string; // ISO date, compares against cutsheets.created_at
   createdTo?: string;
   text?: string; // free-text match over name/header/misc/custom lines/legacy notes
+  // The app's trash is Ariya's archive: the 2026-08-04 cleanup moved ~3600
+  // legacy sheets (history back to 2005) to the trash to keep the working UI
+  // lean. Ariya includes them by default — excluding them would blind the
+  // agent to 97% of company history — and flags each result `archived`.
+  excludeArchived?: boolean;
 };
 
 type Row = {
@@ -49,6 +54,7 @@ type Row = {
   folder_id: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
 export type ParsedSheet = {
@@ -56,6 +62,7 @@ export type ParsedSheet = {
   createdAt: string;
   updatedAt: string;
   folder: string;
+  archived: boolean;
   data: Cutsheet;
 };
 
@@ -85,7 +92,7 @@ function folderPaths(): Map<number, string> {
 }
 
 export function loadSheets(filters: AriyaFilters): ParsedSheet[] {
-  const where: string[] = ["deleted_at IS NULL"];
+  const where: string[] = filters.excludeArchived ? ["deleted_at IS NULL"] : ["1=1"];
   const params: unknown[] = [];
 
   const like = (path: string, value: string) => {
@@ -117,7 +124,7 @@ export function loadSheets(filters: AriyaFilters): ParsedSheet[] {
 
   const rows = db
     .prepare(
-      `SELECT id, data, folder_id, created_at, updated_at FROM cutsheets
+      `SELECT id, data, folder_id, created_at, updated_at, deleted_at FROM cutsheets
        WHERE ${where.join(" AND ")} ORDER BY updated_at DESC`,
     )
     .all(...params) as Row[];
@@ -134,6 +141,7 @@ export function loadSheets(filters: AriyaFilters): ParsedSheet[] {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         folder: row.folder_id != null ? (folders.get(row.folder_id) ?? "") : "",
+        archived: row.deleted_at != null,
         data,
       });
     } catch {
@@ -168,6 +176,7 @@ export function searchText(sheet: ParsedSheet): string {
 
 export type SheetSummary = {
   id: number;
+  archived: boolean;
   name: string;
   builder: string;
   project: string;
@@ -192,6 +201,7 @@ export function summarize(sheet: ParsedSheet): SheetSummary {
   const h = sheet.data.header;
   return {
     id: sheet.id,
+    archived: sheet.archived,
     name: sheet.data.name,
     builder: h.builder,
     project: h.project,
@@ -253,10 +263,17 @@ export function textMatch(
 // see whose sheets it just summed can notice and refine instead of presenting
 // a silently polluted total as fact.
 export type AggregateResult =
-  | { kind: "total"; matchedSheets: number; matchedBuilders: string[]; total: number }
+  | {
+      kind: "total";
+      matchedSheets: number;
+      archivedSheets: number;
+      matchedBuilders: string[];
+      total: number;
+    }
   | {
       kind: "perKey";
       matchedSheets: number;
+      archivedSheets: number;
       matchedBuilders: string[];
       totals: Record<string, number>;
       grandTotal: number;
@@ -303,13 +320,17 @@ export function aggregate(path: string, filters: AriyaFilters): AggregateResult 
   const matched = filters.text ? textMatch(sheets, filters.text).map((m) => m.sheet) : sheets;
 
   const builderSet = new Set<string>();
-  for (const sheet of matched) builderSet.add(norm(sheet.data.header.builder) || "(blank)");
+  let archivedSheets = 0;
+  for (const sheet of matched) {
+    builderSet.add(norm(sheet.data.header.builder) || "(blank)");
+    if (sheet.archived) archivedSheets++;
+  }
   const matchedBuilders = [...builderSet].sort().slice(0, 20);
 
   if (typeof template === "number" || Array.isArray(template)) {
     let total = 0;
     for (const sheet of matched) total += sumNumericLeaves(resolvePath(sheet.data, segments));
-    return { kind: "total", matchedSheets: matched.length, matchedBuilders, total };
+    return { kind: "total", matchedSheets: matched.length, archivedSheets, matchedBuilders, total };
   }
 
   // Object: report per-key so "how much duct60 did X take" answers itself
@@ -324,7 +345,7 @@ export function aggregate(path: string, filters: AriyaFilters): AggregateResult 
     }
   }
   const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
-  return { kind: "perKey", matchedSheets: matched.length, matchedBuilders, totals, grandTotal };
+  return { kind: "perKey", matchedSheets: matched.length, archivedSheets, matchedBuilders, totals, grandTotal };
 }
 
 // ---------- catalog ----------
