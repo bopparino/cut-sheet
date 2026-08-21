@@ -46,7 +46,32 @@ export type AriyaFilters = {
   // lean. Ariya includes them by default — excluding them would blind the
   // agent to 97% of company history — and flags each result `archived`.
   excludeArchived?: boolean;
+  // Delivery-date range (ISO). header.deliveryDate is free-typed, so this
+  // filters on a best-effort parse; sheets whose date can't be parsed are
+  // excluded when either bound is set.
+  deliveryFrom?: string;
+  deliveryTo?: string;
 };
+
+// Best-effort parse of the free-typed delivery/date headers. Handles the two
+// families actually present in the data: ISO ("2026-08-27") and US slashed
+// ("8/25/2026", "8/25/26", occasionally dashed). Anything else → null.
+export function parseSheetDate(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})\b/);
+  if (m) {
+    const mo = Number(m[1]);
+    const d = Number(m[2]);
+    let y = Number(m[3]);
+    if (y < 100) y += y < 50 ? 2000 : 1900;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  return null;
+}
 
 type Row = {
   id: number;
@@ -148,6 +173,16 @@ export function loadSheets(filters: AriyaFilters): ParsedSheet[] {
       continue;
     }
   }
+
+  if (filters.deliveryFrom || filters.deliveryTo) {
+    return out.filter((sheet) => {
+      const iso = parseSheetDate(sheet.data.header.deliveryDate);
+      if (!iso) return false;
+      if (filters.deliveryFrom && iso < filters.deliveryFrom) return false;
+      if (filters.deliveryTo && iso > filters.deliveryTo) return false;
+      return true;
+    });
+  }
   return out;
 }
 
@@ -189,6 +224,7 @@ export type SheetSummary = {
   foreman: string;
   date: string;
   deliveryDate: string;
+  deliveryDateISO: string | null;
   option: string;
   zone: string;
   plenumPackage: string;
@@ -214,6 +250,7 @@ export function summarize(sheet: ParsedSheet): SheetSummary {
     foreman: h.foreman,
     date: h.date,
     deliveryDate: h.deliveryDate,
+    deliveryDateISO: parseSheetDate(h.deliveryDate),
     option: h.option,
     zone: h.zone,
     plenumPackage: h.plenumPackage,
@@ -408,5 +445,132 @@ export function buildCatalog(): Catalog {
       "formOnly/cutSheetMisc", "formOnly/wallRegs", "formOnly/grills",
       "formOnly/filterGrills", "formOnly/floorRegs", "fittings[].notes",
     ],
+  };
+}
+
+// ---------- house report ----------
+
+// Everything behind one property number: the sheets, whether they truly form
+// one house (same test as src/lib/house.ts: every sheet agrees on builder and
+// a non-empty lot), and the combined quantities across all of them. Zero
+// quantities are stripped so the report reads as "what was ordered".
+
+function sumInto(target: Record<string, unknown>, value: unknown): void {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return;
+  for (const [k, v] of Object.entries(value)) {
+    if (typeof v === "number") {
+      target[k] = ((target[k] as number) ?? 0) + v;
+    } else if (v && typeof v === "object" && !Array.isArray(v)) {
+      if (target[k] == null) target[k] = {};
+      sumInto(target[k] as Record<string, unknown>, v);
+    }
+  }
+}
+
+function stripZeros(value: unknown): unknown {
+  if (typeof value === "number") return value !== 0 ? value : undefined;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      const s = stripZeros(v);
+      if (s !== undefined) out[k] = s;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  }
+  return undefined;
+}
+
+export function houseReport(propNumber: string): Record<string, unknown> | { error: string } {
+  const prop = propNumber.trim();
+  if (!prop) return { error: "propNumber is required" };
+  if (prop === "999999999") {
+    return { error: "999999999 is the legacy import placeholder — it spans unrelated sheets, not one house." };
+  }
+
+  const sheets = loadSheets({ propNumber: prop });
+  if (sheets.length === 0) return { error: `No sheets found for prop ${prop}` };
+
+  const builders = new Set(sheets.map((s) => norm(s.data.header.builder)));
+  const lots = new Set(sheets.map((s) => norm(s.data.header.lot)));
+  const isOneHouse = builders.size === 1 && lots.size === 1 && ([...lots][0] ?? "") !== "";
+
+  const combined: Record<string, unknown> = {};
+  const customLines: Array<{ ticket: string; label: string; qty: number; sheetId: number }> = [];
+  const miscellaneous: Array<{ text: string; sheetId: number }> = [];
+  const fittings: Array<{ type: string; qty: number; sl: boolean; notes: string; sheetId: number }> = [];
+
+  for (const sheet of sheets) {
+    sumInto(combined, {
+      stock: sheet.data.stock,
+      custom: { rndCollars: sheet.data.custom.rndCollars, roundVolumeDampers: sheet.data.custom.roundVolumeDampers },
+      truck: sheet.data.truck,
+      formOnly: sheet.data.formOnly,
+    });
+    for (const l of sheet.data.customLines) customLines.push({ ...l, sheetId: sheet.id });
+    for (const t of sheet.data.custom.miscellaneous) miscellaneous.push({ text: t, sheetId: sheet.id });
+    for (const f of sheet.data.fittings) {
+      fittings.push({ type: f.type, qty: f.qty, sl: f.sl, notes: f.notes, sheetId: sheet.id });
+    }
+  }
+
+  return {
+    propNumber: prop,
+    isOneHouse,
+    builders: [...builders],
+    lots: [...lots].filter(Boolean),
+    sheetCount: sheets.length,
+    archivedSheets: sheets.filter((s) => s.archived).length,
+    sheets: sheets.map(summarize),
+    combinedQuantities: stripZeros(combined) ?? {},
+    customLines,
+    miscellaneous,
+    fittings,
+  };
+}
+
+// ---------- stats ----------
+
+export type StatsGroupBy = "builder" | "project" | "region" | "foreman" | "year";
+
+// Grouped counts for "how many / who's biggest / per year" questions.
+// `houses` counts distinct real prop numbers (blank and the 999999999
+// placeholder excluded) — the closest thing the data has to "jobs".
+export function stats(groupBy: StatsGroupBy, filters: AriyaFilters): Record<string, unknown> {
+  const sheets = loadSheets(filters);
+  const matched = filters.text ? textMatch(sheets, filters.text).map((m) => m.sheet) : sheets;
+
+  const keyOf = (s: ParsedSheet): string => {
+    if (groupBy === "year") return s.createdAt.slice(0, 4);
+    const h = s.data.header;
+    const raw = groupBy === "builder" ? h.builder : groupBy === "project" ? h.project : groupBy === "region" ? h.region : h.foreman;
+    return norm(raw) || "(blank)";
+  };
+
+  const groups = new Map<string, { sheets: number; archived: number; props: Set<string> }>();
+  const allProps = new Set<string>();
+  for (const s of matched) {
+    const key = keyOf(s);
+    const g = groups.get(key) ?? { sheets: 0, archived: 0, props: new Set<string>() };
+    g.sheets++;
+    if (s.archived) g.archived++;
+    const prop = s.data.header.propNumber.trim();
+    if (prop && prop !== "999999999") {
+      g.props.add(prop);
+      allProps.add(prop);
+    }
+    groups.set(key, g);
+  }
+
+  const rows = [...groups.entries()]
+    .map(([key, g]) => ({ key, sheets: g.sheets, houses: g.props.size, archivedSheets: g.archived }))
+    .sort((a, b) => b.sheets - a.sheets);
+
+  return {
+    groupBy,
+    totalSheets: matched.length,
+    totalHouses: allProps.size,
+    groupCount: rows.length,
+    groups: rows.slice(0, 50),
+    truncated: rows.length > 50,
   };
 }
