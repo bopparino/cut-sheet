@@ -1,0 +1,391 @@
+import "server-only";
+import { timingSafeEqual, createHash } from "node:crypto";
+import { db } from "@/lib/db";
+import { CutsheetSchema, emptyCutsheet, type Cutsheet } from "@/lib/schema";
+
+// Read-only query layer for Ariya (the org agent). Same dormant-by-default
+// posture as the Salesforce integration: until ARIYA_API_TOKEN is set on the
+// service, every /api/ariya endpoint answers 503 and nothing is reachable.
+// The endpoints never write and never return attachment blobs — worst case a
+// leaked token reads cut sheets, it cannot change or delete anything.
+
+// ---------- auth ----------
+
+export function ariyaAuthError(req: Request): Response | null {
+  const token = process.env.ARIYA_API_TOKEN;
+  if (!token) {
+    return Response.json({ error: "Ariya API is not enabled" }, { status: 503 });
+  }
+  const header = req.headers.get("authorization") ?? "";
+  const presented = header.startsWith("Bearer ") ? header.slice(7) : "";
+  // Hash both sides so timingSafeEqual gets equal-length buffers regardless
+  // of what the caller sent — comparing raw strings leaks length.
+  const a = createHash("sha256").update(presented).digest();
+  const b = createHash("sha256").update(token).digest();
+  if (!timingSafeEqual(a, b)) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
+// ---------- filters ----------
+
+export type AriyaFilters = {
+  builder?: string;
+  project?: string;
+  projectCode?: string;
+  propNumber?: string;
+  lot?: string;
+  region?: string;
+  foreman?: string;
+  createdFrom?: string; // ISO date, compares against cutsheets.created_at
+  createdTo?: string;
+  text?: string; // free-text match over name/header/misc/custom lines/legacy notes
+};
+
+type Row = {
+  id: number;
+  data: string;
+  folder_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ParsedSheet = {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  folder: string;
+  data: Cutsheet;
+};
+
+const norm = (s: string | undefined | null) => (s ?? "").trim().toUpperCase().replace(/\s+/g, " ");
+
+// Folder path cache: folders change rarely and there are few of them, so one
+// full read per request is cheaper than being clever.
+function folderPaths(): Map<number, string> {
+  const rows = db
+    .prepare<[], { id: number; name: string; parent_id: number | null }>(
+      "SELECT id, name, parent_id FROM folders",
+    )
+    .all();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const paths = new Map<number, string>();
+  for (const row of rows) {
+    const parts: string[] = [];
+    let cur: typeof row | undefined = row;
+    // Depth guard: a corrupt parent cycle should degrade, not hang a request.
+    for (let i = 0; cur && i < 20; i++) {
+      parts.unshift(cur.name);
+      cur = cur.parent_id != null ? byId.get(cur.parent_id) : undefined;
+    }
+    paths.set(row.id, parts.join(" / "));
+  }
+  return paths;
+}
+
+export function loadSheets(filters: AriyaFilters): ParsedSheet[] {
+  const where: string[] = ["deleted_at IS NULL"];
+  const params: unknown[] = [];
+
+  const like = (path: string, value: string) => {
+    where.push(`UPPER(json_extract(data, '${path}')) LIKE ?`);
+    params.push(`%${norm(value)}%`);
+  };
+  const exact = (path: string, value: string) => {
+    where.push(`UPPER(TRIM(json_extract(data, '${path}'))) = ?`);
+    params.push(norm(value));
+  };
+
+  if (filters.builder) like("$.header.builder", filters.builder);
+  if (filters.project) like("$.header.project", filters.project);
+  if (filters.foreman) like("$.header.foreman", filters.foreman);
+  if (filters.projectCode) exact("$.header.projectCode", filters.projectCode);
+  if (filters.propNumber) exact("$.header.propNumber", filters.propNumber);
+  if (filters.lot) exact("$.header.lot", filters.lot);
+  if (filters.region) exact("$.header.region", filters.region);
+  if (filters.createdFrom) {
+    where.push("created_at >= ?");
+    params.push(filters.createdFrom);
+  }
+  if (filters.createdTo) {
+    // Callers pass dates; created_at is a datetime. <= 'YYYY-MM-DD' would
+    // exclude that whole day, so pad to end-of-day when no time is given.
+    where.push("created_at <= ?");
+    params.push(filters.createdTo.length === 10 ? `${filters.createdTo} 23:59:59` : filters.createdTo);
+  }
+
+  const rows = db
+    .prepare(
+      `SELECT id, data, folder_id, created_at, updated_at FROM cutsheets
+       WHERE ${where.join(" AND ")} ORDER BY updated_at DESC`,
+    )
+    .all(...params) as Row[];
+
+  const folders = folderPaths();
+  const out: ParsedSheet[] = [];
+  for (const row of rows) {
+    // Schema-invalid rows (if any survive elsewhere) are skipped, not fatal —
+    // an agent query must never 500 because one legacy row went sideways.
+    try {
+      const data = CutsheetSchema.parse(JSON.parse(row.data));
+      out.push({
+        id: row.id,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        folder: row.folder_id != null ? (folders.get(row.folder_id) ?? "") : "",
+        data,
+      });
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
+
+// ---------- search ----------
+
+// The free-text haystack: everything a human might remember about a sheet
+// that isn't a quantity. Quantities are the aggregate endpoint's job.
+export function searchText(sheet: ParsedSheet): string {
+  const d = sheet.data;
+  const parts: string[] = [
+    d.name,
+    ...Object.values(d.header).map((v) => String(v ?? "")),
+    ...d.custom.miscellaneous,
+    ...d.customLines.map((l) => l.label),
+    ...d.formOnly.legacyNotes,
+    ...d.formOnly.cutSheetMisc,
+    ...d.formOnly.wallRegs,
+    ...d.formOnly.grills,
+    ...d.formOnly.filterGrills,
+    ...d.formOnly.floorRegs,
+    ...d.fittings.map((f) => f.notes),
+    sheet.folder,
+  ];
+  return parts.filter(Boolean).join(" \n ").toLowerCase();
+}
+
+export type SheetSummary = {
+  id: number;
+  name: string;
+  builder: string;
+  project: string;
+  projectCode: string;
+  lot: string;
+  block: string;
+  section: string;
+  propNumber: string;
+  region: string;
+  foreman: string;
+  date: string;
+  deliveryDate: string;
+  option: string;
+  zone: string;
+  plenumPackage: string;
+  folder: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function summarize(sheet: ParsedSheet): SheetSummary {
+  const h = sheet.data.header;
+  return {
+    id: sheet.id,
+    name: sheet.data.name,
+    builder: h.builder,
+    project: h.project,
+    projectCode: h.projectCode,
+    lot: h.lot,
+    block: h.block,
+    section: h.section,
+    propNumber: h.propNumber,
+    region: h.region,
+    foreman: h.foreman,
+    date: h.date,
+    deliveryDate: h.deliveryDate,
+    option: h.option,
+    zone: h.zone,
+    plenumPackage: h.plenumPackage,
+    folder: sheet.folder,
+    createdAt: sheet.createdAt,
+    updatedAt: sheet.updatedAt,
+  };
+}
+
+export function textMatch(
+  sheets: ParsedSheet[],
+  query: string,
+): Array<{ sheet: ParsedSheet; score: number; snippet: string }> {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return sheets.map((sheet) => ({ sheet, score: 0, snippet: "" }));
+
+  const out: Array<{ sheet: ParsedSheet; score: number; snippet: string }> = [];
+  for (const sheet of sheets) {
+    const hay = searchText(sheet);
+    let score = 0;
+    let firstIdx = -1;
+    for (const term of terms) {
+      let idx = hay.indexOf(term);
+      if (idx === -1) continue;
+      if (firstIdx === -1) firstIdx = idx;
+      while (idx !== -1) {
+        score++;
+        idx = hay.indexOf(term, idx + term.length);
+      }
+    }
+    if (score === 0) continue;
+    const start = Math.max(0, firstIdx - 60);
+    const snippet = hay.slice(start, firstIdx + 90).replace(/\s+/g, " ").trim();
+    out.push({ sheet, score, snippet });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
+// ---------- aggregate ----------
+
+// Paths use "/" separators because size keys contain dots ("3.25x10").
+// A path may land on: a number (summed), an object (numeric leaves summed
+// per top-level key), or an array of rows with a qty field (qtys summed).
+// matchedBuilders makes filter contamination visible: builder is a partial
+// match, so "RYAN" pulls in both RYAN HOMES and DAN RYAN — an agent that can
+// see whose sheets it just summed can notice and refine instead of presenting
+// a silently polluted total as fact.
+export type AggregateResult =
+  | { kind: "total"; matchedSheets: number; matchedBuilders: string[]; total: number }
+  | {
+      kind: "perKey";
+      matchedSheets: number;
+      matchedBuilders: string[];
+      totals: Record<string, number>;
+      grandTotal: number;
+    };
+
+function resolvePath(root: unknown, segments: string[]): unknown {
+  let cur: unknown = root;
+  for (const seg of segments) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return cur;
+}
+
+function sumNumericLeaves(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (Array.isArray(value)) {
+    // Row arrays (endCaps, customDuct, customLines, fittings) all carry qty.
+    return value.reduce<number>((acc, item) => {
+      if (item && typeof item === "object" && typeof (item as { qty?: unknown }).qty === "number") {
+        return acc + (item as { qty: number }).qty;
+      }
+      return acc;
+    }, 0);
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value).reduce<number>((acc, v) => acc + sumNumericLeaves(v), 0);
+  }
+  return 0;
+}
+
+export function aggregate(path: string, filters: AriyaFilters): AggregateResult | { error: string } {
+  const segments = path.split("/").map((s) => s.trim()).filter(Boolean);
+  if (segments.length === 0) return { error: "path is required, e.g. stock/duct60/8x16" };
+
+  // Validate against the schema's default object so typos come back as a
+  // clear error instead of an all-zeros answer the agent would present as fact.
+  const template = resolvePath(emptyCutsheet(), segments);
+  if (template === undefined) {
+    return { error: `Unknown path "${path}". Fetch /api/ariya/catalog for valid paths.` };
+  }
+
+  const sheets = loadSheets(filters);
+  const matched = filters.text ? textMatch(sheets, filters.text).map((m) => m.sheet) : sheets;
+
+  const builderSet = new Set<string>();
+  for (const sheet of matched) builderSet.add(norm(sheet.data.header.builder) || "(blank)");
+  const matchedBuilders = [...builderSet].sort().slice(0, 20);
+
+  if (typeof template === "number" || Array.isArray(template)) {
+    let total = 0;
+    for (const sheet of matched) total += sumNumericLeaves(resolvePath(sheet.data, segments));
+    return { kind: "total", matchedSheets: matched.length, matchedBuilders, total };
+  }
+
+  // Object: report per-key so "how much duct60 did X take" answers itself
+  // without a follow-up round trip per size.
+  const totals: Record<string, number> = {};
+  for (const key of Object.keys(template as Record<string, unknown>)) totals[key] = 0;
+  for (const sheet of matched) {
+    const value = resolvePath(sheet.data, segments);
+    if (value == null || typeof value !== "object") continue;
+    for (const key of Object.keys(totals)) {
+      totals[key] += sumNumericLeaves((value as Record<string, unknown>)[key]);
+    }
+  }
+  const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+  return { kind: "perKey", matchedSheets: matched.length, matchedBuilders, totals, grandTotal };
+}
+
+// ---------- catalog ----------
+
+// Walk the schema's default object and list every aggregatable path with its
+// keys. Derived, not hand-maintained: when the form gains a section, the
+// catalog gains it on the next request with zero Ariya-side changes.
+export type Catalog = {
+  quantityMaps: Record<string, string[]>;
+  rowArrays: string[];
+  textFields: string[];
+};
+
+// String arrays are searchable text, not qty rows — keep them out of the
+// aggregatable list so the agent doesn't sum prose.
+const TEXT_ARRAYS = new Set([
+  "custom/miscellaneous", "formOnly/legacyNotes", "formOnly/cutSheetMisc",
+  "formOnly/wallRegs", "formOnly/grills", "formOnly/filterGrills", "formOnly/floorRegs",
+]);
+
+export function buildCatalog(): Catalog {
+  const empty = emptyCutsheet();
+  const quantityMaps: Record<string, string[]> = {};
+  const rowArrays: string[] = [];
+
+  const walk = (value: unknown, path: string[]) => {
+    if (Array.isArray(value)) {
+      const joined = path.join("/");
+      if (!TEXT_ARRAYS.has(joined)) rowArrays.push(joined);
+      return;
+    }
+    if (value == null || typeof value !== "object") return;
+    const entries = Object.entries(value as Record<string, unknown>);
+    const numericKeys = entries.filter(([, v]) => typeof v === "number").map(([k]) => k);
+    if (numericKeys.length > 0 && numericKeys.length === entries.length) {
+      quantityMaps[path.join("/")] = numericKeys;
+      return;
+    }
+    for (const [key, v] of entries) {
+      if (typeof v === "number") {
+        quantityMaps[[...path, key].join("/")] = [];
+        continue;
+      }
+      if (typeof v === "string") continue;
+      walk(v, [...path, key]);
+    }
+  };
+
+  walk(empty.stock, ["stock"]);
+  walk(empty.custom, ["custom"]);
+  walk(empty.truck, ["truck"]);
+  walk(empty.formOnly, ["formOnly"]);
+  rowArrays.push("customLines", "fittings");
+
+  return {
+    quantityMaps,
+    rowArrays,
+    textFields: [
+      "name", "header.*", "custom/miscellaneous", "formOnly/legacyNotes",
+      "formOnly/cutSheetMisc", "formOnly/wallRegs", "formOnly/grills",
+      "formOnly/filterGrills", "formOnly/floorRegs", "fittings[].notes",
+    ],
+  };
+}
