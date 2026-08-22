@@ -215,6 +215,7 @@ export type SheetSummary = {
   name: string;
   builder: string;
   project: string;
+  houseType: string;
   projectCode: string;
   lot: string;
   block: string;
@@ -241,6 +242,7 @@ export function summarize(sheet: ParsedSheet): SheetSummary {
     name: sheet.data.name,
     builder: h.builder,
     project: h.project,
+    houseType: h.houseType,
     projectCode: h.projectCode,
     lot: h.lot,
     block: h.block,
