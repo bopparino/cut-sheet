@@ -15,9 +15,13 @@ export default async function FilledPrintPage({
   const numeric = Number(id);
   if (!Number.isInteger(numeric)) notFound();
 
+  // No deleted_at filter on purpose: Ariya cites archived sheets (the 2026-08
+  // legacy cleanup trashed ~3,600 of them) and its PDF route renders this
+  // page. The app itself never links here for trashed sheets, and /api/pdf/
+  // [id]/filled keeps its own non-deleted guard for the app path.
   const row = db
     .prepare<[number], { data: string }>(
-      "SELECT data FROM cutsheets WHERE id = ? AND deleted_at IS NULL",
+      "SELECT data FROM cutsheets WHERE id = ?",
     )
     .get(numeric);
   if (!row) notFound();
