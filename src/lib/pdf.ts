@@ -53,6 +53,9 @@ export async function renderPdfFromUrl(
     // option. Lets a print page lock its own paper size so the result is
     // identical whether the user hits Cmd-P in a browser or the API endpoint.
     preferCSSPageSize?: boolean;
+    // Extra request headers for the loopback fetch — the Ariya PDF route uses
+    // this to carry its render pass, since it has no session cookie.
+    extraHeaders?: Record<string, string>;
   } = {},
 ): Promise<Buffer> {
   const browser = await getBrowser();
@@ -64,7 +67,8 @@ export async function renderPdfFromUrl(
     // user, so forward that user's Cookie header - the print page then renders
     // under the same session as the person who clicked the button.
     const cookie = (await headers()).get("cookie");
-    if (cookie) await page.setExtraHTTPHeaders({ cookie });
+    const extra = { ...(cookie ? { cookie } : {}), ...options.extraHeaders };
+    if (Object.keys(extra).length > 0) await page.setExtraHTTPHeaders(extra);
     const res = await page.goto(url, { waitUntil: "networkidle0" });
     // If auth (or anything else) redirected us off the print page, fail loudly
     // instead of printing whatever page we landed on (e.g. /login).

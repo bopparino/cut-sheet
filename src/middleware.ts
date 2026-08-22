@@ -28,5 +28,9 @@ export const config = {
   // healthcheck sends no session cookie, so gating it would 401 every check
   // and the deploy never goes live. /api/ariya does its own Bearer-token auth
   // (see src/lib/ariya.ts) — Ariya is a service, it has no session cookie.
-  matcher: ["/((?!login|api/health|api/ariya|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // /print/* is exempt here because its own layout runs the REAL DB-backed
+  // session check (stronger than this cookie-presence gate) and additionally
+  // honors the Ariya render-pass header; edge env access proved flaky in dev,
+  // so that decision lives in the Node runtime where env is dependable.
+  matcher: ["/((?!login|api/health|api/ariya|print|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
