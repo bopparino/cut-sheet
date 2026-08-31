@@ -1,7 +1,7 @@
 // The fittings catalog. One entry per drawing, one image file per fitting at
 // public/fittings/f<N>.png (square, white background — f1-f29 are the 800x800
 // redrawn set supplied by the shop July 2026, replacing the original 500x500
-// Photoshop trims; f30-f31 added August 2026 at 500x500 — any square size
+// Photoshop trims; f30-f32 added August 2026 at 500x500 — any square size
 // works, label x/y are fractions of the drawing box). To improve a drawing,
 // overwrite its file - nothing here needs to change.
 // f1-f29 numbering matches the shop's 2026 29-drawing master sheet 1:1. The old
@@ -27,7 +27,7 @@ export type FittingDef = {
   aspect: number;
 };
 
-export const FITTING_COUNT = 31;
+export const FITTING_COUNT = 32;
 
 export const FITTINGS: FittingDef[] = Array.from({ length: FITTING_COUNT }, (_, i) => ({
   id: `f${i + 1}`,
